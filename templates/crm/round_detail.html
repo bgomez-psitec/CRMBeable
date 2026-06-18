@@ -37,34 +37,45 @@
     </table>
   </div>
 {% else %}
-  <div class="text-muted small mb-2"><i class="bi bi-hand-index"></i> Arrastra las tarjetas entre columnas para cambiar el estado.</div>
-  <div class="d-flex gap-3 overflow-auto pb-2">
+  <div class="text-muted small mb-3"><i class="bi bi-hand-index"></i> Arrastra las tarjetas entre columnas para cambiar el estado.</div>
+  <div class="d-flex gap-3 align-items-start overflow-auto pb-3 kanban-board">
     {% for stage in pipe_stages %}
-      <div class="kanban-col" data-estado-id="{{ stage.estado.id }}" style="min-width:220px">
-        <div class="small fw-semibold d-flex justify-content-between"><span>{{ stage.estado.nombre }} <span class="badge text-bg-secondary">{{ stage.items|length }}</span></span><span class="text-muted">Peso {{ stage.peso }}%</span></div>
-        <div class="text-muted small mb-2">{{ stage.total|floatformat:0 }} €</div>
-        <div class="kanban-body d-flex flex-column gap-2" data-estado-id="{{ stage.estado.id }}" style="min-height:60px">
+      <div class="kanban-col" data-estado-id="{{ stage.estado.id }}">
+        <div class="kanban-col-header">
+          <div class="d-flex justify-content-between align-items-center">
+            <span class="fw-semibold">{{ stage.estado.nombre }} <span class="badge text-bg-secondary">{{ stage.items|length }}</span></span>
+            <span class="text-muted small">Peso {{ stage.peso }}%</span>
+          </div>
+          <div class="text-muted small">{{ stage.total|floatformat:0 }} €</div>
+        </div>
+        <div class="kanban-body" data-estado-id="{{ stage.estado.id }}">
           {% for it in stage.items %}
-            <div class="card card-body p-2 small kanban-card" draggable="true" data-intro-id="{{ it.id }}">
+            <div class="kanban-card" draggable="true" data-intro-id="{{ it.id }}">
               <b>{{ it.investor.name }}</b>
               <div>{{ it.ticket|floatformat:0|default:"—" }} €</div>
-              <div class="text-muted">{{ it.next_date|date:"d M" }}</div>
+              <div class="text-muted small">{{ it.next_date|date:"d M"|default:"—" }}</div>
             </div>
+          {% empty %}
+            <div class="kanban-empty">Sin inversores</div>
           {% endfor %}
         </div>
       </div>
     {% endfor %}
-    <div class="vr"></div>
+    <div class="kanban-divider"></div>
     {% for stage in end_stages %}
-      <div class="kanban-col" data-estado-id="{{ stage.estado.id }}" style="min-width:220px">
-        <div class="small fw-semibold d-flex justify-content-between"><span>{{ stage.estado.nombre }} <span class="badge text-bg-secondary">{{ stage.items|length }}</span></span></div>
-        <div class="text-muted small mb-2">{{ stage.total|floatformat:0 }} €</div>
-        <div class="kanban-body d-flex flex-column gap-2" data-estado-id="{{ stage.estado.id }}" style="min-height:60px">
+      <div class="kanban-col" data-estado-id="{{ stage.estado.id }}">
+        <div class="kanban-col-header">
+          <span class="fw-semibold">{{ stage.estado.nombre }} <span class="badge text-bg-secondary">{{ stage.items|length }}</span></span>
+          <div class="text-muted small">{{ stage.total|floatformat:0 }} €</div>
+        </div>
+        <div class="kanban-body" data-estado-id="{{ stage.estado.id }}">
           {% for it in stage.items %}
-            <div class="card card-body p-2 small kanban-card" draggable="true" data-intro-id="{{ it.id }}">
+            <div class="kanban-card" draggable="true" data-intro-id="{{ it.id }}">
               <b>{{ it.investor.name }}</b>
               <div>{{ it.ticket|floatformat:0|default:"—" }} €</div>
             </div>
+          {% empty %}
+            <div class="kanban-empty">Sin inversores</div>
           {% endfor %}
         </div>
       </div>
@@ -75,15 +86,73 @@
 {% endif %}
 {% endblock %}
 
+{% block extra_head %}
+<style>
+  .kanban-board { align-items: stretch; }
+  .kanban-col {
+    background: #eef0f3;
+    border-radius: 8px;
+    padding: 12px;
+    min-width: 230px;
+    max-width: 230px;
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+  }
+  .kanban-col-header {
+    padding-bottom: 8px;
+    margin-bottom: 8px;
+    border-bottom: 2px solid #d7dae0;
+  }
+  .kanban-body {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    min-height: 70px;
+    flex: 1;
+  }
+  .kanban-body.drag-over { background: rgba(255, 193, 7, .12); border-radius: 6px; }
+  .kanban-card {
+    background: #fff;
+    border: 1px solid #e3e5e9;
+    border-radius: 6px;
+    box-shadow: 0 1px 2px rgba(16, 24, 40, .06);
+    padding: 8px 10px;
+    font-size: 13px;
+    cursor: grab;
+  }
+  .kanban-card:active { cursor: grabbing; }
+  .kanban-card.dragging { opacity: .4; }
+  .kanban-empty {
+    border: 1px dashed #c8cbd2;
+    border-radius: 6px;
+    padding: 10px;
+    text-align: center;
+    font-size: 12px;
+    color: #9094a0;
+  }
+  .kanban-divider { width: 1px; align-self: stretch; background: #d7dae0; flex-shrink: 0; }
+</style>
+{% endblock %}
+
 {% block extra_js %}
 <script>
 document.querySelectorAll('.kanban-card').forEach(card => {
-  card.addEventListener('dragstart', e => e.dataTransfer.setData('text/plain', card.dataset.introId));
+  card.addEventListener('dragstart', e => {
+    e.dataTransfer.setData('text/plain', card.dataset.introId);
+    card.classList.add('dragging');
+  });
+  card.addEventListener('dragend', () => card.classList.remove('dragging'));
 });
 document.querySelectorAll('.kanban-body').forEach(col => {
-  col.addEventListener('dragover', e => e.preventDefault());
+  col.addEventListener('dragover', e => {
+    e.preventDefault();
+    col.classList.add('drag-over');
+  });
+  col.addEventListener('dragleave', () => col.classList.remove('drag-over'));
   col.addEventListener('drop', e => {
     e.preventDefault();
+    col.classList.remove('drag-over');
     const introId = e.dataTransfer.getData('text/plain');
     const estadoId = col.dataset.estadoId;
     const form = document.getElementById('status-form');
