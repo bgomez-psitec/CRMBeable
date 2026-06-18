@@ -5,6 +5,7 @@ from django.contrib.auth.decorators import login_required
 from django.db import models
 from django.http import Http404, HttpResponseForbidden
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
 from django.utils import timezone
 
 from accounts.models import Role, User
@@ -217,7 +218,7 @@ def intro_set_status(request, pk):
     estado = get_object_or_404(EstadoPresentacion, pk=estado_id)
     intro.status = estado
     intro.save(update_fields=['status'])
-    return redirect('crm:round_detail', pk=intro.round_id)
+    return redirect(reverse('crm:round_detail', kwargs={'pk': intro.round_id}) + '?tab=pipeline')
 
 
 @login_required
