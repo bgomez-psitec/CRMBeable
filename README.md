@@ -78,6 +78,50 @@ La lógica vive en `crm/permissions.py` y se aplica filtrando los querysets en c
    ```
 6. Acceder a la pantalla de login y usar el "quick login" para entrar como cualquiera de los usuarios demo (admin / empleado / ceo) sin necesidad de contraseña.
 
+## Despliegue en servidor (Alpine Linux)
+
+El directorio `scripts/` incluye dos scripts pensados para desplegar la aplicación en un servidor Alpine Linux por SSH, usando `virtualenv` y sin dependencias de Docker:
+
+- **`scripts/install.sh`**: instala las dependencias del sistema necesarias vía `apk` (Python, herramientas de compilación y cabeceras de MariaDB para `mysqlclient`), crea el virtualenv, instala `requirements.txt`, genera `.env` a partir de `.env.example` si no existe, aplica migraciones, recolecta estáticos y permite cargar los datos demo.
+- **`scripts/setup_service.sh`**: crea un usuario de sistema dedicado, registra la aplicación como **servicio OpenRC** (el init system de Alpine) sirviéndola con **Gunicorn**, y la deja arrancando en cada boot.
+
+Uso típico, conectado por SSH al servidor:
+
+```bash
+git clone https://github.com/bgomez-psitec/CRMBeable.git
+cd CRMBeable
+chmod +x scripts/install.sh scripts/setup_service.sh
+
+# 1. Instala dependencias del sistema, crea el virtualenv y prepara la app
+sudo ./scripts/install.sh
+# -> Edita .env con las credenciales reales de MySQL, SECRET_KEY, ALLOWED_HOSTS, etc.
+
+# 2. (Opcional, recomendado en producción) Registra el servicio OpenRC con Gunicorn
+sudo ./scripts/setup_service.sh
+```
+
+Variables de entorno que aceptan ambos scripts para personalizar la instalación (todas opcionales):
+
+| Variable    | Script            | Por defecto         | Descripción                                  |
+|-------------|--------------------|----------------------|-----------------------------------------------|
+| `APP_DIR`   | ambos              | carpeta del proyecto | Ruta donde vive el código                     |
+| `VENV_DIR`  | ambos              | `$APP_DIR/venv`      | Ruta del virtualenv                           |
+| `PYTHON_BIN`| `install.sh`       | `python3`            | Binario de Python a usar                      |
+| `SEED_DEMO` | `install.sh`       | (pregunta)           | `yes`/`no`, cargar datos demo sin preguntar    |
+| `APP_USER`  | `setup_service.sh` | `crmgestora`         | Usuario de sistema bajo el que corre Gunicorn |
+| `BIND_ADDR` | `setup_service.sh` | `127.0.0.1:8000`     | Dirección/puerto donde escucha Gunicorn       |
+| `WORKERS`   | `setup_service.sh` | `3`                  | Número de workers de Gunicorn                 |
+
+Tras `setup_service.sh`, el servicio se gestiona con las herramientas estándar de OpenRC:
+
+```bash
+rc-service crmgestora status
+rc-service crmgestora restart
+tail -f logs/gunicorn-error.log
+```
+
+`Gunicorn` escucha por defecto solo en `127.0.0.1:8000`; en producción se recomienda poner **Nginx** (u otro proxy inverso) por delante para TLS y para servir directamente la carpeta `staticfiles/` generada por `collectstatic`. No se incluye configuración de Nginx en este repositorio.
+
 ## Estado del proyecto / próximos pasos
 
 - ✅ Modelo de datos, RBAC, todas las pantallas del prototipo portadas a Django con persistencia real en MySQL.
