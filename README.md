@@ -122,7 +122,36 @@ rc-service crmgestora restart
 tail -f logs/gunicorn-error.log
 ```
 
-`Gunicorn` escucha por defecto solo en `127.0.0.1:8000`; en producción se recomienda poner **Nginx** (u otro proxy inverso) por delante para TLS y para servir directamente la carpeta `staticfiles/` generada por `collectstatic`. No se incluye configuración de Nginx en este repositorio.
+`Gunicorn` escucha por defecto solo en `127.0.0.1:8001`; en producción se recomienda poner **Nginx** (u otro proxy inverso) por delante para TLS y para servir directamente la carpeta `staticfiles/` generada por `collectstatic`. No se incluye configuración de Nginx en este repositorio.
+
+### Actualizar producción con los últimos cambios (`scripts/deploy.sh`)
+
+Una vez la app está instalada y corriendo como servicio, **`scripts/deploy.sh`** automatiza traer los cambios nuevos de GitHub y dejarlos servidos:
+
+1. Comprueba que no haya cambios locales sin commitear en el servidor (si los hay, se detiene para no perder nada).
+2. Hace `git fetch` + `git merge --ff-only` de la rama configurada (nunca reescribe ni descarta historia).
+3. Reinstala dependencias de Python **solo** si `requirements.txt` cambió en ese despliegue.
+4. Ejecuta `migrate` (idempotente: no hace nada si no hay migraciones pendientes) y `collectstatic`.
+5. Reinicia el servicio OpenRC (`rc-service crmgestora restart`) para que los cambios se sirvan inmediatamente.
+
+```bash
+cd /ruta/a/CRMBeable
+chmod +x scripts/deploy.sh
+sudo ./scripts/deploy.sh
+```
+
+Variables de entorno opcionales:
+
+| Variable       | Por defecto | Descripción                                              |
+|----------------|-------------|------------------------------------------------------------|
+| `APP_DIR`      | carpeta del proyecto | Ruta donde vive el código                         |
+| `VENV_DIR`     | `$APP_DIR/venv`      | Ruta del virtualenv                               |
+| `GIT_REMOTE`   | `origin`             | Remoto git a usar                                 |
+| `GIT_BRANCH`   | `main`               | Rama a desplegar                                  |
+| `SERVICE_NAME` | `crmgestora`         | Nombre del servicio OpenRC a reiniciar            |
+| `SKIP_RESTART` | `no`                 | `yes` para actualizar código/BD sin reiniciar el servicio |
+
+Si se ejecuta sin privilegios de root y el servicio existe, el script intentará reiniciarlo con `sudo rc-service ... restart`; conviene tener configurado `sudo` sin contraseña para ese comando concreto si se va a automatizar (por ejemplo, desde un cron o un webhook de despliegue), o ejecutarlo directamente como root.
 
 ## Estado del proyecto / próximos pasos
 
