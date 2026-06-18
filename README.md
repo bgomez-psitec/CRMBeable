@@ -109,8 +109,10 @@ Variables de entorno que aceptan ambos scripts para personalizar la instalación
 | `PYTHON_BIN`| `install.sh`       | `python3`            | Binario de Python a usar                      |
 | `SEED_DEMO` | `install.sh`       | (pregunta)           | `yes`/`no`, cargar datos demo sin preguntar    |
 | `APP_USER`  | `setup_service.sh` | `crmgestora`         | Usuario de sistema bajo el que corre Gunicorn |
-| `BIND_ADDR` | `setup_service.sh` | `127.0.0.1:8000`     | Dirección/puerto donde escucha Gunicorn       |
+| `BIND_ADDR` | `setup_service.sh` | `127.0.0.1:8001`     | Dirección/puerto donde escucha Gunicorn       |
 | `WORKERS`   | `setup_service.sh` | `3`                  | Número de workers de Gunicorn                 |
+
+> El puerto por defecto es **8001** (no el 8000 habitual) precisamente para no chocar con otra aplicación Gunicorn que ya esté corriendo en el mismo servidor. El servicio se registra además con nombre y usuario de sistema propios (`crmgestora`), por lo que no interfiere con servicios OpenRC de otras apps. Si el 8001 también estuviera ocupado, indica otro puerto libre con `BIND_ADDR=127.0.0.1:8002 ./scripts/setup_service.sh`.
 
 Tras `setup_service.sh`, el servicio se gestiona con las herramientas estándar de OpenRC:
 
