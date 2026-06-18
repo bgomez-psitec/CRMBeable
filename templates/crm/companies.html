@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block title %}Participadas — CRM Gestora{% endblock %}
+{% block topbar_title %}Participadas{% endblock %}
+{% block topbar_sub %}Empresas de la cartera en fundraising{% endblock %}
+{% block topbar_actions %}
+  {% if can_edit %}<a class="btn btn-warning" href="{% url 'crm:company_create' %}"><i class="bi bi-plus-lg"></i> Nueva participada</a>{% endif %}
+{% endblock %}
+{% block content %}
+<form method="get" class="d-flex gap-2 mb-3">
+  <input type="text" name="q" value="{{ q }}" class="form-control" style="max-width:260px" placeholder="Buscar participada…">
+  <select name="group" class="form-select" style="max-width:200px" onchange="this.form.submit()">
+    <option value="">Sin agrupar</option>
+    <option value="fund" {% if group == 'fund' %}selected{% endif %}>Agrupar: Fondo</option>
+    <option value="stage" {% if group == 'stage' %}selected{% endif %}>Agrupar: Fase</option>
+    <option value="country" {% if group == 'country' %}selected{% endif %}>Agrupar: País</option>
+  </select>
+  <label class="btn btn-outline-secondary">
+    <input type="checkbox" name="open_only" value="1" {% if open_only %}checked{% endif %} onchange="this.form.submit()" class="form-check-input me-1">
+    Con ronda abierta
+  </label>
+  <button type="submit" class="btn btn-outline-secondary">Buscar</button>
+</form>
+
+{% if not cards %}
+  <div class="text-muted text-center py-5">Sin participadas que coincidan.</div>
+{% elif groups %}
+  {% for key, group_cards in groups.items %}
+    <div class="card mb-3">
+      <div class="card-header fw-semibold">{{ key }} <span class="badge text-bg-secondary">{{ group_cards|length }}</span></div>
+      <div class="card-body row g-3">
+        {% for card in group_cards %}
+          {% include "crm/_company_card.html" %}
+        {% endfor %}
+      </div>
+    </div>
+  {% endfor %}
+{% else %}
+  <div class="row g-3">
+    {% for card in cards %}
+      {% include "crm/_company_card.html" %}
+    {% endfor %}
+  </div>
+{% endif %}
+{% endblock %}

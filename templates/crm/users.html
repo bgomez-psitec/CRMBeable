@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+{% block title %}Usuarios — CRM Gestora{% endblock %}
+{% block topbar_title %}Usuarios{% endblock %}
+{% block topbar_actions %}
+<button class="btn btn-warning" data-bs-toggle="modal" data-bs-target="#userModal" onclick="newUser()"><i class="bi bi-plus-lg"></i> Nuevo usuario</button>
+{% endblock %}
+{% block content %}
+<div class="card">
+  <table class="table mb-0">
+    <thead><tr><th>Usuario</th><th>Email</th><th>Rol</th><th>MFA</th><th>Activo</th><th></th></tr></thead>
+    <tbody>
+      {% for u in users %}
+      <tr>
+        <td><b>{{ u.get_full_name|default:u.username }}</b></td>
+        <td class="text-muted">{{ u.email }}</td>
+        <td><span class="badge text-bg-secondary">{{ u.get_role_display }}</span></td>
+        <td>{% if u.mfa_enabled %}<i class="bi bi-check-circle text-success"></i>{% else %}<i class="bi bi-x-circle text-muted"></i>{% endif %}</td>
+        <td>{% if u.is_active %}<i class="bi bi-check-circle text-success"></i>{% else %}<i class="bi bi-x-circle text-danger"></i>{% endif %}</td>
+        <td class="text-end">
+          <button class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#userModal"
+            onclick='editUser({{ u.id }}, "{{ u.username }}", "{{ u.first_name }}", "{{ u.last_name }}", "{{ u.email }}", "{{ u.role }}")'>
+            <i class="bi bi-pencil"></i>
+          </button>
+        </td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="6" class="text-muted text-center py-4">Sin usuarios.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<div class="modal fade" id="userModal" tabindex="-1">
+  <div class="modal-dialog">
+    <form method="post" class="modal-content">
+      {% csrf_token %}
+      <input type="hidden" name="action" id="user-action" value="create">
+      <input type="hidden" name="user_id" id="user-id">
+      <div class="modal-header"><h5 class="modal-title">Usuario</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+      <div class="modal-body">
+        <div class="mb-2"><label class="form-label">Usuario</label><input name="username" id="user-username" class="form-control" required></div>
+        <div class="row g-2 mb-2">
+          <div class="col"><label class="form-label">Nombre</label><input name="first_name" id="user-first_name" class="form-control"></div>
+          <div class="col"><label class="form-label">Apellidos</label><input name="last_name" id="user-last_name" class="form-control"></div>
+        </div>
+        <div class="mb-2"><label class="form-label">Email</label><input type="email" name="email" id="user-email" class="form-control"></div>
+        <div class="mb-2">
+          <label class="form-label">Rol</label>
+          <select name="role" id="user-role" class="form-select">
+            <option value="admin">Admin</option>
+            <option value="empleado">Empleado</option>
+            <option value="ceo">CEO</option>
+          </select>
+        </div>
+        <div class="form-check mb-2"><input type="checkbox" name="mfa_enabled" id="user-mfa" class="form-check-input"><label class="form-check-label" for="user-mfa">MFA activado</label></div>
+        <div class="form-check"><input type="checkbox" name="is_active" id="user-active" class="form-check-input" checked><label class="form-check-label" for="user-active">Activo</label></div>
+      </div>
+      <div class="modal-footer"><button type="submit" class="btn btn-warning">Guardar</button></div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function newUser() {
+  document.getElementById('user-action').value = 'create';
+  document.getElementById('user-id').value = '';
+  document.getElementById('user-username').value = '';
+  document.getElementById('user-first_name').value = '';
+  document.getElementById('user-last_name').value = '';
+  document.getElementById('user-email').value = '';
+  document.getElementById('user-role').value = 'empleado';
+}
+function editUser(id, username, first_name, last_name, email, role) {
+  document.getElementById('user-action').value = 'update';
+  document.getElementById('user-id').value = id;
+  document.getElementById('user-username').value = username;
+  document.getElementById('user-first_name').value = first_name;
+  document.getElementById('user-last_name').value = last_name;
+  document.getElementById('user-email').value = email;
+  document.getElementById('user-role').value = role;
+}
+</script>
+{% endblock %}

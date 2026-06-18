@@ -1,0 +1,4 @@
+Django==5.2.15
+mysqlclient==2.2.8
+django-environ==0.13.0
+django-bootstrap5==26.2

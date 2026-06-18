@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+{% block title %}Bandeja de entrada — CRM Gestora{% endblock %}
+{% block topbar_title %}Bandeja de entrada{% endblock %}
+{% block content %}
+<div class="row g-3">
+  <div class="col-md-4">
+    <div class="card" style="max-height:75vh;overflow-y:auto">
+      <div class="list-group list-group-flush">
+        {% for m in msgs %}
+        <a href="?id={{ m.id }}" class="list-group-item list-group-item-action {% if selected.id == m.id %}active{% endif %}">
+          <div class="d-flex justify-content-between">
+            <b>{{ m.from_name }}</b>
+            {% if m.unread and not m.saved %}<span class="badge text-bg-warning rounded-circle">&nbsp;</span>{% endif %}
+            {% if m.saved %}<i class="bi bi-check2-circle text-success"></i>{% endif %}
+          </div>
+          <div class="small text-truncate">{{ m.subject }}</div>
+          <div class="small text-muted">{{ m.date|date:"d M Y" }}</div>
+        </a>
+        {% empty %}
+        <div class="list-group-item text-muted text-center py-4">Sin mensajes.</div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+
+  <div class="col-md-8">
+    {% if selected %}
+    <div class="card card-body">
+      <div class="d-flex justify-content-between mb-2">
+        <div>
+          <div class="fw-semibold">{{ selected.subject }}</div>
+          <div class="text-muted small">{{ selected.from_name }} &lt;{{ selected.from_email }}&gt; · {{ selected.date|date:"d M Y" }}</div>
+        </div>
+        {% if selected.saved %}<span class="badge text-bg-success align-self-start">Guardado</span>{% endif %}
+      </div>
+      <div class="border rounded p-3 mb-3 small" style="white-space:pre-line">{{ selected.body }}</div>
+
+      {% if can_edit %}
+      <form method="post">
+        {% csrf_token %}
+        <input type="hidden" name="message_id" value="{{ selected.id }}">
+        <div class="mb-2">
+          <label class="form-label small">Resumen (heurístico, editable)</label>
+          <textarea name="summary" class="form-control" rows="3">{{ summary }}</textarea>
+        </div>
+        <div class="row g-2 mb-3">
+          <div class="col-md-6">
+            <label class="form-label small">Inversor</label>
+            <select name="investor_id" class="form-select">
+              <option value="">— Seleccionar —</option>
+              {% for inv in investors %}
+                <option value="{{ inv.id }}" {% if selected.investor_id == inv.id or suggested_investor.id == inv.id %}selected{% endif %}>{{ inv.name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label small">Ronda</label>
+            <select name="round_id" class="form-select">
+              <option value="">— Sin vincular —</option>
+              {% for r in open_rounds %}
+                <option value="{{ r.id }}" {% if selected.round_id == r.id %}selected{% endif %}>{{ r.company.name }} — {{ r.type }}</option>
+              {% endfor %}
+            </select>
+          </div>
+        </div>
+        <button type="submit" class="btn btn-warning"><i class="bi bi-check2"></i> OK, guardar</button>
+      </form>
+      {% endif %}
+    </div>
+    {% else %}
+    <div class="text-muted text-center py-5">Sin mensaje seleccionado.</div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

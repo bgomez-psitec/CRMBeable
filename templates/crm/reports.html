@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% block title %}Informes — CRM Gestora{% endblock %}
+{% block topbar_title %}Informes{% endblock %}
+{% block content %}
+<div class="row g-3 mb-4">
+  <div class="col-md-3"><div class="card card-body"><div class="text-muted small">Participadas en ronda</div><div class="h4 mb-0">{{ companies_en_ronda }}</div></div></div>
+  <div class="col-md-3"><div class="card card-body"><div class="text-muted small">Rondas abiertas</div><div class="h4 mb-0">{{ rondas_abiertas }}</div></div></div>
+  <div class="col-md-3"><div class="card card-body"><div class="text-muted small">Contactados última semana</div><div class="h4 mb-0">{{ contactados_semana }}</div></div></div>
+</div>
+
+<div class="row g-3 mb-4">
+  <div class="col-md-6">
+    <div class="card">
+      <div class="card-header fw-semibold">Rondas abiertas (agregado)</div>
+      <div class="card-body">
+        <table class="table table-sm mb-0">
+          <tr><td>Objetivo</td><td class="text-end">{{ open_agg.target|floatformat:0 }} €</td></tr>
+          <tr><td>Invertido</td><td class="text-end text-success">{{ open_agg.invertido|floatformat:0 }} €</td></tr>
+          <tr><td>Pipeline ponderado</td><td class="text-end">{{ open_agg.weighted|floatformat:0 }} €</td></tr>
+          <tr><td>Pipeline no ponderado ({{ open_agg.pipe_count }})</td><td class="text-end">{{ open_agg.pipe_total|floatformat:0 }} €</td></tr>
+          <tr><td>Descartado ({{ open_agg.desc_count }})</td><td class="text-end text-danger">{{ open_agg.desc_total|floatformat:0 }} €</td></tr>
+        </table>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-6">
+    <div class="card">
+      <div class="card-header fw-semibold">Rondas cerradas (agregado)</div>
+      <div class="card-body">
+        <table class="table table-sm mb-0">
+          <tr><td>Objetivo</td><td class="text-end">{{ closed_agg.target|floatformat:0 }} €</td></tr>
+          <tr><td>Invertido</td><td class="text-end text-success">{{ closed_agg.invertido|floatformat:0 }} €</td></tr>
+          <tr><td>Descartado ({{ closed_agg.desc_count }})</td><td class="text-end text-danger">{{ closed_agg.desc_total|floatformat:0 }} €</td></tr>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-header fw-semibold">Comunicaciones por ronda</div>
+  <table class="table mb-0">
+    <thead><tr><th>Participada</th><th>Ronda</th><th class="text-end">Interacciones</th></tr></thead>
+    <tbody>
+      {% for c in comms_por_ronda %}
+      <tr><td>{{ c.round.company.name }}</td><td>{{ c.round.type }}</td><td class="text-end">{{ c.count }}</td></tr>
+      {% empty %}
+      <tr><td colspan="3" class="text-muted text-center py-3">Sin datos.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

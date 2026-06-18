@@ -1,0 +1,43 @@
+{% load django_bootstrap5 %}
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <title>CRM Gestora — Iniciar sesión</title>
+  {% bootstrap_css %}
+</head>
+<body class="bg-light">
+  <div class="container" style="max-width: 480px; margin-top: 4rem;">
+    <h1 class="h4 mb-4 text-center">CRM Gestora de Fondos</h1>
+
+    {% if error %}
+      <div class="alert alert-danger">{{ error }}</div>
+    {% endif %}
+
+    <form method="post" class="card card-body mb-4">
+      {% csrf_token %}
+      <div class="mb-3">
+        <label class="form-label">Email</label>
+        <input type="email" name="email" class="form-control" required>
+      </div>
+      <div class="mb-3">
+        <label class="form-label">Contraseña</label>
+        <input type="password" name="password" class="form-control" required>
+      </div>
+      <button type="submit" class="btn btn-primary">Entrar</button>
+    </form>
+
+    <p class="text-muted text-center">Acceso rápido (demo)</p>
+    <div class="d-grid gap-2">
+      {% for u in demo_users %}
+        <form method="post" action="{% url 'accounts:quick_login' u.id %}">
+          {% csrf_token %}
+          <button type="submit" class="btn btn-outline-secondary w-100 text-start">
+            {{ u.get_full_name }} · <span class="text-muted">{{ u.get_role_display }}</span>
+          </button>
+        </form>
+      {% endfor %}
+    </div>
+  </div>
+</body>
+</html>

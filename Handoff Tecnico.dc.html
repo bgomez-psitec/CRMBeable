@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  *{box-sizing:border-box}
+  body{margin:0;background:#e7e5df}
+  @media print{
+    body{background:#fff}
+    .doc-page{box-shadow:none!important;margin:0!important}
+    .page-break{break-before:page}
+    .no-print{display:none!important}
+  }
+</style>
+</helmet>
+
+<div style="min-height:100vh;background:#e7e5df;padding:40px 20px;font-family:'Inter',sans-serif">
+  <div class="doc-page" style="max-width:840px;margin:0 auto;background:#fff;box-shadow:0 2px 24px rgba(0,0,0,.1);padding:72px 76px;color:#1c1c1c">
+
+    <!-- HEADER -->
+    <div style="border-bottom:3px solid #1c1c1c;padding-bottom:22px;margin-bottom:34px">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:20px">
+        <div>
+          <div style="font-size:12px;letter-spacing:.18em;text-transform:uppercase;color:#9a7b2e;font-weight:600;margin-bottom:10px">Documento de Handoff Técnico</div>
+          <h1 style="font-family:'Newsreader',serif;font-size:38px;font-weight:600;margin:0;line-height:1.1;letter-spacing:-.01em">CRM de Gestora de Fondos</h1>
+          <div style="font-size:15px;color:#555;margin-top:8px">Especificación para llevar el prototipo a producción</div>
+        </div>
+        <div style="text-align:right;font-size:12px;color:#666;line-height:1.7;flex-shrink:0">
+          <div><b style="color:#1c1c1c">Versión</b> V1</div>
+          <div><b style="color:#1c1c1c">Fecha</b> Junio 2026</div>
+          <div><b style="color:#1c1c1c">Autor</b> [Tu nombre]</div>
+          <div><b style="color:#1c1c1c">Para</b> [Desarrollador]</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- NOTA EDITABLE -->
+    <div class="no-print" style="background:#fff8e8;border:1px solid #e8d28a;border-radius:8px;padding:13px 16px;margin-bottom:32px;font-size:12.5px;color:#7a5e10;line-height:1.5">
+      ✏️ <b>Documento editable.</b> Haz clic en cualquier texto para cambiarlo: tecnologías, plazos, presupuesto y parámetros. Cuando esté listo, imprime a PDF para enviarlo.
+    </div>
+
+    <!-- 1. RESUMEN -->
+    <section style="margin-bottom:38px">
+      <h2 style="font-family:'Newsreader',serif;font-size:23px;font-weight:600;margin:0 0 14px;display:flex;align-items:baseline;gap:12px"><span style="font-size:13px;color:#9a7b2e;font-family:'Inter';font-weight:700">01</span> Resumen del proyecto</h2>
+      <p style="font-size:14.5px;line-height:1.7;color:#333;margin:0 0 12px">
+        CRM especializado para una gestora de fondos / venture capital. No es un CRM de ventas: gestiona el <b>fundraising de las participadas</b>, la <b>relación con inversores</b> y el <b>seguimiento de oportunidades</b> (qué inversor está en qué fase de qué ronda).
+      </p>
+      <p style="font-size:14.5px;line-height:1.7;color:#333;margin:0">
+        Existe un <b>prototipo HTML completo y funcional</b> (<code style="background:#f1efe9;padding:1px 6px;border-radius:4px;font-size:13px">CRM_Gestora_ES_V1.html</code>) que define el diseño, los flujos y todas las reglas de negocio. Sirve como especificación visual exacta. Falta construir la infraestructura real: base de datos persistente, autenticación, e integración con Outlook.
+      </p>
+    </section>
+
+    <!-- 2. PARÁMETROS -->
+    <section style="margin-bottom:38px">
+      <h2 style="font-family:'Newsreader',serif;font-size:23px;font-weight:600;margin:0 0 14px;display:flex;align-items:baseline;gap:12px"><span style="font-size:13px;color:#9a7b2e;font-family:'Inter';font-weight:700">02</span> Parámetros del proyecto</h2>
+      <table style="width:100%;border-collapse:collapse;font-size:13.5px">
+        <tbody>
+          <tr style="border-bottom:1px solid #eee"><td style="padding:10px 8px;color:#666;width:42%">Idioma de la aplicación</td><td style="padding:10px 8px;font-weight:600">Español</td></tr>
+          <tr style="border-bottom:1px solid #eee"><td style="padding:10px 8px;color:#666">Nº de usuarios estimado</td><td style="padding:10px 8px;font-weight:600">[10–30]</td></tr>
+          <tr style="border-bottom:1px solid #eee"><td style="padding:10px 8px;color:#666">Nº de inversores en base de datos</td><td style="padding:10px 8px;font-weight:600">[~1.000]</td></tr>
+          <tr style="border-bottom:1px solid #eee"><td style="padding:10px 8px;color:#666">Nº de participadas</td><td style="padding:10px 8px;font-weight:600">[indicar]</td></tr>
+          <tr style="border-bottom:1px solid #eee"><td style="padding:10px 8px;color:#666">Presupuesto aproximado</td><td style="padding:10px 8px;font-weight:600">[indicar]</td></tr>
+          <tr style="border-bottom:1px solid #eee"><td style="padding:10px 8px;color:#666">Plazo objetivo</td><td style="padding:10px 8px;font-weight:600">[4–6 semanas]</td></tr>
+          <tr style="border-bottom:1px solid #eee"><td style="padding:10px 8px;color:#666">Alojamiento de datos (región)</td><td style="padding:10px 8px;font-weight:600">[UE / Europa]</td></tr>
+          <tr><td style="padding:10px 8px;color:#666">Cumplimiento normativo</td><td style="padding:10px 8px;font-weight:600">[RGPD / GDPR]</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <!-- 3. STACK -->
+    <section style="margin-bottom:38px">
+      <h2 style="font-family:'Newsreader',serif;font-size:23px;font-weight:600;margin:0 0 8px;display:flex;align-items:baseline;gap:12px"><span style="font-size:13px;color:#9a7b2e;font-family:'Inter';font-weight:700">03</span> Decisiones tecnológicas</h2>
+      <p style="font-size:13px;color:#777;margin:0 0 16px;line-height:1.6">Recomendación de partida. Edita la columna <b>"Tu elección"</b> para fijar el stack definitivo con tu desarrollador.</p>
+      <table style="width:100%;border-collapse:collapse;font-size:13px">
+        <thead>
+          <tr style="background:#f6f4ee;text-align:left">
+            <th style="padding:10px 8px;font-weight:600;border-bottom:2px solid #ddd">Componente</th>
+            <th style="padding:10px 8px;font-weight:600;border-bottom:2px solid #ddd">Recomendado</th>
+            <th style="padding:10px 8px;font-weight:600;border-bottom:2px solid #ddd">Alternativas</th>
+            <th style="padding:10px 8px;font-weight:600;border-bottom:2px solid #ddd;color:#9a7b2e">Tu elección</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr style="border-bottom:1px solid #eee"><td style="padding:9px 8px;color:#666">Base de datos</td><td style="padding:9px 8px;font-weight:600">Supabase (Postgres)</td><td style="padding:9px 8px;color:#888">Firebase, AWS RDS</td><td style="padding:9px 8px;color:#9a7b2e;font-weight:600">[ ]</td></tr>
+          <tr style="border-bottom:1px solid #eee"><td style="padding:9px 8px;color:#666">Autenticación + MFA</td><td style="padding:9px 8px;font-weight:600">Supabase Auth</td><td style="padding:9px 8px;color:#888">Auth0, Clerk, Entra ID</td><td style="padding:9px 8px;color:#9a7b2e;font-weight:600">[ ]</td></tr>
+          <tr style="border-bottom:1px solid #eee"><td style="padding:9px 8px;color:#666">Frontend</td><td style="padding:9px 8px;font-weight:600">React + Next.js</td><td style="padding:9px 8px;color:#888">Vue, Svelte</td><td style="padding:9px 8px;color:#9a7b2e;font-weight:600">[ ]</td></tr>
+          <tr style="border-bottom:1px solid #eee"><td style="padding:9px 8px;color:#666">Hosting</td><td style="padding:9px 8px;font-weight:600">Vercel</td><td style="padding:9px 8px;color:#888">Netlify, AWS</td><td style="padding:9px 8px;color:#9a7b2e;font-weight:600">[ ]</td></tr>
+          <tr style="border-bottom:1px solid #eee"><td style="padding:9px 8px;color:#666">Integración email</td><td style="padding:9px 8px;font-weight:600">Microsoft Graph API</td><td style="padding:9px 8px;color:#888">Gmail API, IMAP</td><td style="padding:9px 8px;color:#9a7b2e;font-weight:600">[ ]</td></tr>
+          <tr style="border-bottom:1px solid #eee"><td style="padding:9px 8px;color:#666">Resumen de emails (IA)</td><td style="padding:9px 8px;font-weight:600">API de Claude</td><td style="padding:9px 8px;color:#888">OpenAI, local</td><td style="padding:9px 8px;color:#9a7b2e;font-weight:600">[ ]</td></tr>
+          <tr><td style="padding:9px 8px;color:#666">Control de versiones</td><td style="padding:9px 8px;font-weight:600">GitHub</td><td style="padding:9px 8px;color:#888">GitLab, Bitbucket</td><td style="padding:9px 8px;color:#9a7b2e;font-weight:600">[ ]</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <div class="page-break"></div>
+
+    <!-- 4. MODELO DE DATOS -->
+    <section style="margin-bottom:38px">
+      <h2 style="font-family:'Newsreader',serif;font-size:23px;font-weight:600;margin:0 0 14px;display:flex;align-items:baseline;gap:12px"><span style="font-size:13px;color:#9a7b2e;font-family:'Inter';font-weight:700">04</span> Modelo de datos</h2>
+      <p style="font-size:13px;color:#777;margin:0 0 16px;line-height:1.6">Tablas principales (derivadas del prototipo). La tabla crítica es <b>presentaciones</b>: ahí vive todo el histórico de "qué inversor, en qué ronda, en qué estado".</p>
+
+      <div style="display:flex;flex-direction:column;gap:12px">
+        <div style="border:1px solid #e3e0d8;border-radius:8px;padding:14px 16px">
+          <div style="font-weight:700;font-size:14px;margin-bottom:6px;color:#1c1c1c">participadas <span style="font-weight:400;color:#999;font-size:12px">— portfolio companies</span></div>
+          <div style="font-size:12.5px;color:#555;line-height:1.6">id · nombre · código_interno · fondo (BIKF/BISEF/BIGINF) · país · provincia · sectores[] · status · TRL · MRL · time_to_market · revenue_status · última_valoración · fecha_valoración</div>
+        </div>
+        <div style="border:1px solid #e3e0d8;border-radius:8px;padding:14px 16px">
+          <div style="font-weight:700;font-size:14px;margin-bottom:6px;color:#1c1c1c">rondas <span style="font-weight:400;color:#999;font-size:12px">— una participada tiene N rondas</span></div>
+          <div style="font-size:12.5px;color:#555;line-height:1.6">id · participada_id · tipo · objetivo (€) · estado_fase · status · fecha_inicio · fecha_cierre</div>
+        </div>
+        <div style="border:1px solid #e3e0d8;border-radius:8px;padding:14px 16px">
+          <div style="font-weight:700;font-size:14px;margin-bottom:6px;color:#1c1c1c">inversores</div>
+          <div style="font-size:12.5px;color:#555;line-height:1.6">id · nombre · tipo · estado_público · país · áreas_inversión[] · etapas[] · tickets[] · sectores[] · AUM · relación · notas</div>
+        </div>
+        <div style="border:1px solid #e3e0d8;border-radius:8px;padding:14px 16px">
+          <div style="font-weight:700;font-size:14px;margin-bottom:6px;color:#1c1c1c">contactos <span style="font-weight:400;color:#999;font-size:12px">— N por inversor y por participada</span></div>
+          <div style="font-size:12.5px;color:#555;line-height:1.6">id · inversor_id / participada_id · nombre · cargo · email · teléfono</div>
+        </div>
+        <div style="border:2px solid #9a7b2e;border-radius:8px;padding:14px 16px;background:#fcf9f0">
+          <div style="font-weight:700;font-size:14px;margin-bottom:6px;color:#9a7b2e">presentaciones <span style="font-weight:400;color:#b59a4e;font-size:12px">— el corazón del CRM (introductions)</span></div>
+          <div style="font-size:12.5px;color:#555;line-height:1.6">id · participada_id · ronda_id · inversor_id · estado · ticket · fecha · quién_hizo_intro · próximo_paso · próxima_fecha · notas</div>
+        </div>
+        <div style="border:1px solid #e3e0d8;border-radius:8px;padding:14px 16px">
+          <div style="font-weight:700;font-size:14px;margin-bottom:6px;color:#1c1c1c">interacciones <span style="font-weight:400;color:#999;font-size:12px">— cronología de contactos</span></div>
+          <div style="font-size:12.5px;color:#555;line-height:1.6">id · presentación_id · fecha · tipo (email/llamada/reunión/nota/cambio_estado) · resumen</div>
+        </div>
+        <div style="border:1px solid #e3e0d8;border-radius:8px;padding:14px 16px">
+          <div style="font-weight:700;font-size:14px;margin-bottom:6px;color:#1c1c1c">usuarios</div>
+          <div style="font-size:12.5px;color:#555;line-height:1.6">id · nombre · email · rol (admin/empleado/ceo) · participadas_asignadas[] · participada_id (CEO) · mfa · activo</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 5. ROLES -->
+    <section style="margin-bottom:38px">
+      <h2 style="font-family:'Newsreader',serif;font-size:23px;font-weight:600;margin:0 0 14px;display:flex;align-items:baseline;gap:12px"><span style="font-size:13px;color:#9a7b2e;font-family:'Inter';font-weight:700">05</span> Roles y permisos</h2>
+      <p style="font-size:13px;color:#a23;margin:0 0 16px;line-height:1.6;background:#fdeeee;border:1px solid #f0caca;border-radius:8px;padding:11px 14px">⚠️ <b>Crítico de seguridad:</b> los permisos deben aplicarse en la base de datos (Row Level Security), no solo ocultando elementos en pantalla como hace el prototipo.</p>
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <div style="border-left:3px solid #c9a227;padding:8px 14px"><b>Admin</b> — acceso total: todas las participadas, inversores, configuración y gestión de usuarios.</div>
+        <div style="border-left:3px solid #5b9bd5;padding:8px 14px"><b>Empleado de la firma</b> — acceso a las participadas que se le asignen; puede añadir inversores, registrar reuniones y editar el pipeline.</div>
+        <div style="border-left:3px solid #2db48c;padding:8px 14px"><b>CEO de participada</b> — solo su propia empresa: sus inversores, su pipeline, sus reuniones. <b>No ve</b> otras participadas, ni datos de la firma, ni conversaciones de otras empresas.</div>
+      </div>
+    </section>
+
+    <!-- 6. INTEGRACIÓN OUTLOOK -->
+    <section style="margin-bottom:38px">
+      <h2 style="font-family:'Newsreader',serif;font-size:23px;font-weight:600;margin:0 0 14px;display:flex;align-items:baseline;gap:12px"><span style="font-size:13px;color:#9a7b2e;font-family:'Inter';font-weight:700">06</span> Integración con Outlook</h2>
+      <p style="font-size:14.5px;line-height:1.7;color:#333;margin:0 0 10px">Flujo objetivo: un email llega → el sistema lo asocia a un inversor y una ronda → genera un <b>resumen automático de máx. 3 líneas</b> → el usuario confirma → se guarda en la cronología de interacciones con fecha.</p>
+      <ul style="font-size:13.5px;line-height:1.8;color:#444;margin:0;padding-left:20px">
+        <li>Registrar una app en <b>Azure / Microsoft Entra</b> y usar <b>Microsoft Graph API</b> (requiere permisos de tu IT).</li>
+        <li>Fase 1: botón "guardar email" (pegar/seleccionar correo). Fase 2 (avanzada): recepción automática vía webhooks de Graph.</li>
+        <li>El resumen lo genera la API de IA elegida en el apartado 03.</li>
+      </ul>
+    </section>
+
+    <!-- 7. FASES -->
+    <section style="margin-bottom:38px">
+      <h2 style="font-family:'Newsreader',serif;font-size:23px;font-weight:600;margin:0 0 14px;display:flex;align-items:baseline;gap:12px"><span style="font-size:13px;color:#9a7b2e;font-family:'Inter';font-weight:700">07</span> Fases del proyecto</h2>
+      <table style="width:100%;border-collapse:collapse;font-size:13.5px">
+        <tbody>
+          <tr style="border-bottom:1px solid #eee"><td style="padding:10px 8px;font-weight:700;width:32px;color:#9a7b2e">1</td><td style="padding:10px 8px;font-weight:600;width:50%">Stack + modelo de datos</td><td style="padding:10px 8px;color:#888">[3–4 días]</td></tr>
+          <tr style="border-bottom:1px solid #eee"><td style="padding:10px 8px;font-weight:700;color:#9a7b2e">2</td><td style="padding:10px 8px;font-weight:600">Autenticación, MFA y permisos (RLS)</td><td style="padding:10px 8px;color:#888">[2–3 días]</td></tr>
+          <tr style="border-bottom:1px solid #eee"><td style="padding:10px 8px;font-weight:700;color:#9a7b2e">3</td><td style="padding:10px 8px;font-weight:600">Conectar frontend a la base de datos</td><td style="padding:10px 8px;color:#888">[1–2 semanas]</td></tr>
+          <tr style="border-bottom:1px solid #eee"><td style="padding:10px 8px;font-weight:700;color:#9a7b2e">4</td><td style="padding:10px 8px;font-weight:600">Integración con Outlook</td><td style="padding:10px 8px;color:#888">[3–5 días]</td></tr>
+          <tr><td style="padding:10px 8px;font-weight:700;color:#9a7b2e">5</td><td style="padding:10px 8px;font-weight:600">Pruebas, migración de datos y despliegue</td><td style="padding:10px 8px;color:#888">[1 semana]</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <!-- 8. CHECKLIST -->
+    <section>
+      <h2 style="font-family:'Newsreader',serif;font-size:23px;font-weight:600;margin:0 0 14px;display:flex;align-items:baseline;gap:12px"><span style="font-size:13px;color:#9a7b2e;font-family:'Inter';font-weight:700">08</span> Checklist de arranque</h2>
+      <div style="font-size:14px;line-height:2.1;color:#333">
+        <div>☐ Confirmar el stack en el apartado 03</div>
+        <div>☐ Crear cuentas (base de datos, hosting, repositorio)</div>
+        <div>☐ Crear el esquema de base de datos del apartado 04</div>
+        <div>☐ Implementar login + MFA + permisos por rol (RLS)</div>
+        <div>☐ Migrar el diseño del prototipo a frontend real</div>
+        <div>☐ Registrar app en Azure para Outlook</div>
+        <div>☐ Cargar inversores y participadas reales</div>
+        <div>☐ Pruebas con usuarios piloto y despliegue</div>
+      </div>
+    </section>
+
+    <div style="margin-top:48px;padding-top:20px;border-top:1px solid #ddd;font-size:11px;color:#999;text-align:center">
+      Documento de handoff · CRM de Gestora · Adjuntar junto al archivo CRM_Gestora_ES_V1.html
+    </div>
+
+  </div>
+</div>
+</x-dc>
+</body>
+</html>

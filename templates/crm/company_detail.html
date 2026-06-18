@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block title %}{{ company.name }} — CRM Gestora{% endblock %}
+{% block topbar_title %}{{ company.name }}{% endblock %}
+{% block topbar_sub %}{{ company.country }}{% endblock %}
+{% block topbar_actions %}
+  {% if can_edit %}
+    <a class="btn btn-outline-secondary" href="{% url 'crm:company_edit' company.pk %}"><i class="bi bi-pencil"></i> Editar</a>
+    <a class="btn btn-warning" href="{% url 'crm:round_create' company.pk %}"><i class="bi bi-plus-lg"></i> Nueva ronda</a>
+  {% endif %}
+{% endblock %}
+{% block content %}
+<div class="card card-body mb-4">
+  <div class="row g-2 small">
+    <div class="col-md-3">Código interno <b>{{ company.int_code|default:"—" }}</b></div>
+    <div class="col-md-3">Provincia <b>{{ company.provincia|default:"—" }}</b></div>
+    <div class="col-md-3">TRL <b>{{ company.trl|default:"—" }}</b></div>
+    <div class="col-md-3">MRL <b>{{ company.mrl|default:"—" }}</b></div>
+    <div class="col-md-3">Time to market <b>{{ company.ttm|default:"—" }}</b></div>
+    <div class="col-md-3">Revenue <b>{{ company.revenue|default:"—" }}</b></div>
+    <div class="col-md-3">Última valoración <b>{{ company.valuation|floatformat:0|default:"—" }} €</b></div>
+    <div class="col-md-3">Fecha valoración <b>{{ company.valuation_date|date:"d M Y"|default:"—" }}</b></div>
+  </div>
+  {% if company.sectors %}
+    <div class="mt-2 text-muted small">Sectores: {{ company.sectors }}</div>
+  {% endif %}
+</div>
+
+<div class="row g-3 mb-4">
+  <div class="col-md-3"><div class="card card-body"><div class="text-muted small">Objetivo rondas activas</div><div class="h5 mb-0">{{ kpis.target|floatformat:0 }} €</div></div></div>
+  <div class="col-md-3"><div class="card card-body"><div class="text-muted small">Captado (invertido)</div><div class="h5 mb-0">{{ kpis.invertido|floatformat:0 }} €</div></div></div>
+  <div class="col-md-3"><div class="card card-body"><div class="text-muted small">Pipeline ponderado</div><div class="h5 mb-0">{{ kpis.weighted|floatformat:0 }} €</div></div></div>
+  <div class="col-md-3"><div class="card card-body"><div class="text-muted small">Presentaciones activas</div><div class="h5 mb-0">{{ kpis.presentaciones_activas }}</div></div></div>
+</div>
+
+<h6 class="text-muted text-uppercase small mb-2">Rondas</h6>
+<div class="row g-3">
+  {% for rd in rounds_data %}
+  <div class="col-md-6">
+    <div class="card h-100" style="cursor:pointer" onclick="location.href='{% url 'crm:round_detail' rd.round.pk %}'">
+      <div class="card-body">
+        <div class="d-flex justify-content-between">
+          <div class="fw-semibold">{{ rd.round.type }}</div>
+          <span class="badge {% if rd.round.status.nombre == 'Cerrada' %}text-bg-success{% else %}text-bg-info{% endif %}">{{ rd.round.status.nombre|default:"—" }}</span>
+        </div>
+        <div class="text-muted small">{{ rd.count }} inversor{{ rd.count|pluralize:"es" }} · {{ rd.round.start|date:"d M Y" }} → {{ rd.round.close|date:"d M Y" }}</div>
+        <div class="d-flex justify-content-between small mt-2">
+          <span>{{ rd.invertido|floatformat:0 }} € / {{ rd.round.target|floatformat:0 }} €</span>
+          <span>{{ rd.pct }}%</span>
+        </div>
+        <div class="progress" style="height:6px"><div class="progress-bar bg-warning" style="width:{{ rd.pct }}%"></div></div>
+      </div>
+    </div>
+  </div>
+  {% empty %}
+  <div class="text-muted">Sin rondas. Crea la primera.</div>
+  {% endfor %}
+</div>
+{% endblock %}

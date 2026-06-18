@@ -1,0 +1,1699 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>VentureOS · CRM de Gestora</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{--bg:#080808;--s1:#111111;--s2:#1A1A1A;--s3:#222222;--gold:#FAC51C;--gold2:#e6b018;--text:#F5F5F5;--muted:#888;--border:#2a2a2a;--green:#1D9E75;--purple:#7F77DD;--blue:#5B9BD5;--orange:#E0962C;--teal:#2DB48C;--red:#E24B4A}
+body{background:#000;font-family:'Inter',sans-serif}
+.crm{display:flex;height:720px;overflow:hidden;border-radius:12px;border:1px solid var(--border);font-family:'Inter',sans-serif;background:var(--bg);color:var(--text)}
+.sidebar{width:218px;background:var(--s1);border-right:1px solid var(--border);display:flex;flex-direction:column;flex-shrink:0}
+.logo{padding:18px 16px 14px;border-bottom:1px solid var(--border)}
+.logo-t{font-size:15px;font-weight:700;color:var(--gold)}
+.logo-s{font-size:10px;color:var(--muted);margin-top:2px}
+.ns{padding:14px 12px 6px;font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em}
+.ni{display:flex;align-items:center;gap:9px;padding:8px 12px;margin:1px 6px;border-radius:7px;cursor:pointer;font-size:13px;color:var(--muted);transition:all .15s}
+.ni:hover{background:var(--s2);color:var(--text)}
+.ni.active{background:rgba(250,197,28,.12);color:var(--gold)}
+.ni i{font-size:16px}
+.badge-pill{margin-left:auto;background:var(--gold);color:#000;font-size:10px;padding:1px 7px;border-radius:10px;font-weight:700}
+.main{flex:1;overflow:hidden;display:flex;flex-direction:column}
+.topbar{padding:13px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;background:var(--s1);flex-shrink:0;gap:12px}
+.topbar-title{font-size:15px;font-weight:600}
+.topbar-sub{font-size:11px;color:var(--muted);margin-top:1px}
+.tb-actions{display:flex;gap:7px;align-items:center}
+.btn{padding:6px 13px;border-radius:7px;font-size:12px;font-weight:500;cursor:pointer;border:1px solid var(--border);background:var(--s2);color:var(--text);font-family:inherit;transition:all .15s;display:inline-flex;align-items:center;gap:5px;white-space:nowrap}
+.btn:hover{border-color:var(--gold);color:var(--gold)}
+.btn-gold{background:var(--gold);color:#000;border-color:var(--gold)}
+.btn-gold:hover{background:var(--gold2);color:#000}
+.btn-red{color:var(--red);border-color:var(--red)}
+.btn-red:hover{background:rgba(226,75,74,.1)}
+.btn-sm{padding:3px 8px;font-size:11px}
+.view{display:none;flex-direction:column;height:100%}
+.view.active{display:flex}
+.view-inner{flex:1;overflow-y:auto;padding:18px}
+.view-inner::-webkit-scrollbar{width:5px}.view-inner::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.co-card{background:var(--s1);border:1px solid var(--border);border-radius:10px;padding:16px;cursor:pointer;transition:all .18s}
+.co-card:hover{border-color:var(--gold);transform:translateY(-1px)}
+.co-hd{display:flex;align-items:center;gap:11px;margin-bottom:13px}
+.avatar{width:40px;height:40px;border-radius:9px;background:rgba(250,197,28,.15);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:var(--gold);flex-shrink:0}
+.avatar-round{border-radius:50%}
+.co-name{font-size:14px;font-weight:600}
+.co-ind{font-size:11px;color:var(--muted);margin-top:1px}
+.meta-row{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:11px;color:var(--muted);margin-bottom:12px}
+.meta-row b{color:var(--text);font-weight:600}
+.prog-row{display:flex;justify-content:space-between;font-size:10px;color:var(--muted);margin-bottom:3px}
+.prog-bar{height:6px;background:var(--border);border-radius:3px}
+.prog-fill{height:100%;border-radius:3px;background:var(--gold)}
+.kpi-row{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px}
+.kpi{background:var(--s1);border:1px solid var(--border);border-radius:9px;padding:13px 11px;text-align:center}
+.kpi-v{font-size:19px;font-weight:700;color:var(--gold)}
+.kpi-l{font-size:10px;color:var(--muted);margin-top:3px}
+.tabs{display:flex;gap:4px;border-bottom:1px solid var(--border);margin-bottom:14px}
+.tab{padding:8px 14px;font-size:12px;font-weight:500;cursor:pointer;color:var(--muted);border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .15s}
+.tab:hover{color:var(--text)}
+.tab.active{color:var(--gold);border-bottom-color:var(--gold)}
+.tbl{width:100%;border-collapse:collapse;font-size:12px}
+.tbl th{text-align:left;padding:8px 10px;color:var(--muted);font-size:10px;font-weight:500;border-bottom:1px solid var(--border);text-transform:uppercase;letter-spacing:.05em}
+.tbl td{padding:10px;border-bottom:1px solid rgba(42,42,42,.55);vertical-align:middle}
+.tbl tr:hover td{background:rgba(255,255,255,.02)}
+.bdg{display:inline-block;padding:2px 9px;border-radius:20px;font-size:11px;font-weight:500;white-space:nowrap}
+.chip{display:inline-block;padding:2px 8px;border-radius:5px;font-size:10px;background:var(--s2);color:var(--muted);border:1px solid var(--border)}
+.section-head{display:flex;align-items:center;justify-content:space-between;margin:4px 0 12px}
+.section-title{font-size:13px;font-weight:600;display:flex;align-items:center;gap:8px}
+.round-card{background:var(--s1);border:1px solid var(--border);border-radius:10px;padding:14px;cursor:pointer;transition:all .15s;display:flex;flex-direction:column;gap:10px}
+.round-card:hover{border-color:var(--gold)}
+.pipeline-scroll{overflow-x:auto;padding-bottom:8px}
+.pipeline{display:flex;gap:10px;min-width:max-content}
+.stage{background:var(--s1);border:1px solid var(--border);border-radius:9px;width:172px;flex-shrink:0}
+.stage-hd{padding:9px 10px 7px;border-bottom:1px solid var(--border)}
+.stage-name{font-size:11px;font-weight:600;display:flex;align-items:center;justify-content:space-between;gap:6px}
+.stage-cnt{font-size:10px;background:var(--border);border-radius:10px;padding:1px 7px;color:var(--muted);font-weight:500}
+.stage-amt{font-size:10px;color:var(--gold);margin-top:2px}
+.stage-body{padding:7px;display:flex;flex-direction:column;gap:6px;min-height:90px}
+.deal-card{background:var(--s2);border:1px solid var(--border);border-radius:6px;padding:9px;cursor:pointer}
+.deal-card:hover{border-color:var(--gold)}
+.deal-name{font-size:11px;font-weight:600;margin-bottom:3px}
+.deal-amt{font-size:11px;font-weight:700;color:var(--gold)}
+.deal-meta{display:flex;justify-content:space-between;margin-top:5px;align-items:center;gap:6px}
+.deal-next{font-size:10px;color:var(--muted)}
+.inbox-item{padding:13px 16px;border-bottom:1px solid var(--border);cursor:pointer;display:flex;gap:11px;transition:background .15s}
+.inbox-item:hover{background:var(--s1)}
+.inbox-item.unread{background:rgba(250,197,28,.03)}
+.inbox-body{flex:1;min-width:0}
+.inbox-from{font-size:13px;font-weight:600}
+.inbox-sub{font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px}
+.inbox-time{font-size:11px;color:var(--muted);white-space:nowrap}
+.unread-dot{width:7px;height:7px;border-radius:50%;background:var(--gold);flex-shrink:0;margin-top:13px}
+.report-card{background:var(--s1);border:1px solid var(--border);border-radius:10px;padding:15px}
+.report-title{font-size:12px;font-weight:600;margin-bottom:14px}
+.bar-row{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+.bar-lbl{font-size:11px;color:var(--muted);width:88px;text-align:right;flex-shrink:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bar-track{flex:1;height:8px;background:var(--border);border-radius:4px;overflow:hidden}
+.bar-fill{height:100%;border-radius:4px}
+.bar-val{font-size:11px;color:var(--muted);width:54px;text-align:right}
+.settings-sec{background:var(--s1);border:1px solid var(--border);border-radius:10px;margin-bottom:13px;overflow:hidden}
+.settings-sec-title{padding:13px 15px;font-size:12px;font-weight:600;border-bottom:1px solid var(--border)}
+.settings-row{padding:11px 15px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid rgba(42,42,42,.5);gap:12px}
+.settings-row:last-child{border-bottom:none}
+.settings-label{font-size:13px}
+.settings-sub{font-size:11px;color:var(--muted);margin-top:2px}
+.s-input{background:var(--s2);border:1px solid var(--border);border-radius:6px;padding:6px 10px;color:var(--text);font-family:inherit;font-size:12px;width:210px}
+.s-input:focus{outline:none;border-color:var(--gold)}
+.search-box{display:flex;align-items:center;gap:6px;background:var(--s2);border:1px solid var(--border);border-radius:7px;padding:5px 10px}
+.search-box:focus-within{border-color:var(--gold)}
+.search-box i{color:var(--muted);font-size:15px}
+.search-box input{background:none;border:none;outline:none;color:var(--text);font-family:inherit;font-size:12px;width:168px}
+.search-box input::placeholder{color:var(--muted)}
+.detail-hd{display:flex;align-items:flex-start;gap:14px;margin-bottom:16px;padding:16px;background:var(--s1);border-radius:10px;border:1px solid var(--border)}
+.detail-avatar{width:52px;height:52px;border-radius:11px;background:rgba(250,197,28,.15);display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700;color:var(--gold);flex-shrink:0}
+.contact-row{display:flex;align-items:center;gap:8px;padding:9px 0;border-bottom:1px solid rgba(42,42,42,.5);font-size:12px}
+.contact-row i{color:var(--muted);font-size:15px}
+.empty{color:var(--muted);font-size:13px;padding:22px 0;text-align:center}
+.modal-wrap{position:fixed;inset:0;background:rgba(0,0,0,.82);display:none;align-items:center;justify-content:center;z-index:200;padding:20px}
+.modal-wrap.open{display:flex}
+.modal{background:var(--s1);border:1px solid var(--border);border-radius:12px;width:500px;max-height:90%;overflow-y:auto;padding:22px;color:var(--text)}
+.modal h3{font-size:15px;font-weight:600;margin-bottom:18px}
+.fg{margin-bottom:12px}
+.fl{font-size:11px;color:var(--muted);margin-bottom:5px;display:block}
+.fi{width:100%;background:var(--s2);border:1px solid var(--border);border-radius:7px;padding:8px 11px;color:var(--text);font-family:inherit;font-size:13px}
+.fi:focus{outline:none;border-color:var(--gold)}
+textarea.fi{resize:vertical;min-height:70px}
+.f2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.f2>.fg{min-width:0}
+.mf{display:flex;justify-content:flex-end;gap:8px;margin-top:18px}
+.note-box{background:rgba(250,197,28,.08);border:1px solid rgba(250,197,28,.2);border-radius:8px;padding:9px 13px;font-size:12px;color:var(--gold);margin-bottom:14px;display:flex;align-items:center;gap:8px}
+/* ---- auth / roles ---- */
+.auth-frame{height:720px;border-radius:12px;border:1px solid var(--border);background:radial-gradient(circle at 50% -10%,#1c1809,#070707 60%);display:flex;align-items:center;justify-content:center;color:var(--text);font-family:'Inter',sans-serif;overflow:hidden}
+.auth-card{width:380px;max-width:90%}
+.auth-logo{font-size:23px;font-weight:700;color:var(--gold);text-align:center;letter-spacing:-.5px}
+.auth-sub{text-align:center;color:var(--muted);font-size:12px;margin:4px 0 26px}
+.mfa-box{width:46px;height:54px;text-align:center;font-size:22px;font-weight:700;background:var(--s2);border:1px solid var(--border);border-radius:9px;color:var(--text);font-family:inherit}
+.mfa-box:focus{outline:none;border-color:var(--gold)}
+.bdg{display:inline-block;padding:2px 9px;border-radius:20px;font-size:11px;font-weight:500;white-space:nowrap}
+body[data-role="ceo"] .firm-only{display:none!important}
+body:not([data-role="admin"]) .admin-only{display:none!important}
+body:not([data-role="ceo"]) .ceo-only{display:none!important}
+body[data-role="ceo"] .edit-only{display:none!important}
+.ctx-menu{position:fixed;z-index:400;display:none;background:var(--s1);border:1px solid var(--border);border-radius:9px;box-shadow:0 12px 32px rgba(0,0,0,.6);min-width:236px;max-height:320px;overflow-y:auto;padding:5px}
+.ctx-head{font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);padding:8px 10px 5px}
+.ctx-item{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 10px;border-radius:6px;cursor:pointer}
+.ctx-item:hover{background:var(--s2)}
+.ctx-item.dis{opacity:.5;cursor:default}
+.ctx-item.dis:hover{background:none}
+.ctx-co{font-size:13px;font-weight:600}
+.ctx-company{display:flex;align-items:center;gap:7px;font-size:12px;font-weight:700;color:var(--gold);padding:8px 10px 5px;border-top:1px solid var(--border);margin-top:3px}
+.ctx-group:first-of-type .ctx-company{border-top:none;margin-top:0}
+.ctx-sub{padding-left:14px}
+.ctx-rd{font-size:11px;color:var(--muted);margin-top:1px}
+.ctx-empty{font-size:12px;color:var(--muted);padding:9px 10px}
+.toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--green);color:#fff;padding:11px 20px;border-radius:9px;font-size:13px;font-weight:500;z-index:500;opacity:0;transition:all .25s;pointer-events:none;box-shadow:0 10px 28px rgba(0,0,0,.45);display:flex;align-items:center;gap:8px}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+.area-pill{display:inline-block;padding:5px 11px;border-radius:18px;font-size:12px;background:var(--s2);border:1px solid var(--border);color:var(--muted);cursor:pointer;user-select:none;transition:all .12s}
+.area-pill:hover{border-color:var(--gold);color:var(--text)}
+.area-pill.sel{background:rgba(250,197,28,.15);border-color:var(--gold);color:var(--gold);font-weight:600}
+.ms-control{display:flex;align-items:center;justify-content:space-between;gap:8px;background:var(--s2);border:1px solid var(--border);border-radius:7px;padding:8px 11px;font-size:13px;cursor:pointer}
+.ms-control:hover{border-color:var(--gold)}
+.ms-control .ms-sum{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ms-panel{margin-top:6px;background:var(--s2);border:1px solid var(--border);border-radius:8px;padding:8px;max-height:210px;overflow-y:auto;display:grid;grid-template-columns:1fr 1fr;gap:3px}
+.ms-opt{display:flex;align-items:center;gap:8px;font-size:12px;padding:5px 7px;border-radius:6px;cursor:pointer}
+.ms-opt:hover{background:var(--s1)}
+.ms-opt input{width:14px;height:14px;accent-color:var(--gold);flex-shrink:0}
+</style>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
+</head>
+<body>
+
+<div id="login" class="auth-frame">
+  <div class="auth-card">
+    <div class="auth-logo">⬡ VentureOS</div>
+    <div class="auth-sub">CRM de Gestora · Acceso seguro</div>
+    <div id="login-step1">
+      <div class="fg"><label class="fl">Correo corporativo</label><input class="fi" id="li-email" type="email" placeholder="tu@gestora.com" onkeydown="if(event.key==='Enter')document.getElementById('li-pwd').focus()"></div>
+      <div class="fg"><label class="fl">Contraseña</label><input class="fi" id="li-pwd" type="password" placeholder="••••••••" onkeydown="if(event.key==='Enter')doLogin()"></div>
+      <div id="li-err" style="color:var(--red);font-size:12px;min-height:16px;margin-bottom:6px"></div>
+      <button class="btn btn-gold" style="width:100%;justify-content:center;padding:10px" onclick="doLogin()"><i class="ti ti-lock"></i> Iniciar sesión</button>
+      <div style="display:flex;align-items:center;gap:8px;margin:18px 0 12px"><div style="flex:1;height:1px;background:var(--border)"></div><span style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em">Acceso de demostración</span><div style="flex:1;height:1px;background:var(--border)"></div></div>
+      <div style="display:flex;flex-direction:column;gap:6px" id="quick-list"></div>
+    </div>
+    <div id="login-step2" style="display:none">
+      <div style="text-align:center;margin-bottom:18px"><i class="ti ti-shield-lock" style="font-size:34px;color:var(--gold)"></i><div style="font-size:15px;font-weight:600;margin-top:8px">Verificación en dos pasos (MFA)</div><div style="font-size:12px;color:var(--muted);margin-top:4px">Hemos enviado un código de 6 dígitos a<br><b id="mfa-dest" style="color:var(--text)"></b></div></div>
+      <div style="display:flex;gap:8px;justify-content:center;margin-bottom:14px">
+        <input class="mfa-box" maxlength="1" inputmode="numeric" oninput="mfaInput(event,0)" onkeydown="mfaKey(event,0)">
+        <input class="mfa-box" maxlength="1" inputmode="numeric" oninput="mfaInput(event,1)" onkeydown="mfaKey(event,1)">
+        <input class="mfa-box" maxlength="1" inputmode="numeric" oninput="mfaInput(event,2)" onkeydown="mfaKey(event,2)">
+        <input class="mfa-box" maxlength="1" inputmode="numeric" oninput="mfaInput(event,3)" onkeydown="mfaKey(event,3)">
+        <input class="mfa-box" maxlength="1" inputmode="numeric" oninput="mfaInput(event,4)" onkeydown="mfaKey(event,4)">
+        <input class="mfa-box" maxlength="1" inputmode="numeric" oninput="mfaInput(event,5)" onkeydown="mfaKey(event,5)">
+      </div>
+      <div style="text-align:center;font-size:11px;color:var(--muted);margin-bottom:6px">Código (demo): <b id="mfa-hint" style="color:var(--gold);letter-spacing:2px"></b></div>
+      <div id="mfa-err" style="color:var(--red);font-size:12px;text-align:center;min-height:16px;margin-bottom:6px"></div>
+      <button class="btn btn-gold" style="width:100%;justify-content:center;padding:10px" onclick="verifyMFA()">Verificar y entrar</button>
+      <div style="text-align:center;margin-top:12px"><span onclick="showLogin()" style="font-size:12px;color:var(--muted);cursor:pointer">← Volver</span></div>
+    </div>
+  </div>
+</div>
+
+<div class="crm" id="root" style="display:none">
+
+<div class="sidebar">
+  <div class="logo"><div class="logo-t" id="logo-agency">⬡ VentureOS</div><div class="logo-s">CRM de Gestora · Fundraising</div></div>
+  <div class="ns">Panel</div>
+  <div class="ni active" id="nav-home" onclick="nav('home')"><i class="ti ti-home"></i> Inicio</div>
+  <div class="ni ceo-only" id="nav-myco" onclick="navMyCompany()"><i class="ti ti-building-skyscraper"></i> <span class="myco-label">Mi empresa</span></div>
+  <div class="ns">CRM</div>
+  <div class="ni firm-only" id="nav-companies" onclick="nav('companies')"><i class="ti ti-building-skyscraper"></i> Participadas</div>
+  <div class="ni" id="nav-investors" onclick="nav('investors')"><i class="ti ti-businessplan"></i> Inversores</div>
+  <div class="ni" id="nav-presentaciones" onclick="nav('presentaciones')"><i class="ti ti-arrows-transfer-up"></i> Presentaciones</div>
+  <div class="ni firm-only" id="nav-inbox" onclick="nav('inbox')"><i class="ti ti-inbox"></i> Bandeja <span class="badge-pill" id="inbox-badge">3</span></div>
+  <div class="ns firm-only">Análisis</div>
+  <div class="ni firm-only" id="nav-reports" onclick="nav('reports')"><i class="ti ti-chart-bar"></i> Informes</div>
+  <div class="ns admin-only">Administración</div>
+  <div class="ni admin-only" id="nav-users" onclick="nav('users')"><i class="ti ti-users-group"></i> Usuarios</div>
+  <div class="ni admin-only" id="nav-settings" onclick="nav('settings')"><i class="ti ti-settings"></i> Ajustes</div>
+  <div style="margin-top:auto;padding:14px;border-top:1px solid var(--border)">
+    <div style="display:flex;align-items:center;gap:9px">
+      <div class="avatar avatar-round" style="width:32px;height:32px;font-size:11px" id="sb-avatar">TN</div>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:12px;font-weight:600" id="sb-name">Tu Nombre</div>
+        <div id="sb-role" style="margin-top:3px"></div>
+      </div>
+      <button class="btn btn-sm" onclick="logout()" title="Cerrar sesión" style="padding:5px 7px"><i class="ti ti-logout"></i></button>
+    </div>
+  </div>
+</div>
+
+<div class="main">
+
+  <!-- INICIO -->
+  <div class="view active" id="view-home">
+    <div class="topbar"><div><div class="topbar-title">Inicio</div><div class="topbar-sub">Resumen del fundraising de tus participadas</div></div></div>
+    <div class="view-inner">
+      <div class="section-title" style="margin:4px 0 12px"><i class="ti ti-lock" style="color:var(--muted)"></i> Rondas Cerradas — agregado</div>
+      <div class="kpi-row" id="rep-kpis-closed"></div>
+      <div class="section-title" style="margin:18px 0 12px"><i class="ti ti-circle-dot" style="color:var(--gold)"></i> Rondas Abiertas — agregado</div>
+      <div class="kpi-row" id="rep-kpis"></div>
+      <div style="display:grid;grid-template-columns:1.1fr .9fr;gap:13px;align-items:start;margin-top:13px">
+        <div class="report-card" id="home-pipeline"></div>
+        <div class="report-card"><div class="report-title"><i class="ti ti-coins" style="color:var(--gold);margin-right:6px"></i>Rondas activas (Invertido vs Objetivo)</div><div id="home-rounds"></div></div>
+      </div>
+      <div class="report-card" id="home-pres" style="grid-column:1/-1;margin-top:13px"></div>
+    </div>
+  </div>
+
+  <!-- PARTICIPADAS -->
+  <div class="view" id="view-companies">
+    <div class="topbar"><div><div class="topbar-title">Participadas</div><div class="topbar-sub">Empresas de la cartera en fundraising</div></div>
+      <div class="tb-actions"><div class="search-box"><i class="ti ti-search"></i><input id="search-companies" oninput="renderCompanies()" placeholder="Buscar participada o contacto…"></div>
+        <button id="co-openfilter" class="btn" onclick="toggleOpenFilter()"><i class="ti ti-circle-dot"></i> Con ronda abierta</button>
+        <div class="tabs" style="border:none;margin:0">
+          <div class="tab active" data-cmode="grid" onclick="setCoMode('grid')" style="padding:6px 10px">Listado</div>
+          <div class="tab" data-cmode="contacts" onclick="setCoMode('contacts')" style="padding:6px 10px">Contactos</div>
+        </div>
+        <select class="s-input" id="co-group" style="width:185px" onchange="renderCompanies()"><option value="">Sin agrupar</option><option value="fund">Agrupar: Invertida con fondo</option><option value="sector">Agrupar: Sector</option><option value="stage">Agrupar: Fase</option><option value="country">Agrupar: País</option></select><button class="btn btn-gold admin-only" onclick="openModal('company')"><i class="ti ti-plus"></i> Nueva participada</button></div></div>
+    <div class="view-inner"><div id="co-grid"></div></div>
+  </div>
+
+  <!-- COMPANY DETAIL -->
+  <div class="view" id="view-company">
+    <div class="topbar">
+      <div style="display:flex;align-items:center;gap:10px">
+        <button class="btn" onclick="nav('companies')"><i class="ti ti-arrow-left"></i></button>
+        <div><div class="topbar-title" id="cd-name"></div><div class="topbar-sub" id="cd-sub"></div></div>
+      </div>
+      <div class="tb-actions">
+        <button class="btn admin-only" onclick="openModal('company',curCompany)"><i class="ti ti-edit"></i> Editar</button>
+        <button class="btn btn-gold edit-only" onclick="openModal('round',{companyId:curCompany})"><i class="ti ti-plus"></i> Nueva ronda</button>
+        <button class="btn btn-red admin-only" onclick="deleteCompany()"><i class="ti ti-trash"></i></button>
+      </div>
+    </div>
+    <div class="view-inner">
+      <div id="cd-header"></div>
+      <div class="kpi-row" id="cd-kpis"></div>
+      <div class="section-head"><div class="section-title"><i class="ti ti-coins" style="color:var(--gold)"></i> Rondas de inversión</div></div>
+      <div class="grid2" id="cd-rounds"></div>
+    </div>
+  </div>
+
+  <!-- ROUND DETAIL -->
+  <div class="view" id="view-round">
+    <div class="topbar">
+      <div style="display:flex;align-items:center;gap:10px">
+        <button class="btn" onclick="openCompany(curCompany)"><i class="ti ti-arrow-left"></i></button>
+        <div><div class="topbar-title" id="rd-name"></div><div class="topbar-sub" id="rd-sub"></div></div>
+      </div>
+      <div class="tb-actions">
+        <div class="search-box"><i class="ti ti-search"></i><input id="search-round" oninput="renderRoundContent()" placeholder="Buscar inversor…"></div>
+        <button class="btn edit-only" onclick="openModal('round',{companyId:curCompany,roundId:curRound})"><i class="ti ti-edit"></i> Editar ronda</button>
+        <span id="rd-closed-note" style="display:none;align-items:center;gap:6px;font-size:12px;color:var(--muted)"><i class="ti ti-lock"></i> Ronda cerrada</span>
+        <button id="rd-add-btn" class="btn btn-gold edit-only" onclick="openModal('intro',{companyId:curCompany,roundId:curRound})"><i class="ti ti-user-plus"></i> Añadir inversor</button>
+      </div>
+    </div>
+    <div class="view-inner">
+      <div class="kpi-row" id="rd-kpis"></div>
+      <div class="tabs" id="rd-tabs">
+        <div class="tab" data-tab="pipeline" onclick="setRoundTab('pipeline')">Pipeline de fundraising</div>
+        <div class="tab active" data-tab="matriz" onclick="setRoundTab('matriz')">Matriz Ronda × Inversor</div>
+      </div>
+      <div id="rd-content"></div>
+    </div>
+  </div>
+
+  <!-- INVESTORS -->
+  <div class="view" id="view-investors">
+    <div class="topbar"><div><div class="topbar-title">Inversores</div><div class="topbar-sub">Fondos, family offices, corporates y angels</div></div>
+      <div class="tb-actions">
+        <div class="search-box"><i class="ti ti-search"></i><input id="search-investors" oninput="renderInvestors()" placeholder="Buscar inversor o contacto…"></div>
+        <div class="tabs" style="border:none;margin:0">
+          <div class="tab active" data-imode="grid" onclick="setInvMode('grid')" style="padding:6px 10px">Listado</div>
+          <div class="tab firm-only" data-imode="pipeline" onclick="setInvMode('pipeline')" style="padding:6px 10px">Pipeline relación</div>
+          <div class="tab" data-imode="contacts" onclick="setInvMode('contacts')" style="padding:6px 10px">Contactos</div>
+        </div>
+        <select class="s-input" id="inv-group" style="width:150px" onchange="invGroupChanged()"><option value="">Sin agrupar</option><option value="type">1º Tipo</option><option value="stage">1º Etapa</option><option value="relation">1º Relación</option><option value="pubStatus">1º Estado público</option><option value="country">1º País</option><option value="aum">1º AUM</option><option value="ticketRange">1º Ticket</option></select>
+        <select class="s-input" id="inv-group2" style="width:150px;display:none" onchange="invGroup2Changed()"><option value="">luego…</option><option value="type">2º Tipo</option><option value="stage">2º Etapa</option><option value="relation">2º Relación</option><option value="pubStatus">2º Estado público</option><option value="country">2º País</option><option value="aum">2º AUM</option><option value="ticketRange">2º Ticket</option></select>
+        <select class="s-input" id="inv-group3" style="width:150px;display:none" onchange="renderInvestors()"><option value="">luego…</option><option value="type">3º Tipo</option><option value="stage">3º Etapa</option><option value="relation">3º Relación</option><option value="pubStatus">3º Estado público</option><option value="country">3º País</option><option value="aum">3º AUM</option><option value="ticketRange">3º Ticket</option></select>
+        <button class="btn btn-gold edit-only" onclick="openModal('investor')"><i class="ti ti-plus"></i> Nuevo inversor</button>
+      </div></div>
+    <div class="view-inner" id="inv-view-inner"></div>
+  </div>
+
+  <!-- INVESTOR DETAIL -->
+  <div class="view" id="view-investor">
+    <div class="topbar">
+      <div style="display:flex;align-items:center;gap:10px">
+        <button class="btn" onclick="nav('investors')"><i class="ti ti-arrow-left"></i></button>
+        <div class="topbar-title" id="id-name"></div>
+      </div>
+      <div class="tb-actions">
+        <button class="btn edit-only" onclick="openModal('investor',curInvestor)"><i class="ti ti-edit"></i> Editar</button>
+        <button class="btn btn-red admin-only" onclick="deleteInvestor()"><i class="ti ti-trash"></i></button>
+      </div>
+    </div>
+    <div class="view-inner" id="id-content"></div>
+  </div>
+
+  <!-- PRESENTACIONES (global) -->
+  <div class="view" id="view-presentaciones">
+    <div class="topbar"><div><div class="topbar-title">Presentaciones</div><div class="topbar-sub">Histórico: qué inversor está en qué ronda y en qué fase</div></div>
+      <div class="tb-actions">
+        <div class="search-box"><i class="ti ti-search"></i><input id="pres-search" oninput="renderPresentaciones()" placeholder="Buscar…"></div>
+        <select class="s-input" id="pres-group" style="width:160px" onchange="renderPresentaciones()">
+          <option value="">Sin agrupar</option>
+          <option value="participada">Agrupar: Participada</option>
+          <option value="estado">Agrupar: Estado</option>
+          <option value="inversor">Agrupar: Inversor</option>
+          <option value="ronda">Agrupar: Ronda</option>
+        </select>
+        <select class="s-input" id="pres-filter" style="width:160px" onchange="renderPresentaciones()"></select>
+        <button class="btn btn-gold edit-only" onclick="openModal('intro',{})"><i class="ti ti-plus"></i> Nueva presentación</button>
+      </div></div>
+    <div class="view-inner"><div id="pres-table"></div></div>
+  </div>
+
+  <!-- INBOX -->
+  <div class="view" id="view-inbox">
+    <div class="topbar"><div><div class="topbar-title">Bandeja de entrada</div><div id="inbox-email-display" style="font-size:11px;color:var(--muted)"></div></div>
+      <div class="tb-actions"><button class="btn btn-gold" onclick="openModal('rxemail')"><i class="ti ti-mail-plus"></i> Recibir email</button></div></div>
+    <div class="view-inner" style="padding:0;display:flex;height:calc(100% - 60px)">
+      <div id="inbox-list" style="width:340px;flex-shrink:0;border-right:1px solid var(--border);overflow-y:auto"></div>
+      <div id="inbox-detail" style="flex:1;overflow-y:auto;padding:22px"></div>
+    </div>
+  </div>
+
+  <!-- REPORTS -->
+  <div class="view" id="view-reports">
+    <div class="topbar"><div class="topbar-title">Informes</div></div>
+    <div class="view-inner">
+      <div class="report-card" style="margin-bottom:13px"><div class="report-title"><i class="ti ti-checklist" style="color:var(--gold);margin-right:6px"></i>Próximos pasos</div><div id="home-tasks"></div></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:13px" id="rep-charts"></div>
+    </div>
+  </div>
+
+  <!-- USUARIOS -->
+  <div class="view" id="view-users">
+    <div class="topbar"><div><div class="topbar-title">Usuarios y permisos</div><div class="topbar-sub">Alta de usuarios, roles, MFA y acceso por participada</div></div>
+      <div class="tb-actions"><div class="search-box"><i class="ti ti-search"></i><input id="search-users" oninput="renderUsers()" placeholder="Buscar usuario…"></div><button class="btn btn-gold" onclick="openModal('user')"><i class="ti ti-user-plus"></i> Dar de alta usuario</button></div></div>
+    <div class="view-inner">
+      <div class="kpi-row" id="users-kpis"></div>
+      <div id="users-table"></div>
+    </div>
+  </div>
+
+  <!-- SETTINGS -->
+  <div class="view" id="view-settings">
+    <div class="topbar"><div class="topbar-title">Ajustes</div></div>
+    <div class="view-inner">
+      <div class="settings-sec">
+        <div class="settings-sec-title"><i class="ti ti-user" style="font-size:14px;color:var(--gold);margin-right:6px"></i>Perfil</div>
+        <div class="settings-row"><div class="settings-label">Nombre visible</div>
+          <input class="s-input" value="Tu Nombre" oninput="S.username=this.value;document.getElementById('sb-name').textContent=this.value||'Tú';document.getElementById('sb-avatar').textContent=(this.value||'TN').split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase()"></div>
+        <div class="settings-row"><div class="settings-label">Nombre de la gestora</div>
+          <input class="s-input" value="VentureOS" oninput="S.agency=this.value;document.getElementById('logo-agency').textContent='⬡ '+this.value"></div>
+        <div class="settings-row"><div class="settings-label">Moneda</div>
+          <select class="s-input" onchange="S.cur=this.value;renderAll()">
+            <option value="€">EUR (€)</option><option value="$">USD ($)</option><option value="£">GBP (£)</option></select></div>
+      </div>
+      <div class="settings-sec">
+        <div class="settings-sec-title"><i class="ti ti-mail" style="font-size:14px;color:var(--gold);margin-right:6px"></i>Notificaciones por correo</div>
+        <div class="settings-row"><div><div class="settings-label">Correo de notificaciones</div><div class="settings-sub">Resúmenes y próximos pasos se enviarán aquí</div></div>
+          <input class="s-input" type="email" placeholder="tu@gestora.com" oninput="S.notifEmail=this.value;updateEmailDisplay()"></div>
+        <div class="settings-row"><div><div class="settings-label">Avisar de próximos pasos</div><div class="settings-sub">Recordatorio cuando vence un próximo paso</div></div>
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer"><input type="checkbox" checked onchange="S.emailNotif=this.checked" style="width:16px;height:16px;accent-color:var(--gold)"><span style="font-size:12px;color:var(--muted)">Activado</span></label></div>
+        <div style="padding:12px 15px"><button class="btn btn-gold" onclick="testEmail()"><i class="ti ti-send"></i> Enviar correo de prueba</button>
+          <span id="test-email-result" style="font-size:12px;margin-left:10px;color:var(--green)"></span></div>
+      </div>
+      <div class="settings-sec">
+        <div class="settings-sec-title"><i class="ti ti-arrows-transfer-up" style="font-size:14px;color:var(--gold);margin-right:6px"></i>Estados de presentación</div>
+        <div id="estados-list"></div>
+        <div style="padding:10px 15px"><button class="btn btn-gold btn-sm" onclick="addStageItem('estados')"><i class="ti ti-plus"></i> Añadir estado</button></div>
+      </div>
+      <div class="settings-sec">
+        <div class="settings-sec-title"><i class="ti ti-coins" style="font-size:14px;color:var(--gold);margin-right:6px"></i>Fases de ronda</div>
+        <div id="phases-list"></div>
+        <div style="padding:10px 15px"><button class="btn btn-gold btn-sm" onclick="addStageItem('roundPhases')"><i class="ti ti-plus"></i> Añadir fase</button></div>
+      </div>
+      <div class="settings-sec">
+        <div class="settings-sec-title"><i class="ti ti-heart-handshake" style="font-size:14px;color:var(--gold);margin-right:6px"></i>Relación con inversores</div>
+        <div id="relation-list"></div>
+        <div style="padding:10px 15px"><button class="btn btn-gold btn-sm" onclick="addStageItem('relationStages')"><i class="ti ti-plus"></i> Añadir etapa</button></div>
+      </div>
+    </div>
+  </div>
+
+</div>
+</div>
+
+<div class="modal-wrap" id="modal-wrap" onclick="if(event.target===this)closeModal()">
+  <div class="modal"><div id="modal-content"></div></div>
+</div>
+
+<div class="ctx-menu" id="ctx-menu"></div>
+<div class="toast" id="toast"></div>
+
+<script>
+const S = {
+  username:'Tu Nombre', agency:'VentureOS', cur:'€',
+  notifEmail:'', emailNotif:true,
+  users:[
+    {id:1,name:'Admin Principal',email:'admin@ventureos.vc',role:'admin',companyIds:[],companyId:null,mfa:true,active:true},
+    {id:2,name:'Elena Torres',email:'elena@ventureos.vc',role:'empleado',companyIds:[1,2,4],companyId:null,mfa:true,active:true},
+    {id:3,name:'David Ferrer',email:'david@ventureos.vc',role:'empleado',companyIds:[3],companyId:null,mfa:false,active:true},
+    {id:4,name:'Marta Ibáñez',email:'marta@lumio.io',role:'ceo',companyIds:[],companyId:1,mfa:true,active:true},
+    {id:5,name:'Álvaro Ruiz',email:'alvaro@velora.health',role:'ceo',companyIds:[],companyId:2,mfa:true,active:true},
+  ],
+  estados:['No contactado','Intro realizada','Reunión inicial','Interés','Term sheet','Due diligence','Invertido','Descartado'],
+  roundPhases:['Preparación','Listado de Inversores','Contactados los inversores','Reuniones','Firma de LOIs','DD','Cierre','Cerrada'],
+  relationStages:['Lead','Conocido','Inversor no Activo','Relación activa','Coinversor no habitual','Coinversor habitual','Inversor estratégico'],
+  companies:[
+    {id:1,name:'Lumio Robotics',initials:'LR',sector:'Robótica industrial',country:'España',ceo:'Marta Ibáñez',valuation:18000000,stage:'Serie A',targetClose:'2026-09-30',
+      rounds:[
+        {id:11,type:'Seed 2024',target:1500000,start:'2024-02-01',close:'2024-06-30',status:'Cerrada'},
+        {id:12,type:'Serie A 2026',target:6000000,start:'2026-01-15',close:'2026-09-30',status:'Reuniones'},
+      ]},
+    {id:2,name:'Velora Health',initials:'VH',sector:'Salud digital',country:'España',ceo:'Dr. Álvaro Ruiz',valuation:9000000,stage:'Seed',targetClose:'2026-07-15',
+      rounds:[{id:21,type:'Seed 2026',target:2500000,start:'2026-02-01',close:'2026-07-15',status:'Firma de LOIs'}]},
+    {id:3,name:'Nervia AI',initials:'NA',sector:'IA / Datos',country:'Portugal',ceo:'Inês Carvalho',valuation:30000000,stage:'Serie B',targetClose:'2026-11-30',
+      rounds:[{id:31,type:'Serie B 2026',target:12000000,start:'2026-01-10',close:'2026-11-30',status:'DD'}]},
+    {id:4,name:'Kairos Energy',initials:'KE',sector:'Energía / Cleantech',country:'España',ceo:'Javier Sáez',valuation:14000000,stage:'Serie A',targetClose:'2026-10-31',
+      rounds:[{id:41,type:'Serie A 2026',target:5000000,start:'2026-03-01',close:'2026-10-31',status:'Listado de Inversores'}]},
+  ],
+  investors:[
+    {id:1,name:'ABaC Nest Ventures',initials:'AB',type:'VC',country:'España',avgTicket:1000000,sectors:'Deep tech, Robótica, IA',relation:'Coinversor habitual',
+      contacts:[{name:'Laura Méndez',role:'Partner',email:'l.mendez@abac.vc',phone:'+34 91 555 0101'}],notes:'Coinvierte con nosotros desde 2022. Foco hardware y deep tech.'},
+    {id:2,name:'Kfund',initials:'KF',type:'VC',country:'España',avgTicket:1500000,sectors:'Software, IA, SaaS',relation:'Inversor estratégico',
+      contacts:[{name:'Pablo Ortega',role:'Principal',email:'pablo@kfund.co',phone:'+34 91 555 0144'}],notes:'Relación muy estrecha, lead frecuente en Serie A.'},
+    {id:3,name:'Seaya Ventures',initials:'SE',type:'VC',country:'España',avgTicket:2000000,sectors:'Salud, Sostenibilidad',relation:'Relación activa',
+      contacts:[{name:'Marta Coll',role:'Investment Manager',email:'m.coll@seaya.vc',phone:'+34 91 555 0177'}],notes:'Mandato de impacto y salud digital.'},
+    {id:4,name:'Mundi Ventures',initials:'MU',type:'VC',country:'España',avgTicket:3000000,sectors:'Insurtech, IA, Deep tech',relation:'Relación activa',
+      contacts:[{name:'Sergio Pérez',role:'Partner',email:'sergio@mundi.vc',phone:'+34 91 555 0188'}],notes:''},
+    {id:5,name:'Family Office Soler',initials:'FS',type:'Family Office',country:'España',avgTicket:500000,sectors:'Diversificado',relation:'Conocido',
+      contacts:[{name:'Andreu Soler',role:'Director de inversiones',email:'a.soler@fosoler.com',phone:'+34 93 555 0200'}],notes:'Tickets de coinversión en seed.'},
+    {id:6,name:'Iberdrola Ventures',initials:'IB',type:'Corporate',country:'España',avgTicket:1000000,sectors:'Energía, Cleantech',relation:'Relación activa',
+      contacts:[{name:'Cristina Vega',role:'Head of Ventures',email:'c.vega@iberdrola.com',phone:'+34 91 555 0233'}],notes:'CVC estratégico para cleantech.'},
+    {id:7,name:'Carlos Tusquets',initials:'CT',type:'Business Angel',country:'España',avgTicket:100000,sectors:'Salud, Fintech',relation:'Lead',
+      contacts:[{name:'Carlos Tusquets',role:'Angel',email:'carlos@tusquets.io',phone:'+34 60 555 0266'}],notes:'Presentado en evento del IESE.'},
+    {id:8,name:'BlueCrow Capital',initials:'BC',type:'Family Office',country:'Portugal',avgTicket:750000,sectors:'Energía, Real assets',relation:'Conocido',
+      contacts:[{name:'João Pinto',role:'Partner',email:'j.pinto@bluecrow.pt',phone:'+351 21 555 0300'}],notes:''},
+  ],
+  introductions:[
+    {id:1,companyId:1,roundId:12,investorId:1,date:'2026-02-10',introBy:'Laura Méndez',status:'Interés',ticket:1000000,nextAction:'Enviar data room',nextDate:'2026-06-20',notes:'Muy interesados en la tracción industrial.'},
+    {id:2,companyId:1,roundId:12,investorId:2,date:'2026-02-18',introBy:'Equipo VentureOS',status:'Reunión inicial',ticket:750000,nextAction:'Segunda reunión con CTO',nextDate:'2026-06-25',notes:''},
+    {id:3,companyId:1,roundId:12,investorId:6,date:'',introBy:'',status:'No contactado',ticket:0,nextAction:'Preparar intro',nextDate:'',notes:'Posible encaje cleantech-robótica.'},
+    {id:4,companyId:1,roundId:12,investorId:3,date:'2026-02-05',introBy:'Marta Coll',status:'Descartado',ticket:0,nextAction:'',nextDate:'',notes:'Fuera de tesis (foco salud).'},
+    {id:5,companyId:2,roundId:21,investorId:3,date:'2026-03-01',introBy:'Marta Coll',status:'Due diligence',ticket:1000000,nextAction:'Revisión clínica',nextDate:'2026-06-18',notes:'DD técnica en curso.'},
+    {id:6,companyId:2,roundId:21,investorId:5,date:'2026-03-10',introBy:'Andreu Soler',status:'Intro realizada',ticket:300000,nextAction:'Agendar primera llamada',nextDate:'2026-06-22',notes:''},
+    {id:7,companyId:2,roundId:21,investorId:7,date:'2026-03-12',introBy:'Equipo VentureOS',status:'Interés',ticket:100000,nextAction:'Enviar deck',nextDate:'2026-06-19',notes:''},
+    {id:8,companyId:3,roundId:31,investorId:2,date:'2026-01-20',introBy:'Pablo Ortega',status:'Term sheet',ticket:3000000,nextAction:'Negociar términos',nextDate:'2026-06-21',notes:'Term sheet recibido, en negociación.'},
+    {id:9,companyId:3,roundId:31,investorId:4,date:'2026-01-15',introBy:'Sergio Pérez',status:'Invertido',ticket:4000000,nextAction:'',nextDate:'',notes:'Lead de la ronda, capital comprometido.'},
+    {id:10,companyId:3,roundId:31,investorId:1,date:'2026-02-01',introBy:'Laura Méndez',status:'Interés',ticket:1500000,nextAction:'Reunión de seguimiento',nextDate:'2026-06-24',notes:''},
+    {id:11,companyId:4,roundId:41,investorId:6,date:'2026-03-15',introBy:'Cristina Vega',status:'Reunión inicial',ticket:1000000,nextAction:'Visita a planta piloto',nextDate:'2026-06-26',notes:''},
+    {id:12,companyId:4,roundId:41,investorId:8,date:'',introBy:'',status:'No contactado',ticket:0,nextAction:'Preparar intro',nextDate:'',notes:''},
+    {id:13,companyId:4,roundId:41,investorId:1,date:'2026-03-20',introBy:'Laura Méndez',status:'Intro realizada',ticket:500000,nextAction:'Enviar one-pager',nextDate:'2026-06-23',notes:''},
+  ],
+  inbox:[
+    {id:1,from:'Pablo Ortega · Kfund',fromEmail:'pablo@kfund.co',sub:'Term sheet Nervia AI — comentarios',time:'09:14',date:'2026-06-17',unread:true,body:'Hola, hemos revisado el term sheet de Nervia AI y estamos listos para avanzar. Confirmamos el ticket de 3M€ liderando la ronda. Necesitamos cerrar la cláusula de liquidación preferente y agendar una llamada con el CFO esta semana. Adjuntamos nuestra propuesta de valoración.',saved:false},
+    {id:2,from:'Marta Coll · Seaya',fromEmail:'marta@seaya.vc',sub:'Documentación DD Velora Health',time:'Ayer',date:'2026-06-16',unread:true,body:'Buenos días, seguimos avanzando en la due diligence de Velora Health. Nos faltan las métricas de retención de cohortes y el detalle del pipeline regulatorio. Si nos lo enviáis antes del viernes podríamos llevar la inversión a comité la próxima semana.',saved:false},
+    {id:3,from:'Laura Méndez · ABaC',fromEmail:'laura@abaccapital.com',sub:'Re: Data room Lumio Serie A',time:'Ayer',date:'2026-06-16',unread:true,body:'Gracias por el acceso al data room de Lumio. El equipo nos ha parecido muy sólido y la tracción industrial es interesante. Queremos profundizar en los márgenes unitarios; proponemos una reunión la semana que viene para revisar el modelo financiero.',saved:false},
+    {id:4,from:'Cristina Vega · Iberdrola',fromEmail:'cristina.vega@iberdrola.com',sub:'Visita planta piloto Kairos',time:'12 jun',date:'2026-06-12',unread:false,body:'Hola, tras la visita a la planta piloto de Kairos Energy quedamos muy satisfechos. Internamente vemos encaje estratégico con nuestra unidad de renovables. Necesitamos aprobación del comité corporativo antes de comprometer un ticket.',saved:false},
+    {id:5,from:'Andreu Soler · FO Soler',fromEmail:'andreu@fosoler.com',sub:'Interés en seed Velora Health',time:'10 jun',date:'2026-06-10',unread:false,body:'Estimados, nos interesa entrar en la ronda seed de Velora Health con un ticket pequeño de 200k€. Somos un family office y solemos coinvertir con fondos de salud. Quedamos a la espera del deck y los términos de la ronda.',saved:false},
+  ],
+};
+
+let curCompany=null, curRound=null, curInvestor=null, curRoundTab='matriz', invMode='grid', presFilter='';
+
+// ---------- helpers ----------
+const MES=['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+const AREAS=['Unknown','Worldwide','Southern Europe','Northern Europe','Western Europe','Central & Eastern Europe','North America','South & Central America','Northeast Asia','Southeast Asia','Australia and Oceania','Middle East','Africa','Other'];
+const TIPOS=['Unknown','Other','FFF','Business Angel','Intermediary','Family Office','Multifamily Office','Venture Capital','Corporate Venture Capital','Corporate','Investment Banking','Patrimonial Banking','Private Banking','Banking','Foundation','Endowments','Insurance Company','Sovereign Wealth Fund','Pension Fund','Fund of Funds'];
+const ETAPAS=['Unknown','Pre-Seed','Seed','Pre Series A (VC Early Stage)','Series A (VC)','Series B (VC Late Stage)','Series C (Growth Capital)'];
+const TICKETS=['Unknown','<200 k€','200k€ - 500 k€','500k€ - 1M€','1M€-2M€','2M€-5M€','5M€-10M€','>10M€'];
+const AUM=['Unknown','<500 k€','500 k€ - 2 M€','2 M€ - 20 M€','20 M€ - 50 M€','50 M€ - 100 M€','100 M€ - 200 M€','>200 M€'];
+const PROVINCIAS=['Unknown','Álava','Albacete','Alicante','Almería','Asturias','Ávila','Badajoz','Baleares','Barcelona','Bizkaia','Burgos','Cáceres','Cádiz','Cantabria','Castellón','Ciudad Real','Córdoba','Cuenca','Gipuzkoa','Girona','Granada','Guadalajara','Huelva','Huesca','Jaén','La Coruña','La Rioja','Las Palmas','León','Lleida','Lugo','Madrid','Málaga','Murcia','Navarra','Ourense','Palencia','Pontevedra','Salamanca','Santa Cruz de Tenerife','Segovia','Sevilla','Soria','Tarragona','Teruel','Toledo','Valencia','Valladolid','Zamora','Zaragoza','Ceuta','Melilla'];
+const LEVELS=['Unknown','1','2','3','4','5','6','7','8','9'];
+const TTM=['UNKNOWN','> 6 years','4-6 years','2-4 years','1-2 years','6 months-1 year','Inmediatly','Already on the market'];
+const REVENUE=['UNKNOWN','SALES > 10M€','4M€ > SALES > 10M€','2M€ > SALES > 5M€','1M€ > SALES > 2M€','500k > SALES > 1M€','0 > SALES > 500k€','NO SALES'];
+const STATUS=['Pre-seed','Seed','Start-Up','Early Stage','Venture Capital','Growth'];
+const SECTORES=['Advanced Manufacturing and Processing','Advanced Materials','Artificial Intelligence','Data Mining','Industrial Biotechnology','Microelectronics or Nanoelectronics','Nanotechnology','Other','Other ICT','Pharma','Photonics'];
+const ESTADO_W={'No contactado':0,'Intro realizada':0.1,'Reunión inicial':0.2,'Interés':0.3,'Term sheet':0.5,'Due diligence':0.8,'Invertido':1,'Descartado':0};
+const byId=(arr,id)=>arr.find(x=>x.id===id);
+function money(n){if(!n)return S.cur+'0';return S.cur+Math.round(n).toLocaleString('es-ES');}
+function fmtDate(iso,full){if(!iso)return '—';const d=new Date(iso+'T00:00:00');if(isNaN(d))return iso;return d.getDate()+' '+MES[d.getMonth()]+(full?' '+d.getFullYear():'');}
+function inits(name){return name.split(' ').filter(Boolean).map(w=>w[0]).join('').slice(0,2).toUpperCase();}
+function findRound(rid){for(const c of S.companies){const r=byId(c.rounds,rid);if(r)return{c,r};}return {};}
+function introsForRound(rid){return S.introductions.filter(i=>i.roundId===rid);}
+function introsForInvestor(iid){const a=allowedIds();return S.introductions.filter(i=>i.investorId===iid&&a.includes(i.companyId));}
+function roundInvertido(rid){return introsForRound(rid).filter(i=>i.status==='Invertido').reduce((s,i)=>s+(i.ticket||0),0);}
+function roundWeighted(rid){return introsForRound(rid).filter(i=>i.status!=='Invertido').reduce((s,i)=>s+(i.ticket||0)*(ESTADO_W[i.status]??0),0);}
+function activeInvestorsRound(rid){return introsForRound(rid).filter(i=>i.status!=='Descartado'&&i.status!=='No contactado').length;}
+function introLastContact(it){const ds=(it.interactions||[]).map(x=>x.date).filter(Boolean);if(it.date)ds.push(it.date);return ds.length?ds.slice().sort().slice(-1)[0]:'';}
+function companyInvertido(c){return c.rounds.reduce((s,r)=>s+roundInvertido(r.id),0);}
+function activeRounds(c){return c.rounds.filter(r=>r.status!=='Cerrada');}
+function estadoColor(s){const m={'No contactado':['var(--s3)','var(--muted)'],'Intro realizada':['rgba(127,119,221,.15)','var(--purple)'],'Reunión inicial':['rgba(91,155,213,.15)','var(--blue)'],'Interés':['rgba(250,197,28,.14)','var(--gold)'],'Due diligence':['rgba(224,150,44,.15)','var(--orange)'],'Term sheet':['rgba(45,180,140,.16)','var(--teal)'],'Invertido':['rgba(29,158,117,.18)','var(--green)'],'Descartado':['rgba(226,75,74,.12)','var(--red)']};return m[s]||['var(--s3)','var(--muted)'];}
+function relationColor(s){const m={'Lead':['var(--s3)','var(--muted)'],'Conocido':['rgba(127,119,221,.15)','var(--purple)'],'Inversor no Activo':['rgba(224,108,108,.14)','var(--red)'],'Relación activa':['rgba(250,197,28,.14)','var(--gold)'],'Coinversor no habitual':['rgba(45,180,140,.10)','var(--teal)'],'Coinversor habitual':['rgba(45,180,140,.16)','var(--teal)'],'Inversor estratégico':['rgba(29,158,117,.18)','var(--green)']};return m[s]||['var(--s3)','var(--muted)'];}
+function contactMeta(t){return {Email:['ti-mail','var(--blue)'],Llamada:['ti-phone','var(--teal)'],'Reunión':['ti-users','var(--purple)'],Estado:['ti-arrow-badge-right','var(--orange)'],Nota:['ti-note','var(--muted)']}[t]||['ti-note','var(--muted)'];}
+function summarizeEmail(subject,body){
+  const text=(body||'').replace(/\s+/g,' ').trim();
+  let sentences=text.length?text.split(/(?<=[.!?])\s+/).map(s=>s.trim()).filter(s=>s.length>4):[];
+  sentences=sentences.filter(s=>!/^(hola|buenos d|buenas|estimad|querid|gracias|un saludo|saludos|espero)/i.test(s));
+  const strong=[[/term sheet|invert|ticket|comprom|firma|acuerdo|cierre|liderar/i,3],[/data room|due dilig|diligenc|valorac|propuesta|reuni|llamad|próxim|proxim|sigu|enviar|adjunt|plazo|fecha/i,2],[/interes|interés|duda|pregunt|necesit/i,1]];
+  const scored=sentences.map((s,i)=>{let sc=0;strong.forEach(([re,w])=>{if(re.test(s))sc+=w;});return {s,i,sc};});
+  const picked=scored.filter(x=>x.sc>0).sort((a,b)=>b.sc-a.sc).slice(0,2).sort((a,b)=>a.i-b.i).map(x=>x.s);
+  if(picked.length<2)sentences.forEach(s=>{if(picked.length<2&&!picked.includes(s))picked.push(s);});
+  const lines=[];
+  if(subject&&subject.trim())lines.push(subject.trim());
+  picked.forEach(s=>{if(lines.length<3)lines.push(s.length>130?s.slice(0,127)+'…':s);});
+  if(!lines.length)lines.push('Email sin contenido relevante.');
+  return lines.slice(0,3).join('\n');
+}
+function bdg(text,colors){return `<span class="bdg" style="background:${colors[0]};color:${colors[1]}">${text}</span>`;}
+
+// ===================== AUTH / ROLES / RBAC =====================
+let CU=null, pendingUser=null, mfaCode='';
+// Pon MFA_ENABLED=true para reactivar el doble factor (desactivado en fase de pruebas)
+const MFA_ENABLED=false;
+const roleLabel={admin:'Administrador',empleado:'Empleado',ceo:'CEO de participada'};
+const roleColors={admin:['rgba(250,197,28,.16)','var(--gold)'],empleado:['rgba(91,155,213,.18)','var(--blue)'],ceo:['rgba(45,180,140,.18)','var(--teal)']};
+function isAdmin(){return CU&&CU.role==='admin';}
+function isEmp(){return CU&&CU.role==='empleado';}
+function isCEO(){return CU&&CU.role==='ceo';}
+function canEdit(){return isAdmin()||isEmp();}
+function allowedIds(){if(!CU)return [];if(CU.role==='admin')return S.companies.map(c=>c.id);if(CU.role==='empleado')return (CU.companyIds||[]).slice();if(CU.role==='ceo')return [CU.companyId];return [];}
+function canSeeCompany(id){return allowedIds().includes(id);}
+function visibleCompanies(){const a=allowedIds();return S.companies.filter(c=>a.includes(c.id));}
+function visibleIntros(){const a=allowedIds();return S.introductions.filter(i=>a.includes(i.companyId));}
+function visibleInvestors(){if(isCEO()){const ids=new Set(visibleIntros().map(i=>i.investorId));return S.investors.filter(v=>ids.has(v.id));}return S.investors;}
+
+function renderQuickLogin(){
+  const el=document.getElementById('quick-list');if(!el)return;
+  const ic={admin:'ti-user-shield',empleado:'ti-user-cog',ceo:'ti-user-star'};
+  el.innerHTML=S.users.filter(u=>u.active).map(u=>`<button class="btn" style="justify-content:flex-start;width:100%" onclick="quickLogin('${u.email}')"><i class="ti ${ic[u.role]}"></i> ${u.name} · <span style="color:var(--muted)">${roleLabel[u.role]}</span></button>`).join('');
+}
+function showLogin(){
+  document.getElementById('login').style.display='flex';
+  document.getElementById('root').style.display='none';
+  document.getElementById('login-step1').style.display='block';
+  document.getElementById('login-step2').style.display='none';
+  document.getElementById('li-email').value='';document.getElementById('li-pwd').value='';document.getElementById('li-err').textContent='';
+  renderQuickLogin();
+}
+function doLogin(){
+  const email=document.getElementById('li-email').value.trim().toLowerCase();
+  const pwd=document.getElementById('li-pwd').value;
+  const err=document.getElementById('li-err');
+  const u=S.users.find(x=>x.email.toLowerCase()===email);
+  if(!u){err.textContent='No existe ninguna cuenta con ese correo.';return;}
+  if(!u.active){err.textContent='Esta cuenta está desactivada. Contacta con el administrador.';return;}
+  if(pwd.length<4){err.textContent='Introduce tu contraseña (demo: cualquiera de 4+ caracteres).';return;}
+  pendingUser=u;
+  if(u.mfa&&MFA_ENABLED)startMFA();else enterApp(u);
+}
+function startMFA(){
+  mfaCode=String(Math.floor(100000+Math.random()*900000));
+  document.getElementById('login-step1').style.display='none';
+  document.getElementById('login-step2').style.display='block';
+  document.getElementById('mfa-dest').textContent=pendingUser.email;
+  document.getElementById('mfa-hint').textContent=mfaCode;
+  document.getElementById('mfa-err').textContent='';
+  const boxes=[...document.querySelectorAll('.mfa-box')];boxes.forEach(b=>b.value='');boxes[0].focus();
+}
+function mfaInput(e,i){
+  const boxes=[...document.querySelectorAll('.mfa-box')];
+  e.target.value=e.target.value.replace(/\D/g,'').slice(-1);
+  if(e.target.value&&i<5)boxes[i+1].focus();
+  if(boxes.every(b=>b.value))verifyMFA();
+}
+function mfaKey(e,i){const boxes=[...document.querySelectorAll('.mfa-box')];if(e.key==='Backspace'&&!e.target.value&&i>0)boxes[i-1].focus();}
+function verifyMFA(){
+  const code=[...document.querySelectorAll('.mfa-box')].map(b=>b.value).join('');
+  if(code!==mfaCode){document.getElementById('mfa-err').textContent='Código incorrecto. Inténtalo de nuevo.';return;}
+  enterApp(pendingUser);
+}
+function quickLogin(email){document.getElementById('li-email').value=email;document.getElementById('li-pwd').value='demo1234';doLogin();}
+function enterApp(u){
+  CU=u;pendingUser=null;
+  document.getElementById('login').style.display='none';
+  document.getElementById('root').style.display='flex';
+  applyRoleUI();
+  nav('home');
+}
+function logout(){CU=null;document.body.removeAttribute('data-role');showLogin();}
+function applyRoleUI(){
+  document.body.dataset.role=CU.role;
+  document.getElementById('sb-name').textContent=CU.name;
+  document.getElementById('sb-avatar').textContent=inits(CU.name);
+  document.getElementById('sb-role').innerHTML=bdg(roleLabel[CU.role],roleColors[CU.role]);
+  if(isCEO()){const c=byId(S.companies,CU.companyId);const lbl=document.querySelector('#nav-myco .myco-label');if(c&&lbl)lbl.textContent=c.name;}
+}
+function navMyCompany(){if(!isCEO())return;openCompany(CU.companyId);document.querySelectorAll('.ni').forEach(el=>el.classList.remove('active'));document.getElementById('nav-myco').classList.add('active');}
+
+// ----- USUARIOS -----
+function renderUsers(){
+  const q=(document.getElementById('search-users')?.value||'').toLowerCase().trim();
+  let list=S.users;if(q)list=list.filter(u=>(u.name+' '+u.email+' '+roleLabel[u.role]).toLowerCase().includes(q));
+  const counts={admin:S.users.filter(u=>u.role==='admin').length,empleado:S.users.filter(u=>u.role==='empleado').length,ceo:S.users.filter(u=>u.role==='ceo').length};
+  document.getElementById('users-kpis').innerHTML=`
+    <div class="kpi"><div class="kpi-v">${S.users.length}</div><div class="kpi-l">Usuarios totales</div></div>
+    <div class="kpi"><div class="kpi-v">${counts.admin}</div><div class="kpi-l">Administradores</div></div>
+    <div class="kpi"><div class="kpi-v">${counts.empleado}</div><div class="kpi-l">Empleados</div></div>
+    <div class="kpi"><div class="kpi-v">${counts.ceo}</div><div class="kpi-l">CEOs de participada</div></div>`;
+  document.getElementById('users-table').innerHTML=`<table class="tbl">
+    <thead><tr><th>Usuario</th><th>Rol</th><th>Acceso</th><th>MFA</th><th>Estado</th><th></th></tr></thead>
+    <tbody>${list.map(u=>{
+      const access=u.role==='admin'?'Todas las participadas + administración':u.role==='empleado'?((u.companyIds&&u.companyIds.length)?u.companyIds.map(id=>{const c=byId(S.companies,id);return c?c.name:'';}).filter(Boolean).join(', '):'Sin participadas asignadas'):((byId(S.companies,u.companyId)||{}).name||'—');
+      return `<tr>
+        <td><div style="display:flex;align-items:center;gap:10px"><div class="avatar avatar-round" style="width:32px;height:32px;font-size:11px">${inits(u.name)}</div><div><div style="font-weight:600">${u.name}${CU&&u.id===CU.id?' <span class="chip" style="color:var(--gold)">tú</span>':''}</div><div style="font-size:11px;color:var(--purple)">${u.email}</div></div></div></td>
+        <td>${bdg(roleLabel[u.role],roleColors[u.role])}</td>
+        <td style="font-size:11px;color:var(--muted);max-width:230px">${access}</td>
+        <td>${u.mfa?'<span style="color:var(--green)"><i class="ti ti-shield-check" style="vertical-align:-2px"></i> Activo</span>':'<span style="color:var(--red)"><i class="ti ti-shield-off" style="vertical-align:-2px"></i> Sin MFA</span>'}</td>
+        <td>${u.active?'<span style="color:var(--green)">Activo</span>':'<span style="color:var(--muted)">Desactivado</span>'}</td>
+        <td onclick="event.stopPropagation()"><div style="display:flex;gap:5px;justify-content:flex-end"><button class="btn btn-sm" onclick="openModal('user',${u.id})"><i class="ti ti-edit"></i></button>${(!CU||u.id!==CU.id)?`<button class="btn btn-red btn-sm" onclick="deleteUser(${u.id})"><i class="ti ti-trash"></i></button>`:''}</div></td>
+      </tr>`;}).join('')}</tbody></table>`;
+}
+function deleteUser(id){const u=byId(S.users,id);if(!confirm('¿Eliminar el usuario '+u.name+'?'))return;S.users=S.users.filter(x=>x.id!==id);renderUsers();}
+function userRoleChange(){const r=document.getElementById('u-role').value;document.getElementById('u-emp-box').style.display=r==='empleado'?'':'none';document.getElementById('u-ceo-box').style.display=r==='ceo'?'':'none';}
+function saveUser(id){
+  const name=val('u-name').trim();const email=val('u-email').trim();
+  if(!name||!email){alert('Nombre y correo son obligatorios.');return;}
+  const role=val('u-role');
+  const data={name,email,role,mfa:document.getElementById('u-mfa').checked,active:document.getElementById('u-active').checked};
+  if(role==='empleado'){data.companyIds=[...document.querySelectorAll('.u-co:checked')].map(c=>parseInt(c.value));data.companyId=null;}
+  else if(role==='ceo'){data.companyId=parseInt(val('u-company'));data.companyIds=[];}
+  else{data.companyIds=[];data.companyId=null;}
+  if(id){Object.assign(byId(S.users,id),data);if(CU&&CU.id===id)applyRoleUI();}
+  else{const nid=Math.max(0,...S.users.map(u=>u.id))+1;S.users.push({id:nid,...data});}
+  closeModal();renderUsers();
+}
+
+function renderAll(){renderHome();renderCompanies();renderInvestors();renderPresentaciones();renderInbox();renderReports();renderStageSettings();updateInboxBadge();updateEmailDisplay();if(curCompany&&document.getElementById('view-company').classList.contains('active'))renderCompanyDetail();if(curRound&&document.getElementById('view-round').classList.contains('active'))renderRoundDetail();}
+
+// ---------- navigation ----------
+function nav(v){
+  document.querySelectorAll('.view').forEach(el=>el.classList.remove('active'));
+  document.querySelectorAll('.ni').forEach(el=>el.classList.remove('active'));
+  document.getElementById('view-'+v).classList.add('active');
+  const ni=document.getElementById('nav-'+v);if(ni)ni.classList.add('active');
+  if(v==='home')renderHome();
+  if(v==='companies'){const s=document.getElementById('search-companies');if(s)s.value='';renderCompanies();}
+  if(v==='investors'){const s=document.getElementById('search-investors');if(s)s.value='';renderInvestors();}
+  if(v==='presentaciones'){const s=document.getElementById('pres-search');if(s)s.value='';renderPresentaciones();}
+  if(v==='inbox'){renderInbox();updateEmailDisplay();}
+  if(v==='reports')renderReports();
+  if(v==='users'){const s=document.getElementById('search-users');if(s)s.value='';renderUsers();}
+  if(v==='settings')renderStageSettings();
+}
+function showView(id){document.querySelectorAll('.view').forEach(el=>el.classList.remove('active'));document.getElementById(id).classList.add('active');}
+
+// ---------- PARTICIPADAS ----------
+let coGroupPrev='',coLastKeys=[],coExpanded=new Set(),coMode='grid',coOpenOnly=false;
+function toggleOpenFilter(){coOpenOnly=!coOpenOnly;const b=document.getElementById('co-openfilter');if(b){b.classList.toggle('btn-gold',coOpenOnly);}renderCompanies();}
+function setCoMode(m){coMode=m;document.querySelectorAll('#view-companies .tab[data-cmode]').forEach(x=>x.classList.toggle('active',x.dataset.cmode===m));document.getElementById('co-group').style.display=m==='contacts'?'none':'';renderCompanies();}
+function toggleCoGroup(k){if(coExpanded.has(k))coExpanded.delete(k);else coExpanded.add(k);renderCompanies();}
+function coExpandAll(){coLastKeys.forEach(k=>coExpanded.add(k));renderCompanies();}
+function coCollapseAll(){coExpanded.clear();renderCompanies();}
+function renderCompanies(){
+  const q=(document.getElementById('search-companies')?.value||'').toLowerCase().trim();
+  let list=visibleCompanies();
+  if(coOpenOnly)list=list.filter(c=>activeRounds(c).length>0);
+  if(coMode==='contacts'){
+    const rows=[];
+    list.forEach(c=>(c.contacts||[]).forEach(ct=>{const blob=((ct.name||'')+' '+(ct.role||'')+' '+(ct.email||'')+' '+(ct.phone||'')+' '+c.name+' '+(c.intCode||'')).toLowerCase();if(!q||blob.includes(q))rows.push({ct,c});}));
+    rows.sort((a,b)=>(a.ct.name||'').localeCompare(b.ct.name||'','es'));
+    document.getElementById('co-grid').innerHTML=rows.length?`<table class="tbl"><thead><tr><th>Contacto</th><th>Cargo</th><th>Email</th><th>Teléfono</th><th>Participada</th></tr></thead><tbody>${rows.map(({ct,c})=>`<tr style="cursor:pointer" onclick="openCompany(${c.id})"><td><div style="display:flex;align-items:center;gap:9px"><div class="avatar avatar-round" style="width:30px;height:30px;font-size:10px">${inits(ct.name||'?')}</div><b>${ct.name||'—'}</b></div></td><td>${ct.role||'—'}</td><td style="color:var(--purple)">${ct.email||'—'}</td><td>${ct.phone||'—'}</td><td><span class="chip">${c.name}</span></td></tr>`).join('')}</tbody></table>`:`<div class="empty">${q?'Sin contactos para la búsqueda.':'Sin contactos todavía.'}</div>`;
+    return;
+  }
+  if(q)list=list.filter(c=>(c.name+' '+c.country+' '+(c.provincia||'')+' '+c.ceo+' '+c.stage+' '+(c.fund||'')+' '+(c.intCode||'')+' '+(c.coSectors||'')+' '+(c.ttm||'')+' '+(c.revenue||'')+' '+(c.cstatus||'')+' '+(c.contacts||[]).map(x=>x.name+' '+(x.email||'')).join(' ')).toLowerCase().includes(q));
+  const grp=document.getElementById('co-group')?document.getElementById('co-group').value:'';
+  const card=c=>{
+    const ar=activeRounds(c);
+    const target=ar.reduce((s,r)=>s+r.target,0);
+    const inv=ar.reduce((s,r)=>s+roundInvertido(r.id),0);
+    const pct=target?Math.round(inv/target*100):0;
+    return `<div class="co-card" onclick="openCompany(${c.id})">
+      <div class="co-hd"><div class="avatar">${c.initials}</div>
+        <div><div class="co-name">${c.name}</div><div class="co-ind">${c.country}${c.intCode?' · '+c.intCode:''}</div></div>
+        <div style="margin-left:auto;display:flex;gap:5px">${c.fund?bdg(c.fund,['rgba(91,155,213,.16)','var(--blue)']):''}${bdg(c.stage,['rgba(250,197,28,.12)','var(--gold)'])}</div></div>
+      <div class="meta-row"><span>CEO <b>${c.ceo}</b></span><span>Valoración <b>${money(c.valuation)}</b></span><span>Cierre <b>${fmtDate(c.targetClose)}</b></span></div>
+      <div class="prog-row"><span>Captado activo: <b style="color:var(--gold)">${money(inv)}</b> / ${money(target)}</span><span>${pct}%</span></div>
+      <div class="prog-bar"><div class="prog-fill" style="width:${Math.min(pct,100)}%"></div></div>
+    </div>`;
+  };
+  const el=document.getElementById('co-grid');
+  if(!list.length){el.innerHTML=`<div class="empty">${q?'Sin resultados para la búsqueda.':'Sin participadas todavía.'}</div>`;return;}
+  if(!grp){el.innerHTML=`<div class="grid2">${list.map(card).join('')}</div>`;return;}
+  const keyFn={fund:c=>c.fund||'—',sector:c=>((c.coSectors||'').split(',')[0].trim())||'—',stage:c=>c.stage||'—',country:c=>c.country||'—'}[grp];
+  const gicon={fund:'ti-businessplan',sector:'ti-category',stage:'ti-stairs-up',country:'ti-map-pin'}[grp];
+  if(grp!==coGroupPrev){coExpanded.clear();coGroupPrev=grp;}
+  const groups={};list.forEach(c=>{const k=keyFn(c);(groups[k]=groups[k]||[]).push(c);});
+  const order=Object.keys(groups).sort((a,b)=>a.localeCompare(b,'es'));
+  coLastKeys=order.slice();
+  const esc=s=>String(s).replace(/"/g,'&quot;');
+  el.innerHTML=`<div style="display:flex;gap:16px;margin-bottom:12px;font-size:11px">
+      <span style="color:var(--gold);cursor:pointer" onclick="coExpandAll()"><i class="ti ti-chevrons-down" style="vertical-align:-2px"></i> Expandir todo</span>
+      <span style="color:var(--muted);cursor:pointer" onclick="coCollapseAll()"><i class="ti ti-chevrons-up" style="vertical-align:-2px"></i> Contraer todo</span>
+      <span style="color:var(--muted);margin-left:auto">${order.length} grupo${order.length!==1?'s':''} · ${list.length} participada${list.length!==1?'s':''}</span>
+    </div>`+order.map(k=>{
+    const arr=groups[k];const exp=coExpanded.has(k);
+    const inv=arr.reduce((s,c)=>s+activeRounds(c).reduce((a,r)=>a+roundInvertido(r.id),0),0);
+    return `<div style="margin-bottom:9px;border:1px solid var(--border);border-radius:9px;overflow:hidden">
+      <div data-gkey="${esc(k)}" onclick="toggleCoGroup(this.dataset.gkey)" style="display:flex;align-items:center;gap:10px;padding:11px 13px;cursor:pointer;background:var(--s1)">
+        <i class="ti ti-chevron-${exp?'down':'right'}" style="color:var(--muted)"></i>
+        <i class="ti ${gicon}" style="color:var(--gold)"></i>
+        <div style="flex:1;font-size:13px;font-weight:700">${k}</div>
+        <span class="chip">${arr.length}</span>
+        ${inv?`<span style="font-size:11px;color:var(--gold);font-weight:600;white-space:nowrap">${money(inv)} captado</span>`:''}
+      </div>
+      ${exp?`<div style="padding:11px"><div class="grid2">${arr.map(card).join('')}</div></div>`:''}
+    </div>`;
+  }).join('');
+}
+
+function openCompany(id){if(!canSeeCompany(id))return;curCompany=id;renderCompanyDetail();showView('view-company');document.querySelectorAll('.ni').forEach(el=>el.classList.remove('active'));}
+function renderCompanyDetail(){
+  const c=byId(S.companies,curCompany);if(!c)return;
+  document.getElementById('cd-name').textContent=c.name;
+  document.getElementById('cd-sub').textContent=`${c.country} · CEO ${c.ceo}`;
+  document.getElementById('cd-header').innerHTML=`
+    <div class="detail-hd">
+      <div class="detail-avatar">${c.initials}</div>
+      <div style="flex:1">
+        <div style="font-size:17px;font-weight:700">${c.name} ${bdg(c.stage,['rgba(250,197,28,.12)','var(--gold)'])}${c.fund?' '+bdg('Fondo: '+c.fund,['rgba(91,155,213,.16)','var(--blue)']):''}</div>
+        <div style="font-size:12px;color:var(--muted);margin-top:3px">Código interno <b style="color:var(--text)">${c.intCode||'—'}</b></div>
+        <div class="meta-row" style="margin-top:8px">
+          <span>País <b>${c.country}</b></span><span>Provincia <b>${c.provincia||'Unknown'}</b></span><span>CEO <b>${c.ceo}</b></span>
+          <span>TRL <b>${c.trl||'—'}</b></span><span>MRL <b>${c.mrl||'—'}</b></span><span>Time to Market <b>${c.ttm||'UNKNOWN'}</b></span><span>Revenue <b>${c.revenue||'UNKNOWN'}</b></span>
+        </div>
+        <div class="meta-row" style="margin-top:6px">
+          <span>Última valoración <b>${money(c.valuation)}</b></span><span>Fecha últ. valoración <b>${fmtDate(c.targetClose,true)}</b></span>
+        </div>
+        ${c.coSectors?`<div style="display:flex;flex-wrap:wrap;gap:5px;margin-top:10px">${c.coSectors.split(',').map(s=>`<span class="chip">${s.trim()}</span>`).join('')}</div>`:''}
+        ${(c.contacts&&c.contacts.length)?`<div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:10px">${c.contacts.map(ct=>`<div style="font-size:11px;background:var(--s2);border:1px solid var(--border);border-radius:7px;padding:6px 10px"><b style="font-size:12px">${ct.name||'—'}</b>${ct.role?` · ${ct.role}`:''}${(ct.email||ct.phone)?`<div style="color:#1b6b4a;margin-top:2px">${ct.email||''}${ct.email&&ct.phone?' · ':''}${ct.phone||''}</div>`:''}</div>`).join('')}</div>`:''}
+      </div>
+    </div>`;
+  const ar=activeRounds(c);
+  const target=ar.reduce((s,r)=>s+r.target,0);
+  const inv=ar.reduce((s,r)=>s+roundInvertido(r.id),0);
+  const weighted=ar.reduce((s,r)=>s+roundWeighted(r.id),0);
+  const presAct=ar.reduce((s,r)=>s+activeInvestorsRound(r.id),0);
+  document.getElementById('cd-kpis').innerHTML=`
+    <div class="kpi"><div class="kpi-v">${money(target)}</div><div class="kpi-l">Objetivo rondas activas</div></div>
+    <div class="kpi"><div class="kpi-v">${money(inv)}</div><div class="kpi-l">Captado (invertido)</div></div>
+    <div class="kpi"><div class="kpi-v">${money(weighted)}</div><div class="kpi-l">Pipeline ponderado</div></div>
+    <div class="kpi"><div class="kpi-v">${presAct}</div><div class="kpi-l">Presentaciones activas</div></div>`;
+  document.getElementById('cd-rounds').innerHTML=c.rounds.map(r=>{
+    const i=roundInvertido(r.id),pct=r.target?Math.round(i/r.target*100):0;
+    const cnt=introsForRound(r.id).length;
+    return `<div class="round-card" onclick="openRound(${r.id})">
+      <div style="display:flex;align-items:center;justify-content:space-between">
+        <div style="font-size:14px;font-weight:600">${r.type}${r.rstage&&r.rstage!=='Unknown'?` <span class="chip" style="color:var(--gold)">${r.rstage}</span>`:''}</div>
+        ${bdg(r.status,r.status==='Cerrada'?['rgba(29,158,117,.18)','var(--green)']:['rgba(91,155,213,.15)','var(--blue)'])}</div>
+      <div class="meta-row" style="margin:0"><span>${cnt} inversor${cnt!==1?'es':''}</span><span>${fmtDate(r.start)} → ${fmtDate(r.close)}</span></div>
+      <div><div class="prog-row"><span>${money(i)} / ${money(r.target)}</span><span>${pct}%</span></div>
+        <div class="prog-bar"><div class="prog-fill" style="width:${Math.min(pct,100)}%"></div></div></div>
+    </div>`;
+  }).join('')||'<div class="empty">Sin rondas. Crea la primera.</div>';
+}
+function deleteCompany(){const c=byId(S.companies,curCompany);if(!confirm('¿Eliminar '+c.name+' y sus rondas?'))return;const rids=c.rounds.map(r=>r.id);S.introductions=S.introductions.filter(i=>!rids.includes(i.roundId));S.companies=S.companies.filter(x=>x.id!==curCompany);nav('companies');}
+
+// ---------- ROUND DETAIL ----------
+function openRound(rid){const {c}=findRound(rid);if(c&&!canSeeCompany(c.id))return;curRound=rid;curRoundTab='matriz';const s=document.getElementById('search-round');if(s)s.value='';renderRoundDetail();showView('view-round');}
+function setRoundTab(t){curRoundTab=t;document.querySelectorAll('#rd-tabs .tab').forEach(x=>x.classList.toggle('active',x.dataset.tab===t));renderRoundContent();}
+function renderRoundDetail(){
+  const {c,r}=findRound(curRound);if(!r)return;
+  document.getElementById('rd-name').textContent=`${c.name} — ${r.type}`;
+  document.getElementById('rd-sub').textContent=`${r.status}${r.rstage&&r.rstage!=='Unknown'?' · '+r.rstage:''} · ${fmtDate(r.start)} → ${fmtDate(r.close)}`;
+  const closed=r.status==='Cerrada';
+  const addBtn=document.getElementById('rd-add-btn');if(addBtn)addBtn.style.display=closed?'none':'';
+  const note=document.getElementById('rd-closed-note');if(note)note.style.display=closed?'inline-flex':'none';
+  const i=roundInvertido(r.id),pct=r.target?Math.round(i/r.target*100):0;
+  const pipeTotal=introsForRound(r.id).filter(x=>x.status!=='Descartado'&&x.status!=='Invertido').reduce((s,x)=>s+(x.ticket||0),0);
+  const invCount=introsForRound(r.id).filter(x=>x.status==='Invertido').length;
+  const descCount=introsForRound(r.id).filter(x=>x.status==='Descartado').length;
+  const descMoney=introsForRound(r.id).filter(x=>x.status==='Descartado').reduce((s,x)=>s+(x.ticket||0),0);
+  const otherCount=introsForRound(r.id).filter(x=>x.status!=='Invertido'&&x.status!=='Descartado').length;
+  const totalCount=introsForRound(r.id).length;
+  const pipeCount=introsForRound(r.id).filter(x=>x.status!=='Descartado'&&x.status!=='Invertido').length;
+  const sub=t=>`<div style="font-size:10px;color:var(--muted);margin-top:4px">${t}</div>`;
+  const sub2=(n,t,col)=>`<div style="margin-top:5px"><span style="font-size:17px;font-weight:700;color:${col}">${n}</span> <span style="font-size:10px;color:var(--muted)">${t}</span></div>`;
+  const rk=document.getElementById('rd-kpis');rk.style.gridTemplateColumns='repeat(5,1fr)';
+  rk.innerHTML=`
+    <div class="kpi"><div class="kpi-l">Objetivo de ronda</div><div class="kpi-v">${money(r.target)}</div>${sub2(totalCount,`inversor${totalCount!==1?'es':''}`,'var(--gold)')}</div>
+    <div class="kpi"><div class="kpi-l">Invertido (${pct}%)</div><div class="kpi-v" style="color:var(--green)">${money(i)}</div>${sub2(invCount,`invertido${invCount!==1?'s':''}`,'var(--green)')}</div>
+    <div class="kpi"><div class="kpi-l">Pipeline ponderado</div><div class="kpi-v">${money(roundWeighted(r.id))}</div>${sub2(otherCount,'en proceso','var(--gold)')}</div>
+    <div class="kpi"><div class="kpi-l">Pipeline no ponderado</div><div class="kpi-v">${money(pipeTotal)}</div>${sub2(pipeCount,`inversor${pipeCount!==1?'es':''}`,'var(--gold)')}</div>
+    <div class="kpi"><div class="kpi-l">Descartado (€)</div><div class="kpi-v" style="color:var(--red)">${money(descMoney)}</div>${sub2(descCount,`descartado${descCount!==1?'s':''}`,'var(--red)')}</div>`;
+  document.querySelectorAll('#rd-tabs .tab').forEach(x=>x.classList.toggle('active',x.dataset.tab===curRoundTab));
+  renderRoundContent();
+}
+function renderRoundContent(){
+  const el=document.getElementById('rd-content');
+  const intros=introsForRound(curRound);
+  const q=(document.getElementById('search-round')?.value||'').toLowerCase().trim();
+  const fintros=q?intros.filter(it=>{const inv=byId(S.investors,it.investorId);return ((inv?inv.name+' '+inv.type+' '+inv.country:'')+' '+it.status+' '+(it.introBy||'')+' '+(it.nextAction||'')).toLowerCase().includes(q);}):intros;
+  if(curRoundTab==='matriz'){
+    if(!fintros.length){el.innerHTML='<div class="empty">'+(intros.length?'Sin resultados para la búsqueda.':'Aún no hay inversores en esta ronda. Añade el primero.')+'</div>';return;}
+    el.innerHTML=`<table class="tbl">
+      <thead><tr><th>Inversor</th><th>Tipo</th><th>Estado</th><th>Ticket</th><th>Quién hizo la intro</th><th>Últ. contacto</th><th>Próximo paso</th><th></th></tr></thead>
+      <tbody>${fintros.map(it=>{const inv=byId(S.investors,it.investorId);const lc=introLastContact(it);const ic=(it.interactions||[]).length;return `<tr style="cursor:pointer" onclick="openModal('intro',{intro:${it.id}})">
+        <td><div style="font-weight:600">${inv?inv.name:'—'}</div><div style="font-size:10px;color:var(--muted)">${inv?inv.country:''}</div></td>
+        <td style="color:var(--muted)">${inv?inv.type:'—'}</td>
+        <td>${bdg(it.status,estadoColor(it.status))}</td>
+        <td style="font-weight:700;color:${it.status==='Invertido'?'var(--green)':'var(--gold)'}">${it.ticket?money(it.ticket):'—'}</td>
+        <td style="color:var(--muted)">${it.introBy||'—'}</td>
+        <td style="white-space:nowrap">${lc?fmtDate(lc):'<span style="color:var(--muted)">—</span>'}${ic?` <span class="chip" style="margin-left:3px">${ic} it.</span>`:''}</td>
+        <td>${it.nextAction?`${it.nextAction}${it.nextDate?` · <span style="color:var(--gold)">${fmtDate(it.nextDate)}</span>`:''}`:'<span style="color:var(--muted)">—</span>'}</td>
+        <td onclick="event.stopPropagation()">${canEdit()?`<button class="btn btn-red btn-sm" onclick="deleteIntro(${it.id})"><i class="ti ti-trash"></i></button>`:''}</td>
+      </tr>`;}).join('')}</tbody></table>`;
+  } else {
+    const cols=S.estados;
+    el.innerHTML=`<div style="font-size:11px;color:var(--muted);margin-bottom:10px"><i class="ti ti-hand-finger" style="vertical-align:-2px"></i> Arrastra las tarjetas entre columnas para cambiar el estado.</div>
+    <div class="pipeline-scroll">${(()=>{
+      const stageHtml=st=>{const list=fintros.filter(i=>i.status===st);const sum=list.reduce((a,d)=>a+(d.ticket||0),0);
+        return `<div class="stage" data-status="${st}" ondragover="dragOver(event)" ondragleave="dragLeave(event)" ondrop="dropStatus(event)">
+        <div class="stage-hd"><div class="stage-name"><span>${st}</span><span class="stage-cnt">${list.length}</span></div><div style="display:flex;justify-content:space-between;align-items:center;margin-top:2px"><div class="stage-amt" style="margin:0">${money(sum)}</div><span style="font-size:9px;color:var(--purple)">Peso ${Math.round((ESTADO_W[st]??0)*100)}%</span></div></div>
+        <div class="stage-body">${list.map(it=>{const inv=byId(S.investors,it.investorId);return `<div class="deal-card" draggable="true" ondragstart="dragStart(event,'intro',${it.id})" ondragend="dragEnd(event)" onclick="openModal('intro',{intro:${it.id}})">
+          <div class="deal-name">${inv?inv.name:'—'}</div>
+          <div class="deal-amt">${it.ticket?money(it.ticket):'—'}</div>
+          <div class="deal-meta"><span class="deal-next">${it.nextDate?fmtDate(it.nextDate):(inv?inv.type:'')}</span></div>
+        </div>`;}).join('')||'<div style="font-size:10px;color:var(--muted);text-align:center;padding:8px 0">—</div>'}</div>
+      </div>`;};
+      const pipeStages=cols.filter(s=>s!=='Invertido'&&s!=='Descartado');
+      const endStages=cols.filter(s=>s==='Invertido'||s==='Descartado');
+      const grpHd=(t,col)=>`<div style="font-size:11px;font-weight:700;color:${col};margin-bottom:7px;text-transform:uppercase;letter-spacing:.05em">${t}</div>`;
+      return `<div style="display:flex;gap:18px;min-width:max-content;align-items:flex-start">
+        <div>${grpHd('Pipeline','var(--gold)')}<div style="display:flex;gap:10px">${pipeStages.map(stageHtml).join('')}</div></div>
+        <div style="width:1px;background:var(--border);align-self:stretch;margin-top:24px"></div>
+        <div>${grpHd('Resultado','var(--muted)')}<div style="display:flex;gap:10px">${endStages.map(stageHtml).join('')}</div></div>
+      </div>`;
+    })()}</div>`;
+  }
+}
+function deleteIntro(id){if(!confirm('¿Eliminar esta presentación?'))return;S.introductions=S.introductions.filter(i=>i.id!==id);renderRoundDetail();}
+
+// ---------- INVESTORS ----------
+function setInvMode(m){invMode=m;document.querySelectorAll('#view-investors .tab[data-imode]').forEach(x=>x.classList.toggle('active',x.dataset.imode===m));const showG=m==='grid';['inv-group','inv-group2','inv-group3'].forEach(id=>{const g=document.getElementById(id);if(g)g.style.display=(showG&&(id==='inv-group'||g.dataset.on==='1'))?'':'none';});renderInvestors();}
+const GROUP_LABELS={type:'Tipo',stage:'Etapa',relation:'Relación',pubStatus:'Estado público',country:'País',aum:'AUM',ticketRange:'Ticket'};
+const GROUP_KEYFN={type:v=>v.type||'—',stage:v=>v.invStage||'Unknown',relation:v=>v.relation||'—',pubStatus:v=>v.pubStatus||'Unknown',country:v=>v.country||'—',aum:v=>v.aum||'Unknown',ticketRange:v=>v.ticketRange||'Unknown'};
+const GROUP_ICON={type:'ti-businessplan',stage:'ti-stairs-up',relation:'ti-heart-handshake',pubStatus:'ti-eye',country:'ti-map-pin',aum:'ti-pig-money',ticketRange:'ti-coin'};
+function invGroupChanged(){const l1=document.getElementById('inv-group').value;const g2=document.getElementById('inv-group2'),g3=document.getElementById('inv-group3');g2.dataset.on=l1?'1':'';g2.style.display=l1?'':'none';if(!l1){g2.value='';g3.value='';g3.dataset.on='';g3.style.display='none';}renderInvestors();}
+function invGroupChanged(){const l1=document.getElementById('inv-group').value;const g2=document.getElementById('inv-group2'),g3=document.getElementById('inv-group3');g2.dataset.on=l1?'1':'';g2.style.display=l1?'':'none';if(!l1){g2.value='';g3.value='';g3.dataset.on='';g3.style.display='none';}else{invGroup2Changed();return;}renderInvestors();}
+function invGroup2Changed(){const l2=document.getElementById('inv-group2').value;const g3=document.getElementById('inv-group3');g3.dataset.on=l2?'1':'';g3.style.display=l2?'':'none';if(!l2)g3.value='';renderInvestors();}
+let invGroupPrev='',invLastKeys=[],invExpanded=new Set();
+function toggleInvGroup(k){if(invExpanded.has(k))invExpanded.delete(k);else invExpanded.add(k);renderInvestors();}
+function invExpandAll(){const levels=[document.getElementById('inv-group'),document.getElementById('inv-group2'),document.getElementById('inv-group3')].map(s=>s?s.value:'').filter(Boolean);const invs=visibleInvestors();function walk(arr,depth,path){const kf=GROUP_KEYFN[levels[depth]];const gr={};arr.forEach(v=>{const k=kf(v);(gr[k]=gr[k]||[]).push(v);});Object.keys(gr).forEach(k=>{const pk=path+'¦'+k;invExpanded.add(pk);if(depth<levels.length-1)walk(gr[k],depth+1,pk);});}if(levels.length)walk(invs,0,'');renderInvestors();}
+function invCollapseAll(){invExpanded.clear();renderInvestors();}
+function invCard(v){
+  const act=introsForInvestor(v.id).filter(i=>i.status!=='Descartado'&&i.status!=='No contactado').length;
+  return `<div class="co-card" onclick="openInvestor(${v.id})" oncontextmenu="investorMenu(event,${v.id})">
+    <div class="co-hd"><div class="avatar avatar-round">${v.initials}</div>
+      <div><div class="co-name">${v.name}</div><div class="co-ind">${v.type} · ${v.country}</div></div>
+      <div style="margin-left:auto">${bdg(v.relation,relationColor(v.relation))}</div></div>
+    <div class="meta-row" style="margin-bottom:8px"><span>Ticket <b>${(v.ticketRange&&v.ticketRange!=='Unknown')?v.ticketRange:'—'}</b></span><span>${act} ronda${act!==1?'s':''} activa${act!==1?'s':''}</span></div>
+    <div style="display:flex;flex-wrap:wrap;gap:5px">${v.sectors.split(',').map(s=>`<span class="chip">${s.trim()}</span>`).join('')}</div>
+    ${v.areas&&v.areas.length?`<div style="display:flex;flex-wrap:wrap;gap:5px;margin-top:6px;align-items:center"><i class="ti ti-world" style="color:var(--muted);font-size:13px"></i>${v.areas.map(a=>`<span class="chip" style="color:var(--blue)">${a}</span>`).join('')}</div>`:''}
+  </div>`;
+}
+function renderInvestors(){
+  const el=document.getElementById('inv-view-inner');if(!el)return;
+  const q=(document.getElementById('search-investors')?.value||'').toLowerCase().trim();
+  const match=v=>!q||(v.name+' '+v.type+' '+v.country+' '+v.sectors+' '+(v.areas||[]).join(' ')+' '+(v.invStage||'')+' '+(v.ticketRange||'')+' '+(v.aum||'')+' '+(v.pubStatus||'')+' '+v.relation+' '+(v.contacts||[]).map(c=>c.name+' '+(c.email||'')+' '+(c.role||'')).join(' ')).toLowerCase().includes(q);
+  const invs=visibleInvestors().filter(match);
+  if(invMode==='contacts'){
+    const list=[];
+    visibleInvestors().forEach(v=>(v.contacts||[]).forEach(c=>{const blob=((c.name||'')+' '+(c.role||'')+' '+(c.email||'')+' '+(c.phone||'')+' '+v.name).toLowerCase();if(!q||blob.includes(q))list.push({c,v});}));
+    list.sort((a,b)=>(a.c.name||'').localeCompare(b.c.name||'','es'));
+    el.innerHTML=`<table class="tbl"><thead><tr><th>Contacto</th><th>Cargo</th><th>Email</th><th>Teléfono</th><th>Inversor</th></tr></thead><tbody>${list.map(({c,v})=>`<tr style="cursor:pointer" onclick="openInvestor(${v.id})"><td><div style="display:flex;align-items:center;gap:9px"><div class="avatar avatar-round" style="width:28px;height:28px;font-size:10px">${inits(c.name||'?')}</div><span style="font-weight:600">${c.name||'—'}</span></div></td><td style="color:var(--muted)">${c.role||'—'}</td><td style="color:var(--purple)">${c.email||'—'}</td><td style="color:var(--muted)">${c.phone||'—'}</td><td><span style="display:inline-flex;align-items:center;gap:6px"><i class="ti ti-businessplan" style="color:var(--gold)"></i> ${v.name}</span></td></tr>`).join('')||'<tr><td colspan="5"><div class="empty">Sin contactos que coincidan.</div></td></tr>'}</tbody></table>`;
+    return;
+  }
+  if(invMode==='grid'){
+    const hint=canEdit()?'<div style="font-size:11px;color:var(--muted);margin-bottom:10px"><i class="ti ti-pointer" style="vertical-align:-2px"></i> Haz <b style="color:var(--text)">clic derecho</b> sobre un inversor para asignarlo a una ronda abierta.</div>':'';
+    const levels=[document.getElementById('inv-group'),document.getElementById('inv-group2'),document.getElementById('inv-group3')].map(s=>s?s.value:'').filter(Boolean);
+    if(!levels.length){el.innerHTML=`${hint}<div class="grid2">${invs.map(invCard).join('')||'<div class="empty" style="grid-column:1/-1">Sin inversores que coincidan.</div>'}</div>`;return;}
+    const sig=levels.join('>');if(sig!==invGroupPrev){invExpanded.clear();invGroupPrev=sig;}
+    if(!invs.length){el.innerHTML=`${hint}<div class="empty">Sin inversores que coincidan.</div>`;return;}
+    invLastKeys=[];
+    const esc=s=>String(s).replace(/"/g,'&quot;');
+    function build(arr,depth,path){
+      const field=levels[depth];const keyFn=GROUP_KEYFN[field];const icon=GROUP_ICON[field];
+      const groups={};arr.forEach(v=>{const k=keyFn(v);(groups[k]=groups[k]||[]).push(v);});
+      const order=Object.keys(groups).sort((a,b)=>a.localeCompare(b,'es'));
+      const last=depth===levels.length-1;
+      return order.map(k=>{
+        const pathKey=path+'¦'+k;invLastKeys.push(pathKey);
+        const sub=groups[k];const exp=invExpanded.has(pathKey);
+        const indent=depth*14;
+        const inner=exp?(last?`<div style="padding:11px"><div class="grid2">${sub.map(invCard).join('')}</div></div>`:`<div style="padding:8px 8px 8px ${10+indent}px">${build(sub,depth+1,pathKey)}</div>`):'';
+        return `<div style="margin-bottom:7px;border:1px solid var(--border);border-radius:9px;overflow:hidden">
+          <div data-gkey="${esc(pathKey)}" onclick="toggleInvGroup(this.dataset.gkey)" style="display:flex;align-items:center;gap:9px;padding:10px 13px;cursor:pointer;background:var(--s1)">
+            <i class="ti ti-chevron-${exp?'down':'right'}" style="color:var(--muted)"></i>
+            <i class="ti ${icon}" style="color:var(--gold)"></i>
+            <span style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em">${GROUP_LABELS[field]}</span>
+            <div style="flex:1;font-size:13px;font-weight:700">${k}</div>
+            <span class="chip">${sub.length}</span>
+          </div>${inner}
+        </div>`;
+      }).join('');
+    }
+    const topGroups=Object.keys(invs.reduce((a,v)=>{a[GROUP_KEYFN[levels[0]](v)]=1;return a;},{})).length;
+    el.innerHTML=hint+`<div style="display:flex;gap:16px;margin-bottom:12px;font-size:11px;align-items:center">
+        <span style="color:var(--gold);cursor:pointer" onclick="invExpandAll()"><i class="ti ti-chevrons-down" style="vertical-align:-2px"></i> Expandir todo</span>
+        <span style="color:var(--muted);cursor:pointer" onclick="invCollapseAll()"><i class="ti ti-chevrons-up" style="vertical-align:-2px"></i> Contraer todo</span>
+        <span style="color:var(--muted)">Agrupado por: <b style="color:var(--text)">${levels.map(l=>GROUP_LABELS[l]).join(' → ')}</b></span>
+        <span style="color:var(--muted);margin-left:auto">${topGroups} grupo${topGroups!==1?'s':''} · ${invs.length} inversor${invs.length!==1?'es':''}</span>
+      </div>`+build(invs,0,'');
+  } else {
+    el.innerHTML=`<div style="font-size:11px;color:var(--muted);margin-bottom:10px"><i class="ti ti-hand-finger" style="vertical-align:-2px"></i> Arrastra los inversores para cambiar su nivel de relación.</div>
+    <div class="pipeline-scroll"><div class="pipeline">${S.relationStages.map(st=>{
+      const list=invs.filter(v=>v.relation===st);
+      return `<div class="stage" style="width:190px" data-relation="${st}" ondragover="dragOver(event)" ondragleave="dragLeave(event)" ondrop="dropRelation(event)">
+        <div class="stage-hd"><div class="stage-name"><span>${st}</span><span class="stage-cnt">${list.length}</span></div></div>
+        <div class="stage-body">${list.map(v=>`<div class="deal-card" draggable="true" ondragstart="dragStart(event,'investor',${v.id})" ondragend="dragEnd(event)" onclick="openInvestor(${v.id})" oncontextmenu="investorMenu(event,${v.id})">
+          <div class="deal-name">${v.name}</div>
+          <div class="deal-meta"><span class="deal-next">${v.type}</span><span class="deal-next" style="color:var(--gold)">${(v.ticketRange&&v.ticketRange!=='Unknown')?v.ticketRange:''}</span></div>
+        </div>`).join('')||'<div style="font-size:10px;color:var(--muted);text-align:center;padding:8px 0">—</div>'}</div>
+      </div>`;}).join('')}</div></div>`;
+  }
+}
+function openInvestor(id){if(isCEO()&&!visibleInvestors().some(v=>v.id===id))return;curInvestor=id;renderInvestorDetail();showView('view-investor');}
+
+// ----- menú contextual: asignar inversor a ronda abierta -----
+function investorMenu(e,vid){
+  e.preventDefault();
+  if(!canEdit())return;
+  const existing=new Set(S.introductions.filter(i=>i.investorId===vid).map(i=>i.roundId));
+  const v=byId(S.investors,vid);
+  const groups=visibleCompanies().map(c=>({c,rounds:c.rounds.filter(r=>r.status!=='Cerrada')})).filter(g=>g.rounds.length);
+  const menu=document.getElementById('ctx-menu');
+  menu.innerHTML=`<div class="ctx-head">Asignar «${v.name}» a una ronda</div>`+(groups.length?groups.map(({c,rounds})=>`
+    <div class="ctx-group">
+      <div class="ctx-company"><i class="ti ti-building-skyscraper"></i> ${c.name}</div>
+      ${rounds.map(r=>{const dup=existing.has(r.id);return `<div class="ctx-item ctx-sub${dup?' dis':''}" ${dup?'':`onclick="assignToRound(${vid},${r.id})"`}>
+        <div class="ctx-rd">${r.type} · ${r.status}${dup?' · ya asignado':''}</div>
+        ${dup?'<i class="ti ti-check" style="color:var(--green)"></i>':'<i class="ti ti-arrow-right" style="color:var(--gold)"></i>'}</div>`;}).join('')}
+    </div>`).join(''):'<div class="ctx-empty">No hay rondas abiertas disponibles.</div>');
+  menu.style.display='block';
+  const mw=menu.offsetWidth,mh=menu.offsetHeight;
+  let x=e.clientX,y=e.clientY;
+  if(x+mw>window.innerWidth-8)x=window.innerWidth-mw-8;
+  if(y+mh>window.innerHeight-8)y=window.innerHeight-mh-8;
+  menu.style.left=Math.max(8,x)+'px';menu.style.top=Math.max(8,y)+'px';
+}
+function assignToRound(vid,rid){
+  const {c,r}=findRound(rid);
+  const nid=Math.max(0,...S.introductions.map(i=>i.id))+1;
+  S.introductions.push({id:nid,companyId:c.id,roundId:rid,investorId:vid,status:S.estados[0],ticket:0,date:'',introBy:CU?CU.name:'',nextAction:'Preparar intro',nextDate:'',notes:'',interactions:[]});
+  hideCtx();
+  renderInvestors();
+  toast(`${byId(S.investors,vid).name} → ${c.name} · ${r.type}`);
+}
+function hideCtx(){const m=document.getElementById('ctx-menu');if(m)m.style.display='none';}
+let toastT=null;
+function toast(msg){const t=document.getElementById('toast');t.innerHTML='<i class="ti ti-circle-check"></i> '+msg;t.classList.add('show');clearTimeout(toastT);toastT=setTimeout(()=>t.classList.remove('show'),2800);}
+document.addEventListener('click',hideCtx);
+document.addEventListener('scroll',hideCtx,true);
+function renderInvestorDetail(){
+  const v=byId(S.investors,curInvestor);if(!v)return;
+  document.getElementById('id-name').textContent=v.name;
+  const intros=introsForInvestor(v.id);
+  const logs=(v.log||[]).filter(e=>{if(isAdmin())return true;const {c}=findRound(e.roundId);if(c)return canSeeCompany(c.id);return !isCEO();});
+  const chrono=[
+    ...logs.map(e=>{const {c,r}=findRound(e.roundId);return {date:e.date,type:e.type,summary:e.summary,c,r,src:'log',id:e.id};}),
+    ...intros.flatMap(it=>{const {c,r}=findRound(it.roundId);return (it.interactions||[]).map(x=>({date:x.date,type:x.type||'Nota',summary:x.note,c,r,src:'intro'}));})
+  ].sort((a,b)=>(b.date||'').localeCompare(a.date||''));
+  const lastC=chrono.map(x=>x.date).filter(Boolean).sort().slice(-1)[0];
+  document.getElementById('id-content').innerHTML=`
+    <div class="detail-hd">
+      <div class="detail-avatar avatar-round" style="border-radius:50%">${v.initials}</div>
+      <div style="flex:1">
+        <div style="font-size:17px;font-weight:700">${v.name} ${bdg(v.relation,relationColor(v.relation))}</div>
+        <div class="meta-row" style="margin-top:8px"><span>Tipo <b>${v.type}</b></span><span>Etapa <b>${v.invStage||'Unknown'}</b></span><span>Ticket <b>${v.ticketRange||'Unknown'}</b></span><span>AUM <b>${v.aum||'Unknown'}</b></span><span>Estado <b>${v.pubStatus||'Unknown'}</b></span><span>País <b>${v.country}</b></span><span>Último contacto <b style="color:var(--gold)">${lastC?fmtDate(lastC,true):'—'}</b></span></div>
+        <div style="display:flex;flex-wrap:wrap;gap:5px;margin-top:8px">${v.sectors.split(',').map(s=>`<span class="chip">${s.trim()}</span>`).join('')}</div>
+        ${v.areas&&v.areas.length?`<div style="display:flex;flex-wrap:wrap;gap:5px;margin-top:8px;align-items:center"><i class="ti ti-world" style="color:var(--muted);font-size:14px"></i><span style="font-size:11px;color:var(--muted)">Área:</span>${v.areas.map(a=>`<span class="chip" style="border-color:rgba(91,155,213,.4);color:var(--blue)">${a}</span>`).join('')}</div>`:''}
+      </div>
+    </div>
+    <div class="grid2" style="align-items:start">
+      <div class="report-card">
+        <div class="report-title"><i class="ti ti-users" style="color:var(--gold);margin-right:6px"></i>Contactos</div>
+        ${(v.contacts||[]).map(c=>`<div class="contact-row"><i class="ti ti-user"></i><div><div style="font-weight:600">${c.name} <span style="color:var(--muted);font-weight:400">· ${c.role}</span></div><div style="font-size:11px;color:var(--purple)">${c.email} · ${c.phone}</div></div></div>`).join('')||'<div class="empty">Sin contactos.</div>'}
+        ${v.notes?`<div style="margin-top:12px;font-size:12px;color:var(--muted);line-height:1.5"><b style="color:var(--text)">Relación histórica:</b> ${v.notes}</div>`:''}
+      </div>
+      <div class="report-card">
+        <div class="report-title"><i class="ti ti-arrows-transfer-up" style="color:var(--gold);margin-right:6px"></i>Presentaciones (${intros.length})</div>
+        ${intros.length?`<table class="tbl"><tbody>${intros.map(it=>{const {c,r}=findRound(it.roundId);return `<tr style="cursor:pointer" onclick="openModal('intro',{intro:${it.id}})">
+          <td style="padding:8px 6px"><div style="font-weight:600;font-size:12px">${c?c.name:'—'}</div><div style="font-size:10px;color:var(--muted)">${r?r.type:''}${it.notes?' · '+it.notes:''}</div></td>
+          <td style="padding:8px 6px">${bdg(it.status,estadoColor(it.status))}</td>
+          <td style="padding:8px 6px;text-align:right;font-weight:700;color:var(--gold)">${it.ticket?money(it.ticket):'—'}</td>
+        </tr>`;}).join('')}</tbody></table>`:'<div class="empty">Sin presentaciones.</div>'}
+      </div>
+    </div>
+    <div class="report-card" style="margin-top:13px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;gap:10px;flex-wrap:wrap">
+        <div class="report-title" style="margin:0"><i class="ti ti-timeline-event" style="color:var(--gold);margin-right:6px"></i>Cronología de contactos</div>
+        <div style="display:flex;gap:6px">
+          ${canEdit()?`<button class="btn btn-sm" onclick="openModal('logcontact',{investorId:${v.id},type:'Email'})"><i class="ti ti-mail"></i> Guardar email</button>
+          <button class="btn btn-sm" onclick="openModal('logcontact',{investorId:${v.id},type:'Llamada'})"><i class="ti ti-phone"></i> Llamada</button>
+          <button class="btn btn-sm" onclick="openModal('logcontact',{investorId:${v.id},type:'Reunión'})"><i class="ti ti-users"></i> Reunión</button>`:''}
+        </div>
+      </div>
+      ${chrono.length?chrono.map(x=>{const m=contactMeta(x.type);return `<div style="display:flex;gap:12px;padding:10px 0;border-bottom:1px solid rgba(42,42,42,.5)">
+        <div style="width:26px;flex-shrink:0;text-align:center;padding-top:1px"><i class="ti ${m[0]}" style="color:${m[1]};font-size:16px"></i></div>
+        <div style="flex:1;min-width:0"><div style="display:flex;justify-content:space-between;gap:8px;align-items:center"><div style="font-size:11px;color:var(--gold);white-space:nowrap">${fmtDate(x.date,true)} · ${x.type}</div>${x.r?`<span class="chip">${x.c?x.c.name:''} · ${x.r.type}</span>`:''}</div>
+        <div style="font-size:12px;line-height:1.5;margin-top:3px;white-space:pre-line">${x.summary||''}</div></div>
+        ${x.src==='log'&&canEdit()?`<button class="btn btn-red btn-sm" style="flex-shrink:0" onclick="delContactLog(${v.id},'${x.id}')"><i class="ti ti-x"></i></button>`:''}
+      </div>`;}).join(''):'<div class="empty">Sin contactos registrados todavía.</div>'}
+    </div>`;
+}
+function deleteInvestor(){const v=byId(S.investors,curInvestor);if(!confirm('¿Quitar '+v.name+'?'))return;S.introductions=S.introductions.filter(i=>i.investorId!==curInvestor);S.investors=S.investors.filter(x=>x.id!==curInvestor);nav('investors');}
+
+// ---------- PRESENTACIONES GLOBAL ----------
+let presGroup='',presGroupPrev='',presLastKeys=[],presExpanded=new Set();
+function toggleGroup(k){if(presExpanded.has(k))presExpanded.delete(k);else presExpanded.add(k);renderPresentaciones();}
+function presExpandAll(){presLastKeys.forEach(k=>presExpanded.add(k));renderPresentaciones();}
+function presCollapseAll(){presExpanded.clear();renderPresentaciones();}
+function renderPresentaciones(){
+  const sel=document.getElementById('pres-filter');
+  if(sel&&sel.options.length===0){sel.innerHTML='<option value="">Todos los estados</option>'+S.estados.map(s=>`<option>${s}</option>`).join('');}
+  presFilter=sel?sel.value:'';
+  presGroup=document.getElementById('pres-group')?document.getElementById('pres-group').value:'';
+  let rows=visibleIntros();
+  if(presFilter)rows=rows.filter(i=>i.status===presFilter);
+  const q=(document.getElementById('pres-search')?.value||'').toLowerCase().trim();
+  if(q)rows=rows.filter(it=>{const {c,r}=findRound(it.roundId);const inv=byId(S.investors,it.investorId);return ((c?c.name:'')+' '+(r?r.type:'')+' '+(inv?inv.name:'')+' '+it.status+' '+(it.introBy||'')+' '+(it.nextAction||'')).toLowerCase().includes(q);});
+  const el=document.getElementById('pres-table');
+  if(!rows.length){el.innerHTML='<div class="empty">Sin presentaciones para este filtro.</div>';return;}
+  const head=`<thead><tr><th>Participada</th><th>Ronda</th><th>Inversor</th><th>Estado</th><th>Ticket</th><th>Últ. contacto</th><th>Próximo paso</th><th></th></tr></thead>`;
+  const row=it=>{const {c,r}=findRound(it.roundId);const inv=byId(S.investors,it.investorId);const lc=introLastContact(it);return `<tr style="cursor:pointer" onclick="openModal('intro',{intro:${it.id}})">
+    <td style="font-weight:600">${c?c.name:'—'}</td>
+    <td style="color:var(--muted)">${r?r.type:'—'}</td>
+    <td>${inv?inv.name:'—'}</td>
+    <td>${bdg(it.status,estadoColor(it.status))}</td>
+    <td style="font-weight:700;color:${it.status==='Invertido'?'var(--green)':'var(--gold)'}">${it.ticket?money(it.ticket):'—'}</td>
+    <td style="white-space:nowrap;color:var(--muted)">${lc?fmtDate(lc):'—'}</td>
+    <td>${it.nextAction?`${it.nextAction}${it.nextDate?` · <span style="color:var(--gold)">${fmtDate(it.nextDate)}</span>`:''}`:'<span style="color:var(--muted)">—</span>'}</td>
+    <td onclick="event.stopPropagation()">${canEdit()?`<button class="btn btn-red btn-sm" onclick="deleteIntroGlobal(${it.id})"><i class="ti ti-trash"></i></button>`:''}</td>
+  </tr>`;};
+  if(!presGroup){
+    rows.sort((a,b)=>(ESTADO_W[b.status]??0)-(ESTADO_W[a.status]??0));
+    el.innerHTML=`<table class="tbl">${head}<tbody>${rows.map(row).join('')}</tbody></table>`;
+    return;
+  }
+  const keyFn={
+    participada:it=>{const {c}=findRound(it.roundId);return c?c.name:'—';},
+    estado:it=>it.status,
+    inversor:it=>{const inv=byId(S.investors,it.investorId);return inv?inv.name:'—';},
+    ronda:it=>{const {c,r}=findRound(it.roundId);return (c?c.name:'')+' · '+(r?r.type:'');},
+  }[presGroup];
+  const gicon={participada:'ti-building-skyscraper',estado:'ti-arrows-transfer-up',inversor:'ti-businessplan',ronda:'ti-coins'}[presGroup];
+  if(presGroup!==presGroupPrev){presExpanded.clear();presGroupPrev=presGroup;}
+  const groups={};
+  rows.forEach(it=>{const k=keyFn(it);(groups[k]=groups[k]||[]).push(it);});
+  let order=Object.keys(groups);
+  if(presGroup==='estado')order=S.estados.filter(s=>groups[s]);
+  else order.sort((a,b)=>a.localeCompare(b,'es'));
+  presLastKeys=order.slice();
+  const esc=s=>String(s).replace(/"/g,'&quot;');
+  el.innerHTML=`<div style="display:flex;gap:16px;margin-bottom:12px;font-size:11px">
+      <span style="color:var(--gold);cursor:pointer" onclick="presExpandAll()"><i class="ti ti-chevrons-down" style="vertical-align:-2px"></i> Expandir todo</span>
+      <span style="color:var(--muted);cursor:pointer" onclick="presCollapseAll()"><i class="ti ti-chevrons-up" style="vertical-align:-2px"></i> Contraer todo</span>
+      <span style="color:var(--muted);margin-left:auto">${order.length} grupo${order.length!==1?'s':''} · ${rows.length} presentación${rows.length!==1?'es':''}</span>
+    </div>`+order.map(k=>{
+    const list=groups[k];
+    const total=list.reduce((s,i)=>s+(i.ticket||0),0);
+    list.sort((a,b)=>(ESTADO_W[b.status]??0)-(ESTADO_W[a.status]??0));
+    const exp=presExpanded.has(k);
+    const label=presGroup==='estado'?bdg(k,estadoColor(k)):`<i class="ti ${gicon}" style="color:var(--gold)"></i> <span style="font-weight:700">${k}</span>`;
+    return `<div style="margin-bottom:9px;border:1px solid var(--border);border-radius:9px;overflow:hidden">
+      <div data-gkey="${esc(k)}" onclick="toggleGroup(this.dataset.gkey)" style="display:flex;align-items:center;gap:10px;padding:11px 13px;cursor:pointer;background:var(--s1)">
+        <i class="ti ti-chevron-${exp?'down':'right'}" style="color:var(--muted)"></i>
+        <div style="flex:1;font-size:13px">${label}</div>
+        <span class="chip">${list.length}</span>
+        ${total?`<span style="font-size:11px;color:var(--gold);font-weight:600;white-space:nowrap">${money(total)} en juego</span>`:''}
+      </div>
+      ${exp?`<table class="tbl">${head}<tbody>${list.map(row).join('')}</tbody></table>`:''}
+    </div>`;
+  }).join('');
+}
+function deleteIntroGlobal(id){if(!confirm('¿Eliminar esta presentación?'))return;S.introductions=S.introductions.filter(i=>i.id!==id);renderPresentaciones();}
+
+// ---------- INBOX ----------
+let inboxSel=null;
+function renderInbox(){
+  const e=document.getElementById('inbox-email-display');if(e)e.textContent=S.notifEmail?'→ '+S.notifEmail:'Bandeja de recepción de correos';
+  document.getElementById('inbox-list').innerHTML=S.inbox.map(m=>`
+    <div class="inbox-item ${m.unread?'unread':''}" style="${inboxSel===m.id?'background:var(--s2)':''}" onclick="openInboxMsg(${m.id})">
+      <div class="avatar avatar-round" style="width:36px;height:36px;font-size:11px;flex-shrink:0">${inits(m.from)}</div>
+      <div class="inbox-body"><div style="display:flex;justify-content:space-between;align-items:center"><div class="inbox-from">${m.from}</div><div class="inbox-time">${m.time}</div></div>
+        <div class="inbox-sub">${m.sub}</div></div>
+      ${m.saved?'<i class="ti ti-check" style="color:var(--green)"></i>':(m.unread?'<div class="unread-dot"></div>':'')}
+    </div>`).join('')||'<div class="empty">Bandeja vacía.</div>';
+  renderInboxDetail();
+}
+function openInboxMsg(id){const m=byId(S.inbox,id);if(m)m.unread=false;inboxSel=id;updateInboxBadge();renderInbox();}
+function renderInboxDetail(){
+  const el=document.getElementById('inbox-detail');if(!el)return;
+  const m=byId(S.inbox,inboxSel);
+  if(!m){el.innerHTML='<div class="empty" style="margin-top:60px"><i class="ti ti-mail-opened" style="font-size:30px;display:block;margin-bottom:10px;opacity:.5"></i>Selecciona un correo para revisarlo, resumirlo y asignarlo a un inversor y ronda.</div>';return;}
+  const sug=summarizeEmail(m.sub,m.body);
+  const openRounds=visibleCompanies().flatMap(c=>activeRounds(c).map(r=>({c,r})));
+  el.innerHTML=`
+    <div style="display:flex;align-items:center;gap:11px;margin-bottom:8px"><div class="avatar avatar-round" style="width:40px;height:40px;font-size:12px">${inits(m.from)}</div>
+      <div><div style="font-weight:700;font-size:15px">${m.from}</div><div style="font-size:11px;color:var(--purple)">${m.fromEmail||''} · ${fmtDate(m.date,true)}</div></div>
+      ${m.saved?'<span class="bdg" style="background:rgba(45,180,140,.16);color:var(--green);margin-left:auto"><i class="ti ti-check"></i> Guardado</span>':''}</div>
+    <div style="font-size:15px;font-weight:600;margin-bottom:10px">${m.sub}</div>
+    <div style="font-size:13px;line-height:1.6;color:var(--text);background:var(--s1);border:1px solid var(--border);border-radius:9px;padding:14px;margin-bottom:16px;white-space:pre-line">${m.body||''}</div>
+    <div class="report-card" style="margin:0">
+      <div class="report-title"><i class="ti ti-sparkles" style="color:var(--gold);margin-right:6px"></i>Guardar en iteraciones</div>
+      <div class="f2"><div class="fg"><label class="fl">Inversor</label><select class="fi" id="ib-investor">${S.investors.map(v=>`<option value="${v.id}">${v.name}</option>`).join('')}</select></div>
+        <div class="fg"><label class="fl">Ronda</label><select class="fi" id="ib-round"><option value="">— Sin vincular —</option>${openRounds.map(({c,r})=>`<option value="${r.id}">${c.name} · ${r.type}</option>`).join('')}</select></div></div>
+      <div class="fg"><label class="fl">Resumen (máx. 3 líneas)</label><textarea class="fi" id="ib-summary" style="min-height:74px">${sug.replace(/</g,'&lt;')}</textarea></div>
+      <div style="display:flex;gap:8px"><button class="btn btn-sm" onclick="document.getElementById('ib-summary').value=summarizeEmail(${JSON.stringify(m.sub)},${JSON.stringify(m.body||'')})"><i class="ti ti-refresh"></i> Regenerar resumen</button>
+        <button class="btn btn-gold btn-sm" style="margin-left:auto" onclick="saveInboxEmail(${m.id})"><i class="ti ti-check"></i> OK, guardar</button></div>
+    </div>`;
+  // preseleccionar inversor por dominio del remitente
+  const dom=(m.fromEmail||'').split('@')[1]||'';
+  if(dom){const match=S.investors.find(v=>(v.contacts||[]).some(c=>(c.email||'').includes(dom)));if(match)document.getElementById('ib-investor').value=match.id;}
+}
+function saveInboxEmail(id){
+  const m=byId(S.inbox,id);if(!m)return;
+  const summary=document.getElementById('ib-summary').value.trim();
+  if(!summary){alert('El resumen no puede estar vacío.');return;}
+  const vid=parseInt(document.getElementById('ib-investor').value);
+  const rid=parseInt(document.getElementById('ib-round').value)||null;
+  const v=byId(S.investors,vid);
+  if(rid){let it=S.introductions.find(i=>i.investorId===vid&&i.roundId===rid);
+    if(!it){const {c}=findRound(rid);it={id:Math.max(0,...S.introductions.map(x=>x.id))+1,companyId:c?c.id:null,roundId:rid,investorId:vid,status:'Intro realizada',ticket:0,date:m.date,introBy:'Email',nextAction:'',nextDate:'',notes:'',interactions:[]};S.introductions.push(it);}
+    if(!it.interactions)it.interactions=[];it.interactions.push({date:m.date,note:summary,type:'Email'});}
+  else{if(!v.log)v.log=[];v.log.unshift({id:'l'+Date.now(),date:m.date,type:'Email',summary});}
+  m.saved=true;
+  alert('Guardado en las iteraciones de '+v.name+(rid?' para la ronda seleccionada.':'.'));
+  renderInbox();renderHome();
+}
+function markRead(id){const m=byId(S.inbox,id);if(m)m.unread=false;updateInboxBadge();renderInbox();}
+function receiveEmail(){
+  const from=val('rx-from').trim()||'Remitente externo';
+  const sub=val('rx-sub').trim()||'(sin asunto)';
+  const body=val('rx-body').trim();
+  const today=new Date().toISOString().slice(0,10);
+  const nid=Math.max(0,...S.inbox.map(m=>m.id))+1;
+  S.inbox.unshift({id:nid,from,fromEmail:val('rx-email').trim(),sub,time:'Ahora',date:today,unread:true,body,saved:false});
+  closeModal();updateInboxBadge();openInboxMsg(nid);
+}
+function updateInboxBadge(){const c=S.inbox.filter(i=>i.unread).length;const el=document.getElementById('inbox-badge');el.textContent=c;el.style.display=c>0?'':'none';}
+function updateEmailDisplay(){const e=document.getElementById('sb-email-disp');if(e)e.textContent=S.notifEmail||'sin correo';}
+
+// ---------- REPORTS ----------
+let repCommRound=null;
+function renderAggKpis(){
+  const vco=visibleCompanies();const vin=visibleIntros();
+  const openIds=new Set(vco.flatMap(c=>activeRounds(c).map(r=>r.id)));
+  const vinOpen=vin.filter(i=>openIds.has(i.roundId));
+  const invTotal=vco.reduce((s,c)=>s+activeRounds(c).reduce((a,r)=>a+roundInvertido(r.id),0),0);
+  const weightedTotal=vco.reduce((s,c)=>s+activeRounds(c).reduce((a,r)=>a+roundWeighted(r.id),0),0);
+  const presAct=vin.filter(i=>i.status!=='Descartado'&&i.status!=='No contactado').length;
+  const targetTotal=vco.reduce((s,c)=>s+activeRounds(c).reduce((a,r)=>a+(r.target||0),0),0);
+  const pipeNoPond=vinOpen.filter(i=>i.status!=='Descartado'&&i.status!=='Invertido').reduce((s,i)=>s+(i.ticket||0),0);
+  const descMoney=vinOpen.filter(i=>i.status==='Descartado').reduce((s,i)=>s+(i.ticket||0),0);
+  const cTotal=vinOpen.length;
+  const cInv=vinOpen.filter(i=>i.status==='Invertido').length;
+  const cProc=vinOpen.filter(i=>i.status!=='Invertido'&&i.status!=='Descartado').length;
+  const cPipe=vinOpen.filter(i=>i.status!=='Descartado'&&i.status!=='Invertido').length;
+  const cDesc=vinOpen.filter(i=>i.status==='Descartado').length;
+  const rsub=(n,t,col)=>`<div style="margin-top:5px"><div style="font-size:10px;color:var(--muted);text-transform:capitalize">${t}</div><div style="font-size:17px;font-weight:700;color:${col}">${n}</div></div>`;
+  const rk=document.getElementById('rep-kpis');
+  if(rk){rk.style.gridTemplateColumns='repeat(8,1fr)';
+  rk.innerHTML=`
+    <div class="kpi"><div class="kpi-l">Objetivo agregado</div><div class="kpi-v">${money(targetTotal)}</div>${rsub(cTotal,`inversor${cTotal!==1?'es':''}`,'var(--gold)')}</div>
+    <div class="kpi"><div class="kpi-l">Invertido</div><div class="kpi-v" style="color:var(--green)">${money(invTotal)}</div>${rsub(cInv,`invertido${cInv!==1?'s':''}`,'var(--green)')}</div>
+    <div class="kpi"><div class="kpi-l">Pipeline ponderado</div><div class="kpi-v">${money(weightedTotal)}</div>${rsub(cProc,'en proceso','var(--gold)')}</div>
+    <div class="kpi"><div class="kpi-l">Pipeline no ponderado</div><div class="kpi-v" style="color:rgba(91,155,213,.95)">${money(pipeNoPond)}</div>${rsub(cPipe,`inversor${cPipe!==1?'es':''}`,'rgba(91,155,213,.95)')}</div>
+    <div class="kpi"><div class="kpi-l">Descartado</div><div class="kpi-v" style="color:var(--red)">${money(descMoney)}</div>${rsub(cDesc,`descartado${cDesc!==1?'s':''}`,'var(--red)')}</div>
+    <div class="kpi"><div class="kpi-l">Participadas en ronda</div><div class="kpi-v">${vco.filter(c=>activeRounds(c).length>0).length}/${vco.length}</div></div>
+    <div class="kpi"><div class="kpi-l">Rondas abiertas</div><div class="kpi-v">${vco.reduce((s,c)=>s+activeRounds(c).length,0)}</div></div>
+    <div class="kpi"><div class="kpi-l">Presentaciones activas</div><div class="kpi-v">${presAct}</div></div>`;}
+  const closedRounds=vco.flatMap(c=>c.rounds.filter(r=>r.status==='Cerrada').map(r=>({c,r})));
+  const closedIds=new Set(closedRounds.map(x=>x.r.id));
+  const vinC=vin.filter(i=>closedIds.has(i.roundId));
+  const cl_target=closedRounds.reduce((s,x)=>s+(x.r.target||0),0);
+  const cl_inv=closedRounds.reduce((s,x)=>s+roundInvertido(x.r.id),0);
+  const cl_w=closedRounds.reduce((s,x)=>s+roundWeighted(x.r.id),0);
+  const cl_pipe=vinC.filter(i=>i.status!=='Descartado'&&i.status!=='Invertido').reduce((s,i)=>s+(i.ticket||0),0);
+  const cl_desc=vinC.filter(i=>i.status==='Descartado').reduce((s,i)=>s+(i.ticket||0),0);
+  const cl_cTotal=vinC.length,cl_cInv=vinC.filter(i=>i.status==='Invertido').length,cl_cProc=vinC.filter(i=>i.status!=='Invertido'&&i.status!=='Descartado').length,cl_cPipe=vinC.filter(i=>i.status!=='Descartado'&&i.status!=='Invertido').length,cl_cDesc=vinC.filter(i=>i.status==='Descartado').length;
+  const rkc=document.getElementById('rep-kpis-closed');
+  if(rkc){rkc.style.gridTemplateColumns='repeat(8,1fr)';
+  rkc.innerHTML=closedRounds.length?`
+    <div class="kpi"><div class="kpi-l">Objetivo agregado</div><div class="kpi-v">${money(cl_target)}</div>${rsub(cl_cTotal,`inversor${cl_cTotal!==1?'es':''}`,'var(--muted)')}</div>
+    <div class="kpi"><div class="kpi-l">Invertido</div><div class="kpi-v" style="color:var(--green)">${money(cl_inv)}</div>${rsub(cl_cInv,`invertido${cl_cInv!==1?'s':''}`,'var(--green)')}</div>
+    <div class="kpi"><div class="kpi-l">Pipeline ponderado</div><div class="kpi-v">${money(cl_w)}</div>${rsub(cl_cProc,'en proceso','var(--muted)')}</div>
+    <div class="kpi"><div class="kpi-l">Pipeline no ponderado</div><div class="kpi-v" style="color:rgba(91,155,213,.95)">${money(cl_pipe)}</div>${rsub(cl_cPipe,`inversor${cl_cPipe!==1?'es':''}`,'rgba(91,155,213,.95)')}</div>
+    <div class="kpi"><div class="kpi-l">Descartado</div><div class="kpi-v" style="color:var(--red)">${money(cl_desc)}</div>${rsub(cl_cDesc,`descartado${cl_cDesc!==1?'s':''}`,'var(--red)')}</div>
+    <div class="kpi"><div class="kpi-l">Rondas cerradas</div><div class="kpi-v">${closedRounds.length}</div></div>`:'<div class="empty" style="grid-column:1/-1">Sin rondas cerradas.</div>';}
+}
+function renderReports(){
+  renderAggKpis();renderTasks();
+  const vco=visibleCompanies();const vin=visibleIntros();const vinv=visibleInvestors();
+  const maxInv=Math.max(...vco.map(companyInvertido),1);
+  const estCounts=S.estados.map(s=>({s,n:vin.filter(i=>i.status===s).length}));
+  const maxEst=Math.max(...estCounts.map(x=>x.n),1);
+  const relCounts=S.relationStages.map(s=>({s,n:vinv.filter(v=>v.relation===s).length}));
+  const maxRel=Math.max(...relCounts.map(x=>x.n),1);
+  document.getElementById('rep-charts').innerHTML=`
+    <div class="report-card" style="grid-column:1/-1"><div class="report-title">Relación con inversores — cómo tratarlos</div>
+      ${(()=>{const acciones={'Lead':'Primer contacto / pedir intro','Conocido':'Construir relación, enviar updates','Inversor no Activo':'Reactivar con novedades de la cartera','Relación activa':'Mantener cadencia de contacto','Coinversor no habitual':'Proponer una coinversión concreta','Coinversor habitual':'Compartir deal flow prioritario','Inversor estratégico':'Implicar pronto · acceso preferente'};const tot=vinv.length||1;return S.relationStages.map(s=>{const n=vinv.filter(v=>v.relation===s).length;const col=relationColor(s)[1];const pct=Math.round(n/tot*100);return `<div style="display:flex;align-items:center;gap:14px;padding:9px 0;border-bottom:1px solid rgba(42,42,42,.5)">
+        <div style="display:flex;align-items:center;gap:9px;width:180px;flex-shrink:0"><span style="width:11px;height:11px;border-radius:50%;background:${col};flex-shrink:0"></span><span style="font-size:13px;font-weight:600">${s}</span></div>
+        <div style="width:46px;flex-shrink:0;text-align:center"><span style="font-size:18px;font-weight:700;color:${col}">${n}</span></div>
+        <div style="flex:1;min-width:80px"><div style="height:8px;border-radius:4px;background:var(--s3);overflow:hidden"><div style="height:100%;width:${pct}%;background:${col}"></div></div></div>
+        <div style="width:42px;flex-shrink:0;font-size:11px;color:var(--muted);text-align:right">${pct}%</div>
+        <div style="flex:1.4;min-width:160px;font-size:12px;color:var(--muted)"><i class="ti ti-arrow-right" style="color:${col};vertical-align:-2px;margin-right:5px"></i>${acciones[s]||''}</div>
+      </div>`;}).join('');})()}</div>
+    <div class="report-card" style="grid-column:1/-1"><div class="report-title">Comunicaciones por ronda</div>
+      <select class="s-input" id="rep-comm-round" style="width:320px;margin-bottom:14px" onchange="renderRoundComms()">${vco.flatMap(cc=>activeRounds(cc).map(rr=>`<option value="${rr.id}" ${repCommRound==rr.id?'selected':''}>${cc.name} · ${rr.type}</option>`)).join('')||'<option value="">Sin rondas abiertas</option>'}</select>
+      <div id="rep-comm-out"></div></div>
+    <div class="report-card" style="grid-column:1/-1"><div class="report-title">Inversores contactados en la última semana</div>
+      ${(()=>{
+        const now=new Date();const weekAgo=new Date(now.getTime()-7*86400000);
+        const within=d=>{if(!d)return false;const dt=new Date(d);return dt>=weekAgo&&dt<=now;};
+        const rows=[];
+        vinv.forEach(v=>{
+          const its=introsForInvestor(v.id);
+          const contacts=[];
+          its.forEach(it=>{const {c,r}=findRound(it.roundId);(it.interactions||[]).forEach(x=>{if(within(x.date))contacts.push({date:x.date,type:x.type||'Nota',note:x.note,c,r});});});
+          (v.log||[]).forEach(e=>{if(within(e.date)){const {c,r}=findRound(e.roundId);contacts.push({date:e.date,type:e.type,note:e.summary,c,r});}});
+          if(contacts.length){contacts.sort((a,b)=>(b.date||'').localeCompare(a.date||''));rows.push({v,last:contacts[0],n:contacts.length});}
+        });
+        rows.sort((a,b)=>(b.last.date||'').localeCompare(a.last.date||''));
+        if(!rows.length)return '<div class="empty">Ningún inversor contactado en los últimos 7 días.</div>';
+        return `<table class="tbl"><thead><tr><th>Inversor</th><th>Tipo</th><th>Últ. contacto</th><th>Vía</th><th>Resumen</th><th>Nº</th></tr></thead><tbody>${rows.map(({v,last,n})=>{const m=contactMeta(last.type);return `<tr style="cursor:pointer" onclick="openInvestor(${v.id})">
+          <td><div style="font-weight:600">${v.name}</div><div style="font-size:10px;color:var(--muted)">${last.c?last.c.name+(last.r?' · '+last.r.type:''):''}</div></td>
+          <td style="color:var(--muted)">${v.type}</td>
+          <td style="color:var(--gold);white-space:nowrap">${fmtDate(last.date,true)}</td>
+          <td style="white-space:nowrap"><i class="ti ${m[0]}" style="color:${m[1]};vertical-align:-2px"></i> ${last.type}</td>
+          <td style="font-size:11px;color:var(--muted);max-width:340px">${(last.note||'').split('\n')[0]}</td>
+          <td>${n}</td>
+        </tr>`;}).join('')}</tbody></table>`;
+      })()}</div>`;
+  renderRoundComms();
+}
+function renderRoundComms(){
+  const sel=document.getElementById('rep-comm-round');if(!sel)return;
+  repCommRound=parseInt(sel.value)||null;
+  const out=document.getElementById('rep-comm-out');if(!out)return;
+  const fr=findRound(repCommRound);const r=fr&&fr.r;
+  if(!r){out.innerHTML='<div class="empty">No hay ronda seleccionada.</div>';return;}
+  const blocks=introsForRound(r.id).map(it=>{
+    const v=byId(S.investors,it.investorId);if(!v)return null;
+    const comms=[...(it.interactions||[]).map(x=>({date:x.date,type:x.type||'Nota',note:x.note})),...((v.log)||[]).filter(e=>e.roundId===r.id).map(e=>({date:e.date,type:e.type,note:e.summary}))].sort((a,b)=>(b.date||'').localeCompare(a.date||''));
+    return {v,it,comms};
+  }).filter(Boolean).sort((a,b)=>(a.v.name||'').localeCompare(b.v.name||'','es'));
+  out.innerHTML=blocks.length?blocks.map(({v,it,comms})=>`<div style="border:1px solid var(--border);border-radius:9px;padding:13px;margin-bottom:11px">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px"><div class="avatar avatar-round" style="width:30px;height:30px;font-size:10px">${v.initials}</div><div style="flex:1"><div style="font-weight:700;font-size:13px">${v.name}</div><div style="font-size:11px;color:var(--muted)">${v.type}</div></div>${bdg(it.status,estadoColor(it.status))}</div>
+    ${comms.length?comms.map(x=>{const m=contactMeta(x.type);return `<div style="display:flex;gap:11px;padding:7px 0;border-top:1px solid rgba(42,42,42,.5)"><div style="width:22px;flex-shrink:0;text-align:center;padding-top:1px"><i class="ti ${m[0]}" style="color:${m[1]};font-size:15px"></i></div><div style="flex:1;min-width:0"><div style="font-size:11px;color:var(--gold)">${fmtDate(x.date,true)} · ${x.type}</div><div style="font-size:12px;line-height:1.5;margin-top:2px;white-space:pre-line">${x.note||''}</div></div></div>`;}).join(''):'<div style="font-size:12px;color:var(--muted);padding:4px 0">Sin comunicaciones registradas.</div>'}
+  </div>`).join(''):'<div class="empty">Esta ronda no tiene inversores asignados.</div>';
+}
+
+// ---------- SETTINGS stage lists ----------
+function renderStageSettings(){
+  const build=(arr,key)=>arr.map((s,i)=>`<div class="settings-row" style="padding:9px 15px">
+    <input class="s-input" value="${s}" onchange="S.${key}[${i}]=this.value;renderAll()" style="width:240px">
+    <button class="btn btn-red btn-sm" onclick="S.${key}.splice(${i},1);renderStageSettings();renderAll()"><i class="ti ti-trash"></i></button></div>`).join('');
+  document.getElementById('estados-list').innerHTML=build(S.estados,'estados');
+  document.getElementById('phases-list').innerHTML=build(S.roundPhases,'roundPhases');
+  document.getElementById('relation-list').innerHTML=build(S.relationStages,'relationStages');
+}
+function addStageItem(key){const def={estados:'Nuevo estado',roundPhases:'Nueva fase',relationStages:'Nueva etapa'}[key];S[key].push(def);renderStageSettings();}
+function testEmail(){const el=document.getElementById('test-email-result');if(!S.notifEmail){el.textContent='Configura un correo primero';el.style.color='var(--red)';return;}el.textContent='✓ Prueba enviada a '+S.notifEmail;el.style.color='var(--green)';setTimeout(()=>el.textContent='',3000);}
+
+// ---------- HOME ----------
+function renderTasks(){
+  const vin=visibleIntros();
+  const el=document.getElementById('home-tasks');if(!el)return;
+  const tasks=vin.filter(i=>i.nextAction&&i.nextDate).sort((a,b)=>a.nextDate.localeCompare(b.nextDate));
+  el.innerHTML=tasks.length?tasks.map(it=>{const {c,r}=findRound(it.roundId);const inv=byId(S.investors,it.investorId);const d=fmtDate(it.nextDate).split(' ');return `
+    <div onclick="openModal('intro',{intro:${it.id}})" style="display:flex;align-items:center;gap:12px;padding:11px 0;border-bottom:1px solid rgba(42,42,42,.5);cursor:pointer">
+      <div style="text-align:center;flex-shrink:0;width:42px"><div style="font-size:16px;font-weight:700;color:var(--gold);line-height:1">${d[0]}</div><div style="font-size:10px;color:var(--muted);text-transform:uppercase">${d[1]||''}</div></div>
+      <div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:600">${it.nextAction}</div><div style="font-size:11px;color:var(--muted)">${inv?inv.name:''}${c?' · '+c.name:''}${r?' · '+r.type:''}</div></div>
+      ${bdg(it.status,estadoColor(it.status))}
+    </div>`;}).join(''):'<div class="empty">No hay próximos pasos pendientes.</div>';
+}
+function presDonutsHtml(vin){
+  return `<div class="report-title">Presentaciones</div>
+      <div style="display:flex;gap:30px;flex-wrap:wrap">
+        <div style="flex:1;min-width:300px">
+          <div style="font-size:12px;font-weight:600;color:var(--muted);margin-bottom:10px">Presentaciones activas (Embudo)</div>
+          ${(()=>{const acts=S.estados.filter(s=>s!=='Invertido'&&s!=='Descartado');const segs=acts.map(s=>[s,vin.filter(i=>i.status===s).length,estadoColor(s)[1]]);const total=segs.reduce((a,[,n])=>a+n,0)||1;let acc=0;const stops=segs.map(([l,n,col])=>{const st=acc/total*360;acc+=n;return `${col} ${st}deg ${acc/total*360}deg`;}).join(',');return `<div style="display:flex;align-items:center;gap:20px">
+            <div style="position:relative;width:140px;height:140px;flex-shrink:0;border-radius:50%;background:conic-gradient(${stops})"><div style="position:absolute;inset:30px;border-radius:50%;background:var(--s1);display:flex;flex-direction:column;align-items:center;justify-content:center"><div style="font-size:20px;font-weight:700">${total}</div><div style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em">Activas</div></div></div>
+            <div style="flex:1;display:flex;flex-direction:column;gap:7px">${segs.map(([l,n,col])=>`<div style="display:flex;align-items:center;gap:8px"><span style="width:11px;height:11px;border-radius:3px;background:${col};flex-shrink:0"></span><span style="font-size:12px">${l}</span><b style="font-size:13px;margin-left:auto">${n}</b><span style="font-size:10px;color:var(--muted)">${Math.round(n/total*100)}%</span></div>`).join('')}</div>
+          </div>`;})()}
+        </div>
+        <div style="flex:1;min-width:300px;border-left:1px solid var(--border);padding-left:30px">
+          <div style="font-size:12px;font-weight:600;color:var(--muted);margin-bottom:10px">Activas vs. Invertidas vs. Descartadas</div>
+          ${(()=>{const activas=vin.filter(i=>i.status!=='Invertido'&&i.status!=='Descartado').length;const invertidas=vin.filter(i=>i.status==='Invertido').length;const descartadas=vin.filter(i=>i.status==='Descartado').length;const total=activas+invertidas+descartadas||1;const segs=[['Activas',activas,'var(--gold)'],['Invertidas',invertidas,'var(--green)'],['Descartadas',descartadas,'var(--red)']];let acc=0;const stops=segs.map(([l,n,col])=>{const start=acc/total*360;acc+=n;const end=acc/total*360;return `${col} ${start}deg ${end}deg`;}).join(',');return `<div style="display:flex;align-items:center;gap:20px">
+            <div style="position:relative;width:140px;height:140px;flex-shrink:0;border-radius:50%;background:conic-gradient(${stops})"><div style="position:absolute;inset:30px;border-radius:50%;background:var(--s1);display:flex;flex-direction:column;align-items:center;justify-content:center"><div style="font-size:20px;font-weight:700">${total}</div><div style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em">Total</div></div></div>
+            <div style="flex:1;display:flex;flex-direction:column;gap:10px">${segs.map(([l,n,col])=>`<div style="display:flex;align-items:center;gap:9px"><span style="width:12px;height:12px;border-radius:3px;background:${col};flex-shrink:0"></span><span style="font-size:13px">${l}</span><b style="font-size:14px;margin-left:auto">${n}</b><span style="font-size:11px;color:var(--muted)">${Math.round(n/total*100)}%</span></div>`).join('')}</div>
+          </div>`;})()}
+        </div>
+      </div>`;
+}
+function pipelineVsObjetivoHtml(vco){
+  return `<div class="report-title">Rondas Abiertas - Invertido + Pipeline Ponderado vs Objetivo</div>
+      <div style="display:flex;gap:14px;font-size:10px;color:var(--muted);margin:-2px 0 12px;flex-wrap:wrap"><span><i class="ti ti-square-filled" style="color:var(--green);vertical-align:-1px"></i> Invertido (logrado)</span><span><i class="ti ti-square-filled" style="color:var(--gold);vertical-align:-1px"></i> Ponderado</span><span><i class="ti ti-square-filled" style="color:rgba(91,155,213,.55);vertical-align:-1px"></i> Total sin ponderar</span><span><i class="ti ti-flag" style="color:var(--muted);vertical-align:-1px"></i> Objetivo de ronda</span></div>
+      ${vco.flatMap(c=>activeRounds(c).map(r=>({c,r}))).map(({c,r})=>{
+        const target=r.target||0;
+        const weighted=roundWeighted(r.id);
+        const invertido=roundInvertido(r.id);
+        const total=introsForRound(r.id).filter(x=>x.status!=='Descartado'&&x.status!=='Invertido').reduce((s,x)=>s+(x.ticket||0),0);
+        const pctW=target?Math.round(weighted/target*100):0;
+        const pctInv=target?Math.round(invertido/target*100):0;
+        const pctTotal=target?Math.round(total/target*100):0;
+        const wInv=Math.min(pctInv,100);
+        const rem=Math.max(0,100-wInv);
+        const wTotal=Math.min(pctTotal,rem);
+        const wW=Math.min(pctW,rem);
+        return `<div style="margin-bottom:15px">
+          <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:5px"><span style="font-weight:600">${c.name} · ${r.type}</span><span style="color:var(--muted)"><b style="color:var(--green)">${pctInv}%</b> logrado / <b style="color:var(--gold)">${pctW}%</b> pond. / <b style="color:rgba(91,155,213,.95)">${pctTotal}%</b> total</span></div>
+          <div style="position:relative;height:18px;background:var(--s3);border-radius:5px;overflow:hidden">
+            <div style="position:absolute;left:0;top:0;height:100%;width:${wInv}%;background:var(--green)"></div>
+            <div style="position:absolute;left:${wInv}%;top:0;height:100%;width:${wTotal}%;background:rgba(91,155,213,.55)"></div>
+            <div style="position:absolute;left:${wInv}%;top:0;height:100%;width:${wW}%;background:var(--gold)"></div>
+          </div>
+          <div style="display:flex;justify-content:space-between;font-size:11px;margin-top:5px;flex-wrap:wrap;gap:6px">
+            <span style="color:var(--green)">Invertido <b>${money(invertido)}</b></span>
+            <span style="color:var(--gold)">Ponderado <b>${money(weighted)}</b></span>
+            <span style="color:rgba(91,155,213,.95)">Total <b>${money(total)}</b></span>
+            <span style="color:var(--muted)">Objetivo <b>${money(target)}</b></span>
+          </div>
+        </div>`;}).join('')||'<div class="empty">Sin rondas abiertas.</div>'}`;
+}
+function renderHome(){
+  const vco=visibleCompanies();const vin=visibleIntros();
+  const invTotal=vco.reduce((s,c)=>s+companyInvertido(c),0);
+  const weightedTotal=vco.reduce((s,c)=>s+c.rounds.reduce((a,r)=>a+roundWeighted(r.id),0),0);
+  const presAct=vin.filter(i=>i.status!=='Descartado'&&i.status!=='No contactado').length;
+  const activeR=vco.flatMap(c=>activeRounds(c).map(r=>({c,r})));
+  const hk=document.getElementById('home-kpis');
+  if(hk)hk.innerHTML=`
+    <div class="kpi"><div class="kpi-v">${money(invTotal)}</div><div class="kpi-l">Capital invertido</div></div>
+    <div class="kpi"><div class="kpi-v">${money(weightedTotal)}</div><div class="kpi-l">Pipeline ponderado</div></div>
+    <div class="kpi"><div class="kpi-v">${activeR.length}</div><div class="kpi-l">Rondas activas</div></div>
+    <div class="kpi"><div class="kpi-v">${presAct}</div><div class="kpi-l">Presentaciones activas</div></div>`;
+  const tasks=vin.filter(i=>i.nextAction&&i.nextDate).sort((a,b)=>a.nextDate.localeCompare(b.nextDate));
+  document.getElementById('home-tasks').innerHTML=tasks.length?tasks.map(it=>{const {c,r}=findRound(it.roundId);const inv=byId(S.investors,it.investorId);const d=fmtDate(it.nextDate).split(' ');return `
+    <div onclick="openModal('intro',{intro:${it.id}})" style="display:flex;align-items:center;gap:12px;padding:11px 0;border-bottom:1px solid rgba(42,42,42,.5);cursor:pointer">
+      <div style="text-align:center;flex-shrink:0;width:42px"><div style="font-size:16px;font-weight:700;color:var(--gold);line-height:1">${d[0]}</div><div style="font-size:10px;color:var(--muted);text-transform:uppercase">${d[1]||''}</div></div>
+      <div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:600">${it.nextAction}</div><div style="font-size:11px;color:var(--muted)">${inv?inv.name:''}${c?' · '+c.name:''}${r?' · '+r.type:''}</div></div>
+      ${bdg(it.status,estadoColor(it.status))}
+    </div>`;}).join(''):'<div class="empty">No hay próximos pasos pendientes.</div>';
+  document.getElementById('home-rounds').innerHTML=activeR.length?activeR.map(({c,r})=>{const i=roundInvertido(r.id),pct=r.target?Math.round(i/r.target*100):0;return `
+    <div onclick="openRound(${r.id})" style="padding:11px 0;border-bottom:1px solid rgba(42,42,42,.5);cursor:pointer">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:7px"><div style="font-size:13px;font-weight:600">${c.name} <span style="color:var(--muted);font-weight:400">· ${r.type}</span></div>${bdg(r.status,['rgba(91,155,213,.15)','var(--blue)'])}</div>
+      <div class="prog-row"><span>${money(i)} / ${money(r.target)}</span><span>${pct}%</span></div>
+      <div class="prog-bar"><div class="prog-fill" style="width:${Math.min(pct,100)}%"></div></div>
+    </div>`;}).join(''):'<div class="empty">Sin rondas activas.</div>';
+  const pvo=document.getElementById('home-pipeline');if(pvo)pvo.innerHTML=pipelineVsObjetivoHtml(vco);
+  const hp=document.getElementById('home-pres');if(hp)hp.innerHTML=presDonutsHtml(vin);
+  renderAggKpis();
+}
+
+// ---------- DRAG & DROP ----------
+let dragged=null;
+function dragStart(e,kind,id){dragged={kind,id};e.dataTransfer.effectAllowed='move';try{e.dataTransfer.setData('text/plain',String(id));}catch(_){}const t=e.target;setTimeout(()=>{t.style.opacity='.4';},0);}
+function dragEnd(e){e.target.style.opacity='';dragged=null;}
+function dragOver(e){e.preventDefault();e.dataTransfer.dropEffect='move';e.currentTarget.style.background='rgba(250,197,28,.07)';}
+function dragLeave(e){e.currentTarget.style.background='';}
+function dropStatus(e){e.preventDefault();e.currentTarget.style.background='';const col=e.currentTarget.dataset.status;if(dragged&&dragged.kind==='intro'){const it=byId(S.introductions,dragged.id);if(it&&it.status!==col){if(!it.interactions)it.interactions=[];logStatusChange(it.interactions,it.status,col);it.status=col;renderRoundDetail();renderHome();renderReports();}}dragged=null;}
+function dropRelation(e){e.preventDefault();e.currentTarget.style.background='';const col=e.currentTarget.dataset.relation;if(dragged&&dragged.kind==='investor'){const v=byId(S.investors,dragged.id);if(v&&v.relation!==col){v.relation=col;renderInvestors();renderReports();}}dragged=null;}
+
+// ---------- MODALS ----------
+let modalInteractions=[];
+function renderIterList(){
+  const el=document.getElementById('m-iter-list');if(!el)return;
+  const arr=modalInteractions.slice().sort((a,b)=>(a.date||'').localeCompare(b.date||''));
+  el.innerHTML=arr.length?arr.map(x=>`<div style="display:flex;gap:10px;align-items:flex-start;padding:7px 0;border-bottom:1px solid rgba(42,42,42,.5)">
+    <div style="font-size:11px;color:var(--gold);white-space:nowrap;width:62px;flex-shrink:0">${fmtDate(x.date)}</div>
+    <div style="flex:1;font-size:12px;line-height:1.45">${x.note||''}</div>
+    <button class="btn btn-red btn-sm" type="button" onclick="delIteration(${modalInteractions.indexOf(x)})"><i class="ti ti-x"></i></button>
+  </div>`).join(''):'<div style="font-size:11px;color:var(--muted)">Sin iteraciones registradas todavía.</div>';
+  const last=arr.filter(x=>x.date).slice(-1)[0];
+  const lc=document.getElementById('m-lastcontact');if(lc)lc.textContent=last?' · Último contacto: '+fmtDate(last.date,true):'';
+}
+function addIteration(){const d=document.getElementById('m-iter-date').value;const n=document.getElementById('m-iter-note').value.trim();if(!n)return;modalInteractions.push({date:d||new Date().toISOString().slice(0,10),note:n});document.getElementById('m-iter-note').value='';document.getElementById('m-iter-date').value='';renderIterList();}
+function delIteration(i){modalInteractions.splice(i,1);renderIterList();}
+function lcTypeChange(){const t=document.getElementById('lc-type').value;document.getElementById('lc-email-fields').style.display=t==='Email'?'':'none';}
+function lcGenerate(){document.getElementById('lc-summary').value=summarizeEmail(document.getElementById('lc-subject').value,document.getElementById('lc-body').value);}
+function saveContact(vid){
+  const v=byId(S.investors,vid);
+  const summary=document.getElementById('lc-summary').value.trim();
+  if(!summary){alert('Genera o escribe un resumen antes de guardar.');return;}
+  const type=document.getElementById('lc-type').value;
+  const date=document.getElementById('lc-date').value||new Date().toISOString().slice(0,10);
+  const rv=document.getElementById('lc-round').value;
+  if(rv){const it=S.introductions.find(i=>i.investorId===vid&&i.roundId===parseInt(rv));if(it){if(!it.interactions)it.interactions=[];it.interactions.push({date,note:summary,type});}}
+  else{if(!v.log)v.log=[];v.log.unshift({id:'l'+Date.now(),date,type,summary});}
+  closeModal();renderInvestorDetail();renderHome();
+}
+function delContactLog(vid,id){if(!confirm('¿Eliminar este registro de la cronología?'))return;const v=byId(S.investors,vid);v.log=(v.log||[]).filter(e=>e.id!==id);renderInvestorDetail();}
+function opt(list,sel){return list.map(o=>`<option ${o===sel?'selected':''}>${o}</option>`).join('');}
+function openModal(type,ctx){
+  let html='';
+  if(type==='company'){
+    const c=typeof ctx==='number'?byId(S.companies,ctx):null;
+    modalContacts=c&&c.contacts?c.contacts.map(x=>({...x})):[];
+    if(!modalContacts.length)modalContacts=[{name:(c&&c.ceo)||'',role:'CEO',email:'',phone:''}];
+    html=`<h3>${c?'Editar participada':'Nueva participada'}</h3>
+      <div class="fg"><label class="fl">Nombre de la empresa</label><input class="fi" id="m-name" value="${c?c.name:''}" placeholder="Startup X"></div>
+      <div class="f2"><div class="fg"><label class="fl">Código interno</label><input class="fi" id="m-intcode" value="${c&&c.intCode?c.intCode.replace(/"/g,'&quot;'):''}" placeholder="Ej. INV-001"></div>
+        <div class="fg"><label class="fl">Invertida con fondo</label><select class="fi" id="m-fund">${opt(['BIKF','BISEF','BIGINF'],c?(c.fund||'BIKF'):'BIKF')}</select></div></div>
+      <div class="f2"><div class="fg"><label class="fl">País</label><input class="fi" id="m-country" value="${c?c.country:''}" placeholder="España"></div>
+        <div class="fg"><label class="fl">Provincia</label><select class="fi" id="m-prov">${opt(PROVINCIAS,c?(c.provincia||'Unknown'):'Unknown')}</select></div></div>
+      <div class="fg"><label class="fl">Sector</label>
+        <div class="ms-control" onclick="toggleCoSecDD(event)"><span class="ms-sum" id="m-cosec-summary">Selecciona sectores…</span><i class="ti ti-chevron-down" style="color:var(--muted)"></i></div>
+        <div class="ms-panel" id="m-cosec-panel" style="display:none;grid-template-columns:1fr">
+          ${SECTORES.map(a=>`<label class="ms-opt"><input type="checkbox" class="m-cosec" value="${a}" ${c&&c.coSectors&&c.coSectors.split(',').map(x=>x.trim()).includes(a)?'checked':''} onchange="updateCoSecSummary()"><span>${a}</span></label>`).join('')}
+        </div></div>
+      <div style="display:flex;align-items:center;gap:8px;margin:24px 0 12px;padding-top:18px;border-top:1px solid var(--border);font-size:15px;font-weight:700;color:var(--text)"><i class="ti ti-gauge" style="color:var(--gold)"></i> Estado actual</div>
+      <div class="fg"><label class="fl">Status</label><select class="fi" id="m-stage">${opt(ETAPAS,c?(c.stage||'Unknown'):'Unknown')}</select></div>
+      <div class="f2"><div class="fg"><label class="fl">TRL (1-9)</label><select class="fi" id="m-trl">${opt(LEVELS,c?(c.trl||'Unknown'):'Unknown')}</select></div>
+        <div class="fg"><label class="fl">MRL (1-9)</label><select class="fi" id="m-mrl">${opt(LEVELS,c?(c.mrl||'Unknown'):'Unknown')}</select></div></div>
+      <div class="f2"><div class="fg"><label class="fl">Revenue Status</label><select class="fi" id="m-revenue">${opt(REVENUE,c?(c.revenue||'UNKNOWN'):'UNKNOWN')}</select></div>
+        <div class="fg"><label class="fl">Time to Market</label><select class="fi" id="m-ttm">${opt(TTM,c?(c.ttm||'UNKNOWN'):'UNKNOWN')}</select></div></div>
+      <div class="f2"><div class="fg"><label class="fl">Última valoración (${S.cur})</label><input class="fi" id="m-val" inputmode="numeric" value="${c&&c.valuation?fmtMiles(c.valuation):''}" oninput="this.value=fmtMiles(this.value)" placeholder="9.000.000"></div>
+        <div class="fg"><label class="fl">Fecha de la última valoración</label><input class="fi" id="m-close" type="date" value="${c?c.targetClose:''}"></div></div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin:24px 0 12px;padding-top:18px;border-top:1px solid var(--border)"><div style="display:flex;align-items:center;gap:8px;font-size:15px;font-weight:700;color:var(--text)"><i class="ti ti-users" style="color:var(--gold)"></i> Contactos</div><button class="btn btn-sm" type="button" onclick="addContact()"><i class="ti ti-plus"></i> Añadir contacto</button></div>
+      <div id="m-contacts-list"></div>
+      <div class="mf"><button class="btn" onclick="closeModal()">Cancelar</button><button class="btn btn-gold" onclick="saveCompany(${c?c.id:'null'})">${c?'Guardar':'Crear'}</button></div>`;
+  } else if(type==='round'){
+    const co=byId(S.companies,ctx.companyId);const r=ctx.roundId?byId(co.rounds,ctx.roundId):null;
+    html=`<h3>${r?'Editar ronda':'Nueva ronda'} — ${co.name}</h3>
+      <div class="fg"><label class="fl">Tipo de ronda</label><input class="fi" id="m-type" value="${r?r.type:''}" placeholder="Serie A 2026"></div>
+      <div class="f2"><div class="fg"><label class="fl">Objetivo (${S.cur})</label><input class="fi" id="m-target" type="number" value="${r?r.target:''}" placeholder="5000000"></div>
+        <div class="fg"><label class="fl">Estado / fase</label><select class="fi" id="m-status">${opt(S.roundPhases,r?r.status:S.roundPhases[0])}</select></div></div>
+      <div class="fg"><label class="fl">Status</label><select class="fi" id="m-rstage">${opt(ETAPAS,r?(r.rstage||'Unknown'):'Unknown')}</select></div>
+      <div class="f2"><div class="fg"><label class="fl">Fecha inicio</label><input class="fi" id="m-start" type="date" value="${r?r.start:''}"></div>
+        <div class="fg"><label class="fl">Fecha cierre</label><input class="fi" id="m-rclose" type="date" value="${r?r.close:''}"></div></div>
+      <div class="mf">${r?`<button class="btn btn-red" onclick="deleteRound(${co.id},${r.id})" style="margin-right:auto">Eliminar</button>`:''}<button class="btn" onclick="closeModal()">Cancelar</button><button class="btn btn-gold" onclick="saveRound(${co.id},${r?r.id:'null'})">${r?'Guardar':'Crear'}</button></div>`;
+  } else if(type==='investor'){
+    const v=typeof ctx==='number'?byId(S.investors,ctx):null;
+    modalContacts=v&&v.contacts?v.contacts.map(c=>({...c})):[];
+    if(!modalContacts.length)modalContacts=[{name:'',role:'',email:'',phone:''}];
+    html=`<h3>${v?'Editar inversor':'Nuevo inversor'}</h3>
+      <div class="f2"><div class="fg"><label class="fl">Nombre</label><input class="fi" id="m-name" value="${v?v.name:''}" placeholder="ABC Capital"></div>
+        <div class="fg"><label class="fl">Relación</label><select class="fi" id="m-relation">${opt(S.relationStages,v?v.relation:S.relationStages[0])}</select></div></div>
+      <div class="f2"><div class="fg"><label class="fl">País</label><input class="fi" id="m-country" value="${v?v.country:''}" placeholder="España"></div>
+        <div class="fg"><label class="fl">Estado público</label><select class="fi" id="m-pubstatus">${opt(['Público','Privado','Unknown'],v?(v.pubStatus||'Unknown'):'Unknown')}</select></div></div>
+      <div style="display:flex;align-items:center;gap:8px;margin:24px 0 12px;padding-top:18px;border-top:1px solid var(--border);font-size:15px;font-weight:700;color:var(--text)"><i class="ti ti-businessplan" style="color:var(--gold)"></i> Datos generales de inversión</div>
+      <div class="fg"><label class="fl">Tipo</label><select class="fi" id="m-type">${opt(TIPOS,v?v.type:'Unknown')}</select></div>
+      <div class="fg"><label class="fl">Etapa de inversión</label>
+        <div class="ms-control" onclick="toggleStageDD(event)"><span class="ms-sum" id="m-stage-summary">Selecciona etapas…</span><i class="ti ti-chevron-down" style="color:var(--muted)"></i></div>
+        <div class="ms-panel" id="m-stage-panel" style="display:none;grid-template-columns:1fr">
+          ${ETAPAS.map(a=>`<label class="ms-opt"><input type="checkbox" class="m-stage" value="${a}" ${v&&v.invStage&&v.invStage.split(',').map(x=>x.trim()).includes(a)?'checked':''} onchange="updateStageSummary()"><span>${a}</span></label>`).join('')}
+        </div></div>
+      <div class="fg"><label class="fl">Sector</label>
+        <div class="ms-control" onclick="toggleSecDD(event)"><span class="ms-sum" id="m-sec-summary">Selecciona sectores…</span><i class="ti ti-chevron-down" style="color:var(--muted)"></i></div>
+        <div class="ms-panel" id="m-sec-panel" style="display:none;grid-template-columns:1fr">
+          ${SECTORES.map(a=>`<label class="ms-opt"><input type="checkbox" class="m-sector" value="${a}" ${v&&v.sectors&&v.sectors.split(',').map(x=>x.trim()).includes(a)?'checked':''} onchange="updateSecSummary()"><span>${a}</span></label>`).join('')}
+        </div></div>
+      <div class="fg"><label class="fl">Área de inversión</label>
+        <div class="ms-control" onclick="toggleAreaDD(event)"><span class="ms-sum" id="m-areas-summary">Selecciona regiones…</span><i class="ti ti-chevron-down" style="color:var(--muted)"></i></div>
+        <div class="ms-panel" id="m-areas-panel" style="display:none">
+          ${AREAS.map(a=>`<label class="ms-opt"><input type="checkbox" class="m-area" value="${a.replace(/&/g,'&amp;')}" ${v&&v.areas&&v.areas.includes(a)?'checked':''} onchange="updateAreaSummary()"><span>${a}</span></label>`).join('')}
+        </div></div>
+      <div class="f2"><div class="fg"><label class="fl">Ticket de inversión</label>
+        <div class="ms-control" onclick="toggleTicketDD(event)"><span class="ms-sum" id="m-ticket-summary">Selecciona tickets…</span><i class="ti ti-chevron-down" style="color:var(--muted)"></i></div>
+        <div class="ms-panel" id="m-ticket-panel" style="display:none;grid-template-columns:1fr">
+          ${TICKETS.map(a=>`<label class="ms-opt"><input type="checkbox" class="m-ticketr" value="${a}" ${v&&v.ticketRange&&v.ticketRange.split(',').map(x=>x.trim()).includes(a)?'checked':''} onchange="updateTicketSummary()"><span>${a}</span></label>`).join('')}
+        </div></div>
+      <div class="fg"><label class="fl">Fondos bajo gestión (AUM)</label><select class="fi" id="m-aum">${opt(AUM,v?(v.aum||'Unknown'):'Unknown')}</select></div></div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin:24px 0 12px;padding-top:18px;border-top:1px solid var(--border)"><div style="display:flex;align-items:center;gap:8px;font-size:15px;font-weight:700;color:var(--text)"><i class="ti ti-users" style="color:var(--gold)"></i> Contactos</div><button class="btn btn-sm" type="button" onclick="addContact()"><i class="ti ti-plus"></i> Añadir contacto</button></div>
+      <div id="m-contacts-list"></div>
+      <div style="display:flex;align-items:center;gap:8px;margin:24px 0 12px;padding-top:18px;border-top:1px solid var(--border);font-size:15px;font-weight:700;color:var(--text)"><i class="ti ti-notes" style="color:var(--gold)"></i> Relación histórica / notas</div>
+      <div class="fg"><textarea class="fi" id="m-notes" style="min-height:90px" placeholder="Histórico de la relación, mandato, preferencias…">${v?v.notes:''}</textarea></div>
+      <div class="mf"><button class="btn" onclick="closeModal()">Cancelar</button><button class="btn btn-gold" onclick="saveInvestor(${v?v.id:'null'})">${v?'Guardar':'Crear'}</button></div>`;
+  } else if(type==='intro'){
+    const it=ctx.intro?byId(S.introductions,ctx.intro):null;
+    modalInteractions=it?(it.interactions||[]).map(x=>({...x})):[];
+    const cid=it?it.companyId:(ctx.companyId||(visibleCompanies()[0]||{}).id);
+    const co=byId(S.companies,cid);
+    const rid=it?it.roundId:(ctx.roundId||(co.rounds[0]&&co.rounds[0].id));
+    const lockRound=!!ctx.roundId&&!it;
+    const coOpts=visibleCompanies();
+    html=`<h3>${it?'Editar presentación':'Nueva presentación'}</h3>
+      <div class="note-box"><i class="ti ti-arrows-transfer-up"></i> Vincula un inversor a una ronda concreta y registra su avance</div>
+      <div class="f2"><div class="fg"><label class="fl">Participada</label><select class="fi" id="m-company" onchange="introCompanyChanged()" ${lockRound?'disabled':''}>${coOpts.map(c=>`<option value="${c.id}" ${c.id===cid?'selected':''}>${c.name}</option>`).join('')}</select></div>
+        <div class="fg"><label class="fl">Ronda</label><select class="fi" id="m-round" ${lockRound?'disabled':''}>${co.rounds.map(r=>`<option value="${r.id}" ${r.id===rid?'selected':''}>${r.type}</option>`).join('')}</select></div></div>
+      <div class="fg"><label class="fl">Inversor</label><select class="fi" id="m-investor">${S.investors.map(v=>`<option value="${v.id}" ${it&&it.investorId===v.id?'selected':''}>${v.name} · ${v.type}</option>`).join('')}</select></div>
+      <div class="f2"><div class="fg"><label class="fl">Estado</label><select class="fi" id="m-status">${opt(S.estados,it?it.status:S.estados[0])}</select></div>
+        <div class="fg"><label class="fl">Ticket (${S.cur})</label><input class="fi" id="m-ticket" type="number" value="${it?it.ticket:''}" placeholder="500000"></div></div>
+      <div class="f2"><div class="fg"><label class="fl">Fecha presentación</label><input class="fi" id="m-date" type="date" value="${it?it.date:''}"></div>
+        <div class="fg"><label class="fl">Quién hizo la intro</label><input class="fi" id="m-introby" value="${it?it.introBy:''}" placeholder="Nombre / canal"></div></div>
+      <div class="f2"><div class="fg"><label class="fl">Próximo paso</label><input class="fi" id="m-next" value="${it?it.nextAction:''}" placeholder="Enviar deck / data room"></div>
+        <div class="fg"><label class="fl">Fecha próximo paso</label><input class="fi" id="m-nextdate" type="date" value="${it?it.nextDate:''}"></div></div>
+      <div class="fg"><label class="fl">Iteraciones con el inversor<span id="m-lastcontact" style="color:var(--gold);font-weight:600"></span></label>
+        <div id="m-iter-list" style="margin-bottom:8px"></div>
+        <div style="display:flex;gap:7px;align-items:center">
+          <input class="fi" id="m-iter-date" type="date" style="width:150px">
+          <input class="fi" id="m-iter-note" placeholder="Resumen de la interacción (llamada, email, reunión…)">
+          <button class="btn btn-gold" type="button" onclick="addIteration()"><i class="ti ti-plus"></i></button>
+        </div>
+      </div>
+      <div class="fg"><label class="fl">Notas</label><textarea class="fi" id="m-inotes">${it?it.notes:''}</textarea></div>
+      <div class="mf"><button class="btn" onclick="closeModal()">Cancelar</button><button class="btn btn-gold" onclick="saveIntro(${it?it.id:'null'})">${it?'Guardar':'Añadir'}</button></div>`;
+  } else if(type==='rxemail'){
+    html=`<h3>Recibir email entrante</h3>
+      <div class="note-box"><i class="ti ti-mail-plus"></i> Simula un correo reenviado desde Outlook. Al añadirlo entra en la Bandeja para revisarlo, resumirlo y asignarlo.</div>
+      <div class="f2"><div class="fg"><label class="fl">Remitente (nombre)</label><input class="fi" id="rx-from" placeholder="Nombre · Fondo"></div>
+        <div class="fg"><label class="fl">Email del remitente</label><input class="fi" id="rx-email" placeholder="nombre@fondo.com"></div></div>
+      <div class="fg"><label class="fl">Asunto</label><input class="fi" id="rx-sub" placeholder="Asunto del correo"></div>
+      <div class="fg"><label class="fl">Cuerpo del email</label><textarea class="fi" id="rx-body" style="min-height:120px" placeholder="Pega aquí el contenido del email recibido…"></textarea></div>
+      <div class="mf"><button class="btn" onclick="closeModal()">Cancelar</button><button class="btn btn-gold" onclick="receiveEmail()"><i class="ti ti-inbox"></i> Añadir a la bandeja</button></div>`;
+  } else if(type==='logcontact'){
+    const v=byId(S.investors,ctx.investorId);
+    const t=ctx.type||'Email';
+    const today=new Date().toISOString().slice(0,10);
+    const intros=introsForInvestor(v.id);
+    html=`<h3>${t==='Email'?'Guardar email de Outlook':t==='Llamada'?'Registrar llamada':'Registrar reunión'} — ${v.name}</h3>
+      <div class="note-box"><i class="ti ti-${t==='Email'?'mail':t==='Llamada'?'phone':'users'}"></i> Se añadirá a la cronología de ${v.name} cuando pulses «OK, guardar».</div>
+      <div class="f2"><div class="fg"><label class="fl">Tipo</label><select class="fi" id="lc-type" onchange="lcTypeChange()">${opt(['Email','Llamada','Reunión'],t)}</select></div>
+        <div class="fg"><label class="fl">Fecha</label><input class="fi" id="lc-date" type="date" value="${today}"></div></div>
+      <div class="fg"><label class="fl">Vincular a ronda (opcional)</label><select class="fi" id="lc-round"><option value="">Sin vincular</option>${intros.map(it=>{const {c,r}=findRound(it.roundId);return `<option value="${it.roundId}">${c?c.name:''} · ${r?r.type:''}</option>`;}).join('')}</select></div>
+      <div id="lc-email-fields" style="${t==='Email'?'':'display:none'}">
+        <div class="fg"><label class="fl">Asunto del email</label><input class="fi" id="lc-subject" placeholder="Asunto recibido en Outlook"></div>
+        <div class="fg"><label class="fl">Cuerpo del email</label><textarea class="fi" id="lc-body" style="min-height:110px" placeholder="Pega aquí el contenido del email recibido…"></textarea></div>
+        <button class="btn btn-gold btn-sm" type="button" onclick="lcGenerate()" style="margin-bottom:12px"><i class="ti ti-sparkles"></i> Generar resumen (máx. 3 líneas)</button>
+      </div>
+      <div class="fg"><label class="fl">Resumen ${t==='Email'?'— lo más importante, máx. 3 líneas':''}</label><textarea class="fi" id="lc-summary" style="min-height:74px" placeholder="${t==='Email'?'Pulsa «Generar resumen» o escríbelo a mano…':'Resumen de la '+(t==='Llamada'?'llamada':'reunión')+'…'}"></textarea></div>
+      <div class="mf"><button class="btn" onclick="closeModal()">Cancelar</button><button class="btn btn-gold" onclick="saveContact(${v.id})"><i class="ti ti-check"></i> OK, guardar</button></div>`;
+  } else if(type==='user'){
+    const u=typeof ctx==='number'?byId(S.users,ctx):null;
+    const role=u?u.role:'empleado';
+    html=`<h3>${u?'Editar usuario':'Dar de alta usuario'}</h3>
+      <div class="note-box"><i class="ti ti-shield-lock"></i> El usuario recibirá un correo de invitación para definir su contraseña y activar el doble factor (MFA).</div>
+      <div class="f2"><div class="fg"><label class="fl">Nombre completo</label><input class="fi" id="u-name" value="${u?u.name:''}" placeholder="Nombre Apellido"></div>
+        <div class="fg"><label class="fl">Correo corporativo</label><input class="fi" id="u-email" value="${u?u.email:''}" placeholder="nombre@empresa.com"></div></div>
+      <div class="fg"><label class="fl">Rol</label><select class="fi" id="u-role" onchange="userRoleChange()">
+        <option value="admin" ${role==='admin'?'selected':''}>Administrador — acceso total</option>
+        <option value="empleado" ${role==='empleado'?'selected':''}>Empleado — participadas asignadas</option>
+        <option value="ceo" ${role==='ceo'?'selected':''}>CEO de participada — solo su empresa</option></select></div>
+      <div class="fg" id="u-emp-box" style="${role==='empleado'?'':'display:none'}"><label class="fl">Participadas con acceso</label>
+        <div style="display:flex;flex-direction:column;gap:7px;background:var(--s2);border:1px solid var(--border);border-radius:8px;padding:11px">
+          ${S.companies.map(c=>`<label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer"><input type="checkbox" class="u-co" value="${c.id}" ${u&&u.companyIds&&u.companyIds.includes(c.id)?'checked':''} style="width:15px;height:15px;accent-color:var(--gold)"> ${c.name}</label>`).join('')}
+        </div></div>
+      <div class="fg" id="u-ceo-box" style="${role==='ceo'?'':'display:none'}"><label class="fl">Empresa que dirige</label>
+        <select class="fi" id="u-company">${S.companies.map(c=>`<option value="${c.id}" ${u&&u.companyId===c.id?'selected':''}>${c.name}</option>`).join('')}</select></div>
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0"><div><div class="settings-label">Exigir MFA (doble factor)</div><div class="settings-sub">Código de un solo uso al iniciar sesión</div></div>
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer"><input type="checkbox" id="u-mfa" ${!u||u.mfa?'checked':''} style="width:16px;height:16px;accent-color:var(--gold)"><span style="font-size:12px;color:var(--muted)">Obligatorio</span></label></div>
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:4px 0 6px"><div class="settings-label">Cuenta activa</div>
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer"><input type="checkbox" id="u-active" ${!u||u.active?'checked':''} style="width:16px;height:16px;accent-color:var(--gold)"><span style="font-size:12px;color:var(--muted)">Activa</span></label></div>
+      <div class="mf"><button class="btn" onclick="closeModal()">Cancelar</button><button class="btn btn-gold" onclick="saveUser(${u?u.id:'null'})">${u?'Guardar':'Crear usuario'}</button></div>`;
+  }
+  document.getElementById('modal-content').innerHTML=html;
+  document.getElementById('modal-wrap').classList.add('open');
+  if(type==='intro')renderIterList();
+  if(type==='investor'){updateAreaSummary();updateSecSummary();updateStageSummary();updateTicketSummary();renderContactList();}
+  if(type==='company'){updateCoSecSummary();renderContactList();}
+}
+function toggleCoSecDD(e){e.stopPropagation();const p=document.getElementById('m-cosec-panel');if(p)p.style.display=p.style.display==='none'?'block':'none';}
+function updateCoSecSummary(){const el=document.getElementById('m-cosec-summary');if(!el)return;const sel=[...document.querySelectorAll('.m-cosec:checked')].map(c=>c.value);el.textContent=sel.length?sel.join(', '):'Selecciona sectores…';el.style.color=sel.length?'var(--text)':'var(--muted)';}
+let modalContacts=[];
+function renderContactList(){
+  const el=document.getElementById('m-contacts-list');if(!el)return;
+  const esc=s=>String(s||'').replace(/"/g,'&quot;');
+  el.innerHTML=modalContacts.map((c,i)=>`<div style="border:1px solid var(--border);border-radius:8px;padding:11px;margin-bottom:9px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><span style="font-size:11px;color:var(--muted);font-weight:600">Contacto ${i+1}</span>${modalContacts.length>1?`<button class="btn btn-red btn-sm" type="button" onclick="removeContact(${i})"><i class="ti ti-x"></i></button>`:''}</div>
+    <div class="f2"><div class="fg" style="margin-bottom:8px"><label class="fl">Nombre</label><input class="fi" value="${esc(c.name)}" oninput="modalContacts[${i}].name=this.value"></div>
+      <div class="fg" style="margin-bottom:8px"><label class="fl">Cargo</label><input class="fi" value="${esc(c.role)}" oninput="modalContacts[${i}].role=this.value"></div></div>
+    <div class="f2"><div class="fg" style="margin-bottom:0"><label class="fl">Email</label><input class="fi" value="${esc(c.email)}" oninput="modalContacts[${i}].email=this.value"></div>
+      <div class="fg" style="margin-bottom:0"><label class="fl">Teléfono</label><input class="fi" value="${esc(c.phone)}" oninput="modalContacts[${i}].phone=this.value"></div></div>
+  </div>`).join('');
+}
+function addContact(){modalContacts.push({name:'',role:'',email:'',phone:''});renderContactList();}
+function removeContact(i){modalContacts.splice(i,1);if(!modalContacts.length)modalContacts=[{name:'',role:'',email:'',phone:''}];renderContactList();}
+function toggleStageDD(e){e.stopPropagation();const p=document.getElementById('m-stage-panel');if(p)p.style.display=p.style.display==='none'?'block':'none';}
+function updateStageSummary(){const el=document.getElementById('m-stage-summary');if(!el)return;const sel=[...document.querySelectorAll('.m-stage:checked')].map(c=>c.value);el.textContent=sel.length?sel.join(', '):'Selecciona etapas…';el.style.color=sel.length?'var(--text)':'var(--muted)';}
+function toggleTicketDD(e){e.stopPropagation();const p=document.getElementById('m-ticket-panel');if(p)p.style.display=p.style.display==='none'?'block':'none';}
+function updateTicketSummary(){const el=document.getElementById('m-ticket-summary');if(!el)return;const sel=[...document.querySelectorAll('.m-ticketr:checked')].map(c=>c.value);el.textContent=sel.length?sel.join(', '):'Selecciona tickets…';el.style.color=sel.length?'var(--text)':'var(--muted)';}
+function toggleSecDD(e){e.stopPropagation();const p=document.getElementById('m-sec-panel');if(p)p.style.display=p.style.display==='none'?'block':'none';}
+function updateSecSummary(){const el=document.getElementById('m-sec-summary');if(!el)return;const sel=[...document.querySelectorAll('.m-sector:checked')].map(c=>c.value);el.textContent=sel.length?sel.join(', '):'Selecciona sectores…';el.style.color=sel.length?'var(--text)':'var(--muted)';}
+function toggleAreaDD(e){e.stopPropagation();const p=document.getElementById('m-areas-panel');if(p)p.style.display=p.style.display==='none'?'block':'none';}
+function updateAreaSummary(){const el=document.getElementById('m-areas-summary');if(!el)return;const sel=[...document.querySelectorAll('.m-area:checked')].map(c=>c.value);el.textContent=sel.length?sel.join(', '):'Selecciona regiones…';el.style.color=sel.length?'var(--text)':'var(--muted)';}
+function introCompanyChanged(){const cid=parseInt(document.getElementById('m-company').value);const co=byId(S.companies,cid);document.getElementById('m-round').innerHTML=co.rounds.map(r=>`<option value="${r.id}">${r.type}</option>`).join('');}
+function closeModal(){document.getElementById('modal-wrap').classList.remove('open');}
+const val=id=>{const e=document.getElementById(id);return e?e.value:'';};
+const num=id=>parseInt(String(val(id)).replace(/[^\d]/g,''))||0;
+function fmtMiles(v){const d=String(v).replace(/[^\d]/g,'');return d?Number(d).toLocaleString('es-ES'):'';}
+
+function saveCompany(id){
+  const name=val('m-name').trim();if(!name)return;
+  const contacts=modalContacts.map(c=>({name:(c.name||'').trim(),role:(c.role||'').trim(),email:(c.email||'').trim(),phone:(c.phone||'').trim()})).filter(c=>c.name||c.email||c.phone||c.role);
+  const data={name,country:val('m-country')||'—',provincia:val('m-prov'),trl:val('m-trl'),mrl:val('m-mrl'),ttm:val('m-ttm'),revenue:val('m-revenue'),ceo:(contacts[0]&&contacts[0].name)||'—',stage:val('m-stage')||'Unknown',valuation:num('m-val'),targetClose:val('m-close'),fund:val('m-fund'),intCode:val('m-intcode').trim(),coSectors:[...document.querySelectorAll('.m-cosec:checked')].map(c=>c.value).join(', '),contacts};
+  if(id){Object.assign(byId(S.companies,id),data);}
+  else{const nid=Math.max(0,...S.companies.map(c=>c.id))+1;S.companies.push({id:nid,initials:inits(name),rounds:[],...data});}
+  closeModal();if(id){renderCompanyDetail();}renderCompanies();
+}
+function saveRound(cid,rid){
+  const co=byId(S.companies,cid);const type=val('m-type').trim();if(!type)return;
+  const data={type,target:num('m-target'),status:val('m-status'),rstage:val('m-rstage'),start:val('m-start'),close:val('m-rclose')};
+  if(rid){Object.assign(byId(co.rounds,rid),data);}
+  else{const nid=Math.max(10,...S.companies.flatMap(c=>c.rounds.map(r=>r.id)))+1;co.rounds.push({id:nid,...data});}
+  closeModal();renderCompanyDetail();if(curRound===rid)renderRoundDetail();
+}
+function deleteRound(cid,rid){if(!confirm('¿Eliminar esta ronda y sus presentaciones?'))return;const co=byId(S.companies,cid);co.rounds=co.rounds.filter(r=>r.id!==rid);S.introductions=S.introductions.filter(i=>i.roundId!==rid);closeModal();openCompany(cid);}
+function saveInvestor(id){
+  const name=val('m-name').trim();if(!name)return;
+  const contacts=modalContacts.map(c=>({name:(c.name||'').trim(),role:(c.role||'').trim(),email:(c.email||'').trim(),phone:(c.phone||'').trim()})).filter(c=>c.name||c.email||c.phone||c.role);
+  const data={name,type:val('m-type'),country:val('m-country')||'—',avgTicket:(id?(byId(S.investors,id).avgTicket||0):0),sectors:[...document.querySelectorAll('.m-sector:checked')].map(c=>c.value).join(', ')||'—',areas:[...document.querySelectorAll('.m-area:checked')].map(c=>c.value),invStage:[...document.querySelectorAll('.m-stage:checked')].map(c=>c.value).join(', ')||'Unknown',ticketRange:[...document.querySelectorAll('.m-ticketr:checked')].map(c=>c.value).join(', ')||'Unknown',aum:val('m-aum'),pubStatus:val('m-pubstatus'),relation:val('m-relation'),notes:val('m-notes'),contacts};
+  if(id){const v=byId(S.investors,id);Object.assign(v,data);if(document.getElementById('view-investor').classList.contains('active'))renderInvestorDetail();}
+  else{const nid=Math.max(0,...S.investors.map(v=>v.id))+1;S.investors.push({id:nid,initials:inits(name),...data});}
+  closeModal();renderInvestors();
+}
+function logStatusChange(arr,oldS,newS){if(oldS!==newS)arr.push({date:new Date().toISOString().slice(0,10),note:`Cambio de estado: ${oldS||'—'} → ${newS}`,type:'Estado'});}
+function saveIntro(id){
+  const data={companyId:parseInt(val('m-company')),roundId:parseInt(val('m-round')),investorId:parseInt(val('m-investor')),status:val('m-status'),ticket:num('m-ticket'),date:val('m-date'),introBy:val('m-introby'),nextAction:val('m-next'),nextDate:val('m-nextdate'),notes:val('m-inotes'),interactions:modalInteractions.slice()};
+  if(!id){const {r}=findRound(data.roundId);if(r&&r.status==='Cerrada'){alert('Esta ronda está cerrada: no se pueden añadir nuevos inversores.');return;}}
+  if(id){const prev=byId(S.introductions,id);logStatusChange(data.interactions,prev.status,data.status);Object.assign(prev,data);}
+  else{const nid=Math.max(0,...S.introductions.map(i=>i.id))+1;S.introductions.push({id:nid,...data});}
+  closeModal();
+  if(document.getElementById('view-round').classList.contains('active'))renderRoundDetail();
+  if(document.getElementById('view-presentaciones').classList.contains('active'))renderPresentaciones();
+  if(document.getElementById('view-investor').classList.contains('active'))renderInvestorDetail();
+}
+
+S.introductions.forEach(i=>{if(!i.interactions)i.interactions=[];});
+[[1,[['2026-02-10','Intro inicial vía Laura Méndez. Feedback muy positivo sobre la tracción industrial.'],['2026-04-08','Call de seguimiento; solicitan acceso al data room.'],['2026-05-30','Revisión de métricas Q1, mantienen el interés.']]],
+ [2,[['2026-02-18','Primera reunión con el equipo fundador.'],['2026-05-15','Agendada segunda reunión con el CTO.']]],
+ [5,[['2026-03-01','Kick-off de due diligence técnica.'],['2026-05-20','Revisión clínica en curso, sin bloqueos.']]],
+ [8,[['2026-01-20','Intro de Pablo Ortega.'],['2026-04-02','Term sheet recibido.'],['2026-06-01','Negociación de términos en marcha.']]],
+ [9,[['2026-01-15','Lead de la ronda confirmado.'],['2026-03-10','Capital comprometido y firmado.']]],
+ [11,[['2026-03-15','Primera reunión con Iberdrola Ventures.'],['2026-05-28','Coordinando visita a la planta piloto.']]],
+].forEach(([id,arr])=>{const it=byId(S.introductions,id);if(it)it.interactions=arr.map(a=>({date:a[0],note:a[1]}));});
+
+[[1,'BIKF'],[2,'BISEF'],[3,'BIGINF'],[4,'BIKF']].forEach(([id,f])=>{const c=byId(S.companies,id);if(c)c.fund=f;});
+[[1,'LUM-001'],[2,'VEL-002'],[3,'NER-003'],[4,'KAI-004']].forEach(([id,co])=>{const c=byId(S.companies,id);if(c)c.intCode=co;});
+[[1,'Advanced Manufacturing and Processing, Artificial Intelligence'],[2,'Pharma, Industrial Biotechnology'],[3,'Artificial Intelligence, Data Mining'],[4,'Advanced Materials, Photonics']].forEach(([id,s])=>{const c=byId(S.companies,id);if(c)c.coSectors=s;});
+[[1,'Series A (VC)'],[2,'Seed'],[3,'Series B (VC Late Stage)'],[4,'Series A (VC)']].forEach(([id,s])=>{const c=byId(S.companies,id);if(c)c.stage=s;});
+byId(S.companies,1).contacts=[{name:'Marta Ibáñez',role:'CEO',email:'marta@lumio.io',phone:'+34 91 700 1000'},{name:'Diego Romero',role:'CFO',email:'diego@lumio.io',phone:'+34 91 700 1001'}];
+byId(S.companies,3).contacts=[{name:'Inês Carvalho',role:'CEO',email:'ines@nervia.ai',phone:'+351 21 700 2000'},{name:'Tiago Sousa',role:'CTO',email:'tiago@nervia.ai',phone:'+351 21 700 2001'}];
+[[1,'Barcelona'],[2,'Madrid'],[3,'Unknown'],[4,'Sevilla']].forEach(([id,p])=>{const c=byId(S.companies,id);if(c)c.provincia=p;});
+[[1,'7','6','1-2 years'],[2,'5','4','2-4 years'],[3,'8','7','6 months-1 year'],[4,'6','5','4-6 years']].forEach(([id,t,m,tt])=>{const c=byId(S.companies,id);if(c){c.trl=t;c.mrl=m;c.ttm=tt;}});
+[[1,'1M€ > SALES > 2M€'],[2,'0 > SALES > 500k€'],[3,'2M€ > SALES > 5M€'],[4,'NO SALES']].forEach(([id,r])=>{const c=byId(S.companies,id);if(c)c.revenue=r;});
+[[1,'Venture Capital'],[2,'Seed'],[3,'Growth'],[4,'Start-Up']].forEach(([id,s])=>{const c=byId(S.companies,id);if(c)c.cstatus=s;});
+S.companies.forEach(c=>{if(!c.contacts)c.contacts=[{name:c.ceo||'',role:'CEO',email:'',phone:''}];});S.companies.forEach(c=>{if(!c.fund)c.fund='BIKF';});
+S.investors.forEach(v=>{if(!v.log)v.log=[];});byId(S.investors,1).log=[{id:'l1',date:'2026-06-05',type:'Email',roundId:12,summary:'Confirman interés en liderar el tramo de la Serie A.\nSolicitan acceso al data room y métricas de retención.\nProponen llamada de seguimiento la próxima semana.'}];
+byId(S.investors,3).log=[{id:'l2',date:'2026-06-02',type:'Llamada',roundId:21,summary:'Repaso del avance de la due diligence clínica.\nSin bloqueos; esperan el informe regulatorio para decidir.'}];
+[[1,['Southern Europe','Western Europe']],[2,['Worldwide','Southern Europe']],[3,['Southern Europe','South & Central America']],[4,['Worldwide']],[5,['Southern Europe']],[6,['Worldwide','Western Europe']],[7,['Southern Europe']],[8,['Southern Europe','Western Europe']]].forEach(([id,a])=>{const v=byId(S.investors,id);if(v)v.areas=a;});
+S.investors.forEach(v=>{if(!v.areas)v.areas=[];});
+[[1,'Venture Capital'],[2,'Venture Capital'],[3,'Venture Capital'],[4,'Venture Capital'],[5,'Family Office'],[6,'Corporate Venture Capital'],[7,'Business Angel'],[8,'Family Office']].forEach(([id,t])=>{const v=byId(S.investors,id);if(v)v.type=t;});
+[[1,'Privado'],[2,'Privado'],[3,'Privado'],[4,'Privado'],[5,'Privado'],[6,'Público'],[7,'Privado'],[8,'Privado']].forEach(([id,p])=>{const v=byId(S.investors,id);if(v)v.pubStatus=p;});
+S.investors.forEach(v=>{if(!v.pubStatus)v.pubStatus='Unknown';});
+[[1,'Pre Series A (VC Early Stage)'],[2,'Series A (VC)'],[3,'Series B (VC Late Stage)'],[4,'Series C (Growth Capital)'],[5,'Seed'],[6,'Series A (VC)'],[7,'Seed'],[8,'Pre Series A (VC Early Stage)']].forEach(([id,s])=>{const v=byId(S.investors,id);if(v)v.invStage=s;});
+S.investors.forEach(v=>{if(!v.invStage)v.invStage='Unknown';});
+[[1,'500k€ - 1M€'],[2,'1M€-2M€'],[3,'1M€-2M€'],[4,'2M€-5M€'],[5,'200k€ - 500 k€'],[6,'500k€ - 1M€'],[7,'<200 k€'],[8,'500k€ - 1M€']].forEach(([id,t])=>{const v=byId(S.investors,id);if(v)v.ticketRange=t;});
+S.investors.forEach(v=>{if(!v.ticketRange)v.ticketRange='Unknown';});
+[[1,'20 M€ - 50 M€'],[2,'50 M€ - 100 M€'],[3,'100 M€ - 200 M€'],[4,'100 M€ - 200 M€'],[5,'2 M€ - 20 M€'],[6,'50 M€ - 100 M€'],[7,'<500 k€'],[8,'2 M€ - 20 M€']].forEach(([id,a])=>{const v=byId(S.investors,id);if(v)v.aum=a;});
+S.investors.forEach(v=>{if(!v.aum)v.aum='Unknown';});
+updateInboxBadge();showLogin();
+</script>
+</body>
+</html>

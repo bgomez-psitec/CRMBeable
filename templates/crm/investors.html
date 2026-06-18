@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block title %}Inversores — CRM Gestora{% endblock %}
+{% block topbar_title %}Inversores{% endblock %}
+{% block content %}
+<form method="get" class="d-flex gap-2 mb-3">
+  <input type="text" name="q" value="{{ q }}" class="form-control" style="max-width:260px" placeholder="Buscar inversor…">
+  <select name="group" class="form-select" style="max-width:200px" onchange="this.form.submit()">
+    <option value="">Sin agrupar</option>
+    <option value="type" {% if group == 'type' %}selected{% endif %}>Agrupar: Tipo</option>
+    <option value="country" {% if group == 'country' %}selected{% endif %}>Agrupar: País</option>
+  </select>
+  <button type="submit" class="btn btn-outline-secondary">Buscar</button>
+</form>
+
+{% if not cards %}
+  <div class="text-muted text-center py-5">Sin inversores que coincidan.</div>
+{% elif groups %}
+  {% for key, group_cards in groups.items %}
+    <div class="card mb-3">
+      <div class="card-header fw-semibold">{{ key }} <span class="badge text-bg-secondary">{{ group_cards|length }}</span></div>
+      <div class="card-body row g-3">
+        {% for card in group_cards %}{% include "crm/_investor_card.html" %}{% endfor %}
+      </div>
+    </div>
+  {% endfor %}
+{% else %}
+  <div class="row g-3">
+    {% for card in cards %}{% include "crm/_investor_card.html" %}{% endfor %}
+  </div>
+{% endif %}
+{% endblock %}

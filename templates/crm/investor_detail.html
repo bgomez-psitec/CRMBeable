@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+{% block title %}{{ investor.name }} — CRM Gestora{% endblock %}
+{% block topbar_title %}{{ investor.name }}{% endblock %}
+{% block topbar_sub %}{{ investor.type }} · {{ investor.country }}{% endblock %}
+{% block content %}
+<div class="card card-body mb-4">
+  <div class="d-flex justify-content-between">
+    <div>
+      <div class="row g-2 small">
+        <div class="col-md-3">Etapa <b>{{ investor.inv_stage|default:"—" }}</b></div>
+        <div class="col-md-3">Ticket <b>{{ investor.ticket_range|default:"—" }}</b></div>
+        <div class="col-md-3">AUM <b>{{ investor.aum|default:"—" }}</b></div>
+        <div class="col-md-3">Estado público <b>{{ investor.pub_status|default:"—" }}</b></div>
+      </div>
+      {% if investor.sectors %}<div class="text-muted small mt-2">Sectores: {{ investor.sectors }}</div>{% endif %}
+    </div>
+    <span class="badge text-bg-success align-self-start">{{ investor.relation.nombre|default:"—" }}</span>
+  </div>
+  <div class="text-muted small mt-2">Último contacto: <b class="text-dark">{{ last_contact|date:"d M Y"|default:"—" }}</b></div>
+</div>
+
+<div class="row g-3 mb-4">
+  <div class="col-md-6">
+    <div class="card card-body h-100">
+      <div class="fw-semibold mb-2"><i class="bi bi-people"></i> Contactos</div>
+      {% for c in investor.contacts.all %}
+        <div class="mb-2">
+          <b>{{ c.name }}</b> <span class="text-muted">· {{ c.role }}</span>
+          <div class="small text-primary">{{ c.email }} · {{ c.phone }}</div>
+        </div>
+      {% empty %}<div class="text-muted">Sin contactos.</div>{% endfor %}
+      {% if investor.notes %}<div class="mt-2 small text-muted"><b class="text-dark">Relación histórica:</b> {{ investor.notes }}</div>{% endif %}
+    </div>
+  </div>
+  <div class="col-md-6">
+    <div class="card card-body h-100">
+      <div class="fw-semibold mb-2"><i class="bi bi-arrow-left-right"></i> Presentaciones ({{ intros|length }})</div>
+      <table class="table table-sm mb-0">
+        {% for it in intros %}
+        <tr style="cursor:pointer" onclick="location.href='{% url 'crm:round_detail' it.round_id %}'">
+          <td><b>{{ it.company.name }}</b><div class="text-muted small">{{ it.round.type }}</div></td>
+          <td><span class="badge text-bg-info">{{ it.status.nombre|default:"—" }}</span></td>
+          <td class="text-end fw-semibold">{{ it.ticket|floatformat:0|default:"—" }} €</td>
+        </tr>
+        {% empty %}<tr><td class="text-muted">Sin presentaciones.</td></tr>{% endfor %}
+      </table>
+    </div>
+  </div>
+</div>
+
+<div class="card card-body">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <div class="fw-semibold"><i class="bi bi-clock-history"></i> Cronología de contactos</div>
+    {% if can_edit %}
+    <div class="d-flex gap-2">
+      <button class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#logModal" onclick="document.getElementById('log-type').value='Email'"><i class="bi bi-envelope"></i> Guardar email</button>
+      <button class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#logModal" onclick="document.getElementById('log-type').value='Llamada'"><i class="bi bi-telephone"></i> Llamada</button>
+      <button class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#logModal" onclick="document.getElementById('log-type').value='Reunión'"><i class="bi bi-people"></i> Reunión</button>
+    </div>
+    {% endif %}
+  </div>
+
+  {% for x in chrono %}
+  <div class="d-flex gap-3 py-2 border-bottom">
+    <div style="width:90px;flex-shrink:0" class="small text-warning">{{ x.date|date:"d M Y"|default:"—" }}<div class="text-muted">{{ x.type }}</div></div>
+    <div class="flex-grow-1">
+      {% if x.company %}<span class="badge text-bg-light text-dark mb-1">{{ x.company.name }}{% if x.round %} · {{ x.round.type }}{% endif %}</span>{% endif %}
+      <div class="small" style="white-space:pre-line">{{ x.summary }}</div>
+    </div>
+  </div>
+  {% empty %}
+  <div class="text-muted text-center py-4">Sin contactos registrados todavía.</div>
+  {% endfor %}
+</div>
+
+{% if can_edit %}
+<div class="modal fade" id="logModal" tabindex="-1">
+  <div class="modal-dialog">
+    <form method="post" action="{% url 'crm:investor_log_create' investor.pk %}" class="modal-content">
+      {% csrf_token %}
+      <div class="modal-header"><h5 class="modal-title">Registrar contacto</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+      <div class="modal-body">
+        <input type="hidden" name="type" id="log-type" value="Nota">
+        <div class="mb-2"><label class="form-label">Fecha</label><input type="date" name="date" class="form-control"></div>
+        <div class="mb-2"><label class="form-label">Resumen</label><textarea name="summary" class="form-control" rows="3"></textarea></div>
+      </div>
+      <div class="modal-footer"><button type="submit" class="btn btn-warning">Guardar</button></div>
+    </form>
+  </div>
+</div>
+{% endif %}
+{% endblock %}

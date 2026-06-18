@@ -1,0 +1,96 @@
+{% extends "base.html" %}
+{% block title %}{{ company.name }} — {{ round.type }} — CRM Gestora{% endblock %}
+{% block topbar_title %}{{ company.name }} — {{ round.type }}{% endblock %}
+{% block topbar_sub %}{{ round.status.nombre|default:"—" }}{% if round.rstage %} · {{ round.rstage }}{% endif %} · {{ round.start|date:"d M Y" }} → {{ round.close|date:"d M Y" }}{% endblock %}
+{% block content %}
+<div class="row g-3 mb-4">
+  <div class="col"><div class="card card-body"><div class="text-muted small">Objetivo de ronda</div><div class="h5 mb-0">{{ kpis.target|floatformat:0 }} €</div><div class="small text-muted">{{ kpis.total_count }} inversores</div></div></div>
+  <div class="col"><div class="card card-body"><div class="text-muted small">Invertido ({{ kpis.pct }}%)</div><div class="h5 mb-0 text-success">{{ kpis.invertido|floatformat:0 }} €</div><div class="small text-muted">{{ kpis.inv_count }} invertidos</div></div></div>
+  <div class="col"><div class="card card-body"><div class="text-muted small">Pipeline ponderado</div><div class="h5 mb-0">{{ kpis.weighted|floatformat:0 }} €</div><div class="small text-muted">{{ kpis.other_count }} en proceso</div></div></div>
+  <div class="col"><div class="card card-body"><div class="text-muted small">Pipeline no ponderado</div><div class="h5 mb-0">{{ kpis.pipe_total|floatformat:0 }} €</div><div class="small text-muted">{{ kpis.pipe_count }} inversores</div></div></div>
+  <div class="col"><div class="card card-body"><div class="text-muted small">Descartado</div><div class="h5 mb-0 text-danger">{{ kpis.desc_total|floatformat:0 }} €</div><div class="small text-muted">{{ kpis.desc_count }} descartados</div></div></div>
+</div>
+
+<ul class="nav nav-tabs mb-3">
+  <li class="nav-item"><a class="nav-link {% if tab == 'matriz' %}active{% endif %}" href="?tab=matriz">Matriz</a></li>
+  <li class="nav-item"><a class="nav-link {% if tab == 'pipeline' %}active{% endif %}" href="?tab=pipeline">Pipeline (kanban)</a></li>
+</ul>
+
+{% if tab == 'matriz' %}
+  <div class="card">
+    <table class="table mb-0">
+      <thead><tr><th>Inversor</th><th>Tipo</th><th>Estado</th><th>Ticket</th><th>Intro por</th><th>Próximo paso</th></tr></thead>
+      <tbody>
+        {% for it in intros %}
+        <tr>
+          <td><b>{{ it.investor.name }}</b><div class="text-muted small">{{ it.investor.country }}</div></td>
+          <td class="text-muted">{{ it.investor.type }}</td>
+          <td><span class="badge text-bg-info">{{ it.status.nombre|default:"—" }}</span></td>
+          <td class="fw-semibold">{{ it.ticket|floatformat:0|default:"—" }} €</td>
+          <td class="text-muted">{{ it.intro_by|default:"—" }}</td>
+          <td>{{ it.next_action|default:"—" }}{% if it.next_date %} · <span class="text-warning">{{ it.next_date|date:"d M Y" }}</span>{% endif %}</td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="6" class="text-muted text-center py-4">Aún no hay inversores en esta ronda.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+{% else %}
+  <div class="text-muted small mb-2"><i class="bi bi-hand-index"></i> Arrastra las tarjetas entre columnas para cambiar el estado.</div>
+  <div class="d-flex gap-3 overflow-auto pb-2">
+    {% for stage in pipe_stages %}
+      <div class="kanban-col" data-estado-id="{{ stage.estado.id }}" style="min-width:220px">
+        <div class="small fw-semibold d-flex justify-content-between"><span>{{ stage.estado.nombre }} <span class="badge text-bg-secondary">{{ stage.items|length }}</span></span><span class="text-muted">Peso {{ stage.peso }}%</span></div>
+        <div class="text-muted small mb-2">{{ stage.total|floatformat:0 }} €</div>
+        <div class="kanban-body d-flex flex-column gap-2" data-estado-id="{{ stage.estado.id }}" style="min-height:60px">
+          {% for it in stage.items %}
+            <div class="card card-body p-2 small kanban-card" draggable="true" data-intro-id="{{ it.id }}">
+              <b>{{ it.investor.name }}</b>
+              <div>{{ it.ticket|floatformat:0|default:"—" }} €</div>
+              <div class="text-muted">{{ it.next_date|date:"d M" }}</div>
+            </div>
+          {% endfor %}
+        </div>
+      </div>
+    {% endfor %}
+    <div class="vr"></div>
+    {% for stage in end_stages %}
+      <div class="kanban-col" data-estado-id="{{ stage.estado.id }}" style="min-width:220px">
+        <div class="small fw-semibold d-flex justify-content-between"><span>{{ stage.estado.nombre }} <span class="badge text-bg-secondary">{{ stage.items|length }}</span></span></div>
+        <div class="text-muted small mb-2">{{ stage.total|floatformat:0 }} €</div>
+        <div class="kanban-body d-flex flex-column gap-2" data-estado-id="{{ stage.estado.id }}" style="min-height:60px">
+          {% for it in stage.items %}
+            <div class="card card-body p-2 small kanban-card" draggable="true" data-intro-id="{{ it.id }}">
+              <b>{{ it.investor.name }}</b>
+              <div>{{ it.ticket|floatformat:0|default:"—" }} €</div>
+            </div>
+          {% endfor %}
+        </div>
+      </div>
+    {% endfor %}
+  </div>
+
+  <form id="status-form" method="post" style="display:none">{% csrf_token %}<input type="hidden" name="estado_id"></form>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.querySelectorAll('.kanban-card').forEach(card => {
+  card.addEventListener('dragstart', e => e.dataTransfer.setData('text/plain', card.dataset.introId));
+});
+document.querySelectorAll('.kanban-body').forEach(col => {
+  col.addEventListener('dragover', e => e.preventDefault());
+  col.addEventListener('drop', e => {
+    e.preventDefault();
+    const introId = e.dataTransfer.getData('text/plain');
+    const estadoId = col.dataset.estadoId;
+    const form = document.getElementById('status-form');
+    form.action = `/presentaciones/${introId}/estado/`;
+    form.querySelector('[name=estado_id]').value = estadoId;
+    form.submit();
+  });
+});
+</script>
+{% endblock %}
