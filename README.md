@@ -1,24 +1,35 @@
 # CRM Gestora de Fondos
 
-Aplicación Django de gestión de fundraising para una gestora de fondos de venture capital: participadas, rondas de inversión, inversores, presentaciones (introductions), bandeja de email e informes.
+Aplicación Django de gestión de fundraising para una gestora de fondos de venture capital: participadas, rondas de inversión, M&A, colaboraciones, inversores, presentaciones, bandeja de email e informes.
 
 Construida como port fiel y productivo del prototipo funcional `CRM_Gestora_ES_V1.html` (SPA en un único HTML/JS/CSS con datos mock), reemplazando el almacenamiento en memoria por persistencia real en MySQL, autenticación real y control de acceso por roles aplicado en servidor.
 
 ## Características
 
-- **Participadas**: listado/grid con búsqueda, agrupación (fondo/etapa/país) y filtro "con ronda abierta"; ficha de detalle con KPIs (objetivo, invertido, pipeline ponderado) y rondas asociadas.
-- **Rondas**: ficha de ronda con KPIs (objetivo, invertido, pipeline ponderado/no ponderado, descartado), vista de matriz (tabla) y vista de pipeline tipo kanban con **drag & drop** (JS nativo) para cambiar el estado de cada presentación.
+- **Participadas**: listado/grid con búsqueda, agrupación (fondo/etapa/país) y filtro "con ronda abierta"; ficha de detalle con KPIs y tres módulos integrados: Rondas, M&A y Colaboraciones.
+- **Rondas de Inversión**: ficha con KPIs (objetivo, invertido, pipeline ponderado/no ponderado, descartado), vista de matriz (tabla) y vista de pipeline tipo kanban con **drag & drop** (JS nativo) para cambiar el estado de cada presentación.
+- **M&A — Pipeline de venta**: módulo integrado en cada participada para gestionar procesos de venta de la compañía a posibles compradores.
+  - Procesos M&A (equivalente a una ronda): precio pedido, mejor oferta, pipeline ponderado.
+  - Compradores con ficha propia, cronología de interacciones y contactos.
+  - Pipeline kanban con estados propios (Identificado → Contactado → Reunión → NDA firmado → Due Diligence → Oferta recibida → Negociación | Vendido / Descartado) y columnas adicionales respecto a fundraising: NDA firmado, DD iniciada, precio de oferta.
+  - Catálogo de estados M&A configurable desde Ajustes.
+- **Colaboraciones**: módulo integrado en cada participada para hacer seguimiento de posibles clientes, proveedores y partners de desarrollo de negocio.
+  - Seguimiento por tipo de relación (cliente potencial, proveedor potencial, partner tecnológico, partner comercial).
+  - Cronología de interacciones por colaboración.
+  - Vista global de colaboraciones con filtro por estado.
+  - Catálogo de estados de colaboración configurable desde Ajustes.
 - **Inversores**: listado/grid con búsqueda y agrupación (tipo/país); ficha de detalle con cronología combinada de contactos (registros manuales + interacciones ligadas a presentaciones), contactos y presentaciones asociadas.
 - **Presentaciones (introductions)**: vista global con búsqueda y filtro por estado.
 - **Bandeja de entrada**: gestión de emails recibidos con **resumen automático heurístico** (sin IA externa, basado en reglas/regex), sugerencia de inversor por dominio de email del remitente, y guardado del resumen como interacción de una presentación o como registro de contacto del inversor.
 - **Informes**: KPIs agregados de rondas abiertas/cerradas, comunicaciones por ronda y contactados en la última semana.
 - **Usuarios** (solo admin): alta/edición de usuarios, rol, MFA, participadas asignadas.
-- **Ajustes**: edición de perfil y de los catálogos configurables (estados de presentación, fases de ronda, etapas de relación).
+- **Ajustes**: edición de perfil y de los catálogos configurables (estados de presentación, fases de ronda, etapas de relación, estados M&A, estados de colaboración).
 - **Control de acceso por roles (RBAC) aplicado en servidor**, no solo en la interfaz:
-  - **admin**: acceso total a todas las participadas, inversores, informes y administración.
-  - **empleado**: acceso restringido a sus participadas asignadas (y a los inversores/presentaciones relacionados).
+  - **admin**: acceso total a todas las participadas, inversores, M&A, colaboraciones, informes y administración.
+  - **empleado**: acceso restringido a sus participadas asignadas (y a los inversores/presentaciones/M&A/colaboraciones relacionados).
   - **ceo**: acceso restringido a su propia participada.
 - **Autenticación demo** (login + "quick login" de un clic por cada usuario demo), pensada como punto de partida a sustituir por Auth0 en una fase posterior.
+- **Formato numérico español**: todos los importes se muestran con separador de miles `.` y decimales `,` mediante un filtro de template propio (`euros`).
 
 ## Stack técnico
 
@@ -34,10 +45,13 @@ Construida como port fiel y productivo del prototipo funcional `CRM_Gestora_ES_V
 crmgestora/         Configuración del proyecto Django (settings, urls)
 accounts/           App de usuarios y autenticación (modelo User, roles, login/logout)
 crm/                App principal del dominio (modelos, vistas, permisos, utilidades)
-  models.py          Participadas, rondas, inversores, presentaciones, interacciones, bandeja, catálogos
+  models.py          Participadas, rondas, inversores, presentaciones, M&A, colaboraciones, catálogos
   permissions.py     Lógica de visibilidad por rol (RBAC), reutilizada en todas las vistas
-  utils.py           Lógica de negocio portada del prototipo (pipeline ponderado, resumen de email, etc.)
+  utils.py           Lógica de negocio portada del prototipo (pipeline ponderado, resumen de email, M&A weighted)
+  forms.py           Formularios Django para participadas, rondas, procesos M&A, colaboraciones, usuarios
   views.py / urls.py Una vista por pantalla
+  templatetags/
+    crm_filters.py   Filtro `euros` para formateo numérico español (1.234.567,00)
   management/commands/seed_demo_data.py   Carga de datos demo
 templates/           Plantillas Django (layout base + una por pantalla)
 static/              Estáticos del proyecto
@@ -45,11 +59,20 @@ requirements.txt     Dependencias Python
 .env.example         Plantilla de variables de entorno
 ```
 
+## Modelo de datos — módulos principales
+
+| Módulo | Modelos clave |
+|---|---|
+| Fundraising | `Round`, `Introduction`, `Interaction`, `EstadoPresentacion`, `FaseRonda` |
+| M&A | `ProcesoMA`, `ContactoMA`, `InteraccionMA`, `Comprador`, `EstadoMA` |
+| Colaboraciones | `Colaboracion`, `InteraccionColaboracion`, `Colaborador`, `EstadoColaboracion` |
+| Inversores | `Investor`, `InvestorLog`, `EtapaRelacion` |
+
 ## Modelo de roles
 
 | Rol      | Alcance de visibilidad                                  |
 |----------|-----------------------------------------------------------|
-| admin    | Todas las participadas, inversores, presentaciones, informes y administración |
+| admin    | Todas las participadas, inversores, M&A, colaboraciones, informes y administración |
 | empleado | Solo las participadas que tiene asignadas (`assigned_companies`) |
 | ceo      | Solo su propia participada (`company`)                   |
 
@@ -68,7 +91,7 @@ La lógica vive en `crm/permissions.py` y se aplica filtrando los querysets en c
    ```bash
    python manage.py migrate
    ```
-4. Cargar datos demo (participadas, inversores, presentaciones, usuarios, bandeja de entrada):
+4. Cargar datos demo (participadas, inversores, presentaciones, compradores M&A, colaboraciones, usuarios, bandeja de entrada):
    ```bash
    python manage.py seed_demo_data
    ```
@@ -112,7 +135,7 @@ Variables de entorno que aceptan ambos scripts para personalizar la instalación
 | `BIND_ADDR` | `setup_service.sh` | `127.0.0.1:8001`     | Dirección/puerto donde escucha Gunicorn       |
 | `WORKERS`   | `setup_service.sh` | `3`                  | Número de workers de Gunicorn                 |
 
-> El puerto por defecto es **8001** (no el 8000 habitual) precisamente para no chocar con otra aplicación Gunicorn que ya esté corriendo en el mismo servidor. El servicio se registra además con nombre y usuario de sistema propios (`crmgestora`), por lo que no interfiere con servicios OpenRC de otras apps. Si el 8001 también estuviera ocupado, indica otro puerto libre con `BIND_ADDR=127.0.0.1:8002 ./scripts/setup_service.sh`.
+> El puerto por defecto es **8001** (no el 8000 habitual) precisamente para no chocar con otra aplicación Gunicorn que ya esté corriendo en el mismo servidor. El servicio se registra además con nombre y usuario de sistema propios (`crmgestora`), por lo que no interfiere con servicios OpenRC de otras apps.
 
 Tras `setup_service.sh`, el servicio se gestiona con las herramientas estándar de OpenRC:
 
@@ -122,25 +145,23 @@ rc-service crmgestora restart
 tail -f logs/gunicorn-error.log
 ```
 
-`Gunicorn` escucha por defecto solo en `127.0.0.1:8001`; en producción se recomienda poner **Nginx** (u otro proxy inverso) por delante para TLS y para servir directamente la carpeta `staticfiles/` generada por `collectstatic`. No se incluye configuración de Nginx en este repositorio.
+`Gunicorn` escucha por defecto solo en `127.0.0.1:8001`; en producción se recomienda poner **Nginx** (u otro proxy inverso) por delante para TLS y para servir directamente la carpeta `staticfiles/` generada por `collectstatic`.
 
-### Actualizar producción con los últimos cambios (`scripts/deploy.sh`)
+### Actualizar producción (`scripts/deploy.sh`)
 
-Una vez la app está instalada y corriendo como servicio, **`scripts/deploy.sh`** automatiza traer los cambios nuevos de GitHub y dejarlos servidos:
+Una vez la app está instalada y corriendo como servicio, **`scripts/deploy.sh`** automatiza traer los cambios nuevos de GitHub:
 
-1. Comprueba que no haya cambios locales sin commitear en el servidor (si los hay, se detiene para no perder nada).
-2. Hace `git fetch` + `git merge --ff-only` de la rama configurada (nunca reescribe ni descarta historia).
-3. Reinstala dependencias de Python **solo** si `requirements.txt` cambió en ese despliegue.
-4. Ejecuta `migrate` (idempotente: no hace nada si no hay migraciones pendientes) y `collectstatic`.
-5. Reinicia el servicio OpenRC (`rc-service crmgestora restart`) para que los cambios se sirvan inmediatamente.
+1. Comprueba que no haya cambios locales sin commitear.
+2. Hace `git fetch` + `git merge --ff-only` de la rama configurada.
+3. Reinstala dependencias solo si `requirements.txt` cambió.
+4. Ejecuta `migrate` y `collectstatic`.
+5. Reinicia el servicio OpenRC.
 
 ```bash
 cd /ruta/a/CRMBeable
 chmod +x scripts/deploy.sh
 sudo ./scripts/deploy.sh
 ```
-
-Variables de entorno opcionales:
 
 | Variable       | Por defecto | Descripción                                              |
 |----------------|-------------|------------------------------------------------------------|
@@ -151,12 +172,13 @@ Variables de entorno opcionales:
 | `SERVICE_NAME` | `crmgestora`         | Nombre del servicio OpenRC a reiniciar            |
 | `SKIP_RESTART` | `no`                 | `yes` para actualizar código/BD sin reiniciar el servicio |
 
-Si se ejecuta sin privilegios de root y el servicio existe, el script intentará reiniciarlo con `sudo rc-service ... restart`; conviene tener configurado `sudo` sin contraseña para ese comando concreto si se va a automatizar (por ejemplo, desde un cron o un webhook de despliegue), o ejecutarlo directamente como root.
-
 ## Estado del proyecto / próximos pasos
 
 - ✅ Modelo de datos, RBAC, todas las pantallas del prototipo portadas a Django con persistencia real en MySQL.
 - ✅ Resumen heurístico de emails (sin IA externa), igual que el prototipo.
+- ✅ Módulo M&A con pipeline kanban de venta, compradores, procesos e interacciones.
+- ✅ Módulo Colaboraciones con seguimiento de clientes/proveedores/partners por participada.
+- ✅ Formato numérico español (`.` miles, `,` decimales) en todos los importes.
 - ⏳ **Auth0**: pendiente de integrar para sustituir el login demo actual (variables ya previstas en `.env.example`).
 - ⏳ **Microsoft Graph (Outlook)**: pendiente de integrar para sincronizar la bandeja de entrada con buzones reales (variables ya previstas en `.env.example`); actualmente la bandeja se gestiona de forma manual.
 

@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block title %}Colaboraciones — CRM Gestora{% endblock %}
+{% block topbar_title %}Colaboraciones{% endblock %}
+{% block topbar_sub %}Pipeline global de colaboraciones{% endblock %}
+{% block content %}
+<form method="get" class="d-flex gap-2 mb-3">
+  <input type="text" name="q" value="{{ q }}" class="form-control" style="max-width:280px" placeholder="Buscar participada, colaborador…">
+  <select name="estado" class="form-select" style="max-width:220px" onchange="this.form.submit()">
+    <option value="">Todos los estados</option>
+    {% for e in estados %}
+      <option value="{{ e.id }}" {% if estado_id == e.id|stringformat:"s" %}selected{% endif %}>{{ e.nombre }}</option>
+    {% endfor %}
+  </select>
+  <button type="submit" class="btn btn-outline-secondary">Buscar</button>
+</form>
+
+<div class="card">
+  <table class="table mb-0">
+    <thead>
+      <tr><th>Participada</th><th>Colaborador</th><th>Tipo</th><th>Estado</th><th>Descripción</th><th>Próximo paso</th></tr>
+    </thead>
+    <tbody>
+      {% for col in colaboraciones %}
+      <tr style="cursor:pointer" onclick="location.href='{% url 'crm:colaboracion_detail' col.pk %}'">
+        <td><b>{{ col.company.name }}</b></td>
+        <td>{{ col.colaborador.name }}</td>
+        <td class="text-muted small">{{ col.tipo_relacion|default:"—" }}</td>
+        <td><span class="badge text-bg-info">{{ col.status.nombre|default:"—" }}</span></td>
+        <td class="text-muted small">{{ col.descripcion|default:"—" }}</td>
+        <td class="small">{{ col.next_action|default:"—" }}{% if col.next_date %} · <span class="text-warning">{{ col.next_date|date:"d M Y" }}</span>{% endif %}</td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="6" class="text-muted text-center py-4">Sin colaboraciones que coincidan.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% load django_bootstrap5 %}
+{% block title %}{{ title }} — CRM Gestora{% endblock %}
+{% block topbar_title %}{{ title }}{% endblock %}
+{% block content %}
+<div class="card card-body" style="max-width:600px">
+  <form method="post">
+    {% csrf_token %}
+    {% bootstrap_form form %}
+    <div class="d-flex gap-2 mt-3">
+      <button type="submit" class="btn btn-warning">Guardar</button>
+      <a href="{% url 'crm:company_detail' company.pk %}" class="btn btn-outline-secondary">Cancelar</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

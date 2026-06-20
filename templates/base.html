@@ -46,6 +46,11 @@
       {% endif %}
       <a class="ni {% if active_nav == 'investors' %}active{% endif %}" href="{% url 'crm:investors' %}"><i class="bi bi-briefcase"></i> Inversores</a>
       <a class="ni {% if active_nav == 'presentaciones' %}active{% endif %}" href="{% url 'crm:presentaciones' %}"><i class="bi bi-arrow-left-right"></i> Presentaciones</a>
+      <div class="ns">M&amp;A</div>
+      <a class="ni {% if active_nav == 'compradores' %}active{% endif %}" href="{% url 'crm:compradores' %}"><i class="bi bi-building-fill-up"></i> Compradores</a>
+      <div class="ns">Colaboraciones</div>
+      <a class="ni {% if active_nav == 'colaboraciones' %}active{% endif %}" href="{% url 'crm:colaboraciones' %}"><i class="bi bi-diagram-3"></i> Pipeline</a>
+      <a class="ni {% if active_nav == 'colaboradores' %}active{% endif %}" href="{% url 'crm:colaboradores' %}"><i class="bi bi-people"></i> Colaboradores</a>
       {% if user.role != 'ceo' %}
         <a class="ni {% if active_nav == 'inbox' %}active{% endif %}" href="{% url 'crm:inbox' %}">
           <i class="bi bi-inbox"></i> Bandeja

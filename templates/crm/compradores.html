@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %}Compradores M&A — CRM Gestora{% endblock %}
+{% block topbar_title %}Compradores M&amp;A{% endblock %}
+{% block topbar_sub %}Posibles compradores de las participadas{% endblock %}
+{% block content %}
+<form method="get" class="d-flex gap-2 mb-3">
+  <input type="text" name="q" value="{{ q }}" class="form-control" style="max-width:280px" placeholder="Buscar comprador…">
+  <select name="group" class="form-select" style="max-width:180px" onchange="this.form.submit()">
+    <option value="">Sin agrupación</option>
+    <option value="type" {% if group == 'type' %}selected{% endif %}>Por tipo</option>
+    <option value="country" {% if group == 'country' %}selected{% endif %}>Por país</option>
+  </select>
+  <button type="submit" class="btn btn-outline-secondary">Buscar</button>
+</form>
+
+{% if groups %}
+  {% for key, group_cards in groups.items %}
+  <h6 class="text-muted text-uppercase small mb-2 mt-3">{{ key }}</h6>
+  <div class="row g-3 mb-2">
+    {% for card in group_cards %}{% include "crm/_comprador_card.html" %}{% endfor %}
+  </div>
+  {% endfor %}
+{% else %}
+<div class="row g-3">
+  {% for card in cards %}{% include "crm/_comprador_card.html" %}{% endfor %}
+  {% if not cards %}<div class="col text-muted">Sin compradores registrados.</div>{% endif %}
+</div>
+{% endif %}
+{% endblock %}

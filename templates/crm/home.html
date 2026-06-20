@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load crm_filters %}
 {% block title %}Inicio — CRM Gestora{% endblock %}
 {% block topbar_title %}Inicio{% endblock %}
 {% block topbar_sub %}Resumen del fundraising de tus participadas{% endblock %}
@@ -6,15 +7,15 @@
 <h6 class="text-muted text-uppercase small mb-2">Rondas cerradas — agregado</h6>
 <div class="row g-3 mb-4">
   <div class="col-md-6"><div class="card card-body"><div class="text-muted small">Rondas cerradas</div><div class="h4 mb-0">{{ closed_kpis.count }}</div></div></div>
-  <div class="col-md-6"><div class="card card-body"><div class="text-muted small">Total invertido</div><div class="h4 mb-0">{{ closed_kpis.total|floatformat:0 }} €</div></div></div>
+  <div class="col-md-6"><div class="card card-body"><div class="text-muted small">Total invertido</div><div class="h4 mb-0">{{ closed_kpis.total|euros }} €</div></div></div>
 </div>
 
 <h6 class="text-muted text-uppercase small mb-2">Rondas abiertas — agregado</h6>
 <div class="row g-3 mb-4">
   <div class="col-md-3"><div class="card card-body"><div class="text-muted small">Rondas abiertas</div><div class="h4 mb-0">{{ open_kpis.count }}</div></div></div>
-  <div class="col-md-3"><div class="card card-body"><div class="text-muted small">Objetivo</div><div class="h4 mb-0">{{ open_kpis.target|floatformat:0 }} €</div></div></div>
-  <div class="col-md-3"><div class="card card-body"><div class="text-muted small">Invertido</div><div class="h4 mb-0">{{ open_kpis.invertido|floatformat:0 }} €</div></div></div>
-  <div class="col-md-3"><div class="card card-body"><div class="text-muted small">Pipeline ponderado</div><div class="h4 mb-0">{{ open_kpis.weighted|floatformat:0 }} €</div></div></div>
+  <div class="col-md-3"><div class="card card-body"><div class="text-muted small">Objetivo</div><div class="h4 mb-0">{{ open_kpis.target|euros }} €</div></div></div>
+  <div class="col-md-3"><div class="card card-body"><div class="text-muted small">Invertido</div><div class="h4 mb-0">{{ open_kpis.invertido|euros }} €</div></div></div>
+  <div class="col-md-3"><div class="card card-body"><div class="text-muted small">Pipeline ponderado</div><div class="h4 mb-0">{{ open_kpis.weighted|euros }} €</div></div></div>
 </div>
 
 <h6 class="text-muted text-uppercase small mb-2">Rondas activas</h6>
@@ -27,7 +28,7 @@
         <td>{{ r.company.name }}</td>
         <td>{{ r.type }}</td>
         <td><span class="badge text-bg-info">{{ r.status.nombre|default:"—" }}</span></td>
-        <td>{{ r.target|floatformat:0 }} €</td>
+        <td>{{ r.target|euros }} €</td>
         <td>{{ r.close|date:"d M Y" }}</td>
       </tr>
       {% empty %}

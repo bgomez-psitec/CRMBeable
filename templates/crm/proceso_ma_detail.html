@@ -1,0 +1,146 @@
+{% extends "base.html" %}
+{% load crm_filters %}
+{% block title %}{{ company.name }} — {{ proceso.nombre }} — CRM Gestora{% endblock %}
+{% block topbar_title %}{{ company.name }} — {{ proceso.nombre }}{% endblock %}
+{% block topbar_sub %}M&amp;A · {% if proceso.cerrado %}Cerrado{% else %}Activo{% endif %}{% if proceso.start %} · {{ proceso.start|date:"d M Y" }} → {{ proceso.close|date:"d M Y" }}{% endif %}{% endblock %}
+{% block topbar_actions %}
+  <a class="btn btn-outline-secondary btn-sm" href="{% url 'crm:company_detail' company.pk %}"><i class="bi bi-arrow-left"></i> Participada</a>
+{% endblock %}
+{% block content %}
+
+<div class="row g-3 mb-4">
+  <div class="col"><div class="card card-body"><div class="text-muted small">Precio pedido</div><div class="h5 mb-0">{{ kpis.precio_pedido|euros }} €</div><div class="small text-muted">{{ kpis.total_count }} comprador{{ kpis.total_count|pluralize:"es" }}</div></div></div>
+  <div class="col"><div class="card card-body"><div class="text-muted small">Mejor oferta</div><div class="h5 mb-0 text-success">{{ kpis.mejor_oferta|euros }} €</div><div class="small text-muted">{{ kpis.pipe_count }} en proceso</div></div></div>
+  <div class="col"><div class="card card-body"><div class="text-muted small">Pipeline ponderado</div><div class="h5 mb-0">{{ kpis.weighted|euros }} €</div></div></div>
+  <div class="col"><div class="card card-body"><div class="text-muted small">Vendido</div><div class="h5 mb-0 text-warning">{{ kpis.vendido|euros }} €</div><div class="small text-muted">{{ kpis.vendido_count }} comprador{{ kpis.vendido_count|pluralize:"es" }}</div></div></div>
+  <div class="col"><div class="card card-body"><div class="text-muted small">Descartado</div><div class="h5 mb-0 text-danger">{{ kpis.desc_count }} comprador{{ kpis.desc_count|pluralize:"es" }}</div></div></div>
+</div>
+
+<ul class="nav nav-tabs mb-3">
+  <li class="nav-item"><a class="nav-link {% if tab == 'matriz' %}active{% endif %}" href="?tab=matriz">Matriz</a></li>
+  <li class="nav-item"><a class="nav-link {% if tab == 'pipeline' %}active{% endif %}" href="?tab=pipeline">Pipeline M&amp;A (kanban)</a></li>
+</ul>
+
+{% if tab == 'matriz' %}
+<div class="card mb-4">
+  <table class="table mb-0">
+    <thead><tr><th>Comprador</th><th>Tipo</th><th>Estado</th><th>Oferta</th><th>NDA</th><th>DD</th><th>Intro por</th><th>Próximo paso</th></tr></thead>
+    <tbody>
+      {% for c in contactos %}
+      <tr>
+        <td><b>{{ c.comprador.name }}</b><div class="text-muted small">{{ c.comprador.country }}</div></td>
+        <td class="text-muted small">{{ c.comprador.type|default:"—" }}</td>
+        <td><span class="badge text-bg-info">{{ c.status.nombre|default:"—" }}</span></td>
+        <td class="fw-semibold">{{ c.oferta_precio|euros|default:"—" }} €</td>
+        <td>{% if c.nda_firmado %}<i class="bi bi-check-circle-fill text-success"></i>{% else %}<i class="bi bi-circle text-muted"></i>{% endif %}</td>
+        <td>{% if c.dd_iniciado %}<i class="bi bi-check-circle-fill text-success"></i>{% else %}<i class="bi bi-circle text-muted"></i>{% endif %}</td>
+        <td class="text-muted small">{{ c.intro_by|default:"—" }}</td>
+        <td class="small">{{ c.next_action|default:"—" }}{% if c.next_date %} · <span class="text-warning">{{ c.next_date|date:"d M Y" }}</span>{% endif %}</td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="8" class="text-muted text-center py-4">Sin compradores en este proceso.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+{% else %}
+<div class="text-muted small mb-3"><i class="bi bi-hand-index"></i> Arrastra las tarjetas entre columnas para cambiar el estado.</div>
+<div class="d-flex gap-3 align-items-start overflow-auto pb-3 kanban-board">
+  {% for stage in pipe_stages %}
+    <div class="kanban-col" data-estado-id="{{ stage.estado.id }}">
+      <div class="kanban-col-header">
+        <div class="d-flex justify-content-between align-items-center">
+          <span class="fw-semibold">{{ stage.estado.nombre }} <span class="badge text-bg-secondary">{{ stage.items|length }}</span></span>
+          <span class="text-muted small">Peso {{ stage.peso }}%</span>
+        </div>
+        <div class="text-muted small">{{ stage.total|euros }} €</div>
+      </div>
+      <div class="kanban-body" data-estado-id="{{ stage.estado.id }}">
+        {% for c in stage.items %}
+          <div class="kanban-card" draggable="true" data-contacto-id="{{ c.id }}">
+            <b>{{ c.comprador.name }}</b>
+            <div>{{ c.oferta_precio|euros|default:"Sin oferta" }} €</div>
+            {% if c.nda_firmado %}<span class="badge text-bg-secondary" style="font-size:10px">NDA</span>{% endif %}
+            {% if c.dd_iniciado %}<span class="badge text-bg-info" style="font-size:10px">DD</span>{% endif %}
+            <div class="text-muted small">{{ c.next_date|date:"d M"|default:"—" }}</div>
+          </div>
+        {% empty %}
+          <div class="kanban-empty">Sin compradores</div>
+        {% endfor %}
+      </div>
+    </div>
+  {% endfor %}
+  <div class="kanban-divider"></div>
+  {% for stage in end_stages %}
+    <div class="kanban-col" data-estado-id="{{ stage.estado.id }}">
+      <div class="kanban-col-header">
+        <span class="fw-semibold">{{ stage.estado.nombre }} <span class="badge text-bg-secondary">{{ stage.items|length }}</span></span>
+        <div class="text-muted small">{{ stage.total|euros }} €</div>
+      </div>
+      <div class="kanban-body" data-estado-id="{{ stage.estado.id }}">
+        {% for c in stage.items %}
+          <div class="kanban-card" draggable="true" data-contacto-id="{{ c.id }}">
+            <b>{{ c.comprador.name }}</b>
+            <div>{{ c.oferta_precio|euros|default:"—" }} €</div>
+          </div>
+        {% empty %}
+          <div class="kanban-empty">Sin compradores</div>
+        {% endfor %}
+      </div>
+    </div>
+  {% endfor %}
+</div>
+<form id="status-form" method="post" style="display:none">{% csrf_token %}<input type="hidden" name="estado_id"></form>
+{% endif %}
+
+{% if can_edit %}
+<div class="card card-body mt-4">
+  <div class="fw-semibold mb-3"><i class="bi bi-plus-circle"></i> Añadir comprador al proceso</div>
+  <form method="post">
+    {% csrf_token %}
+    {% load django_bootstrap5 %}
+    {% bootstrap_form form layout="inline" %}
+    <button type="submit" class="btn btn-warning mt-2">Añadir</button>
+  </form>
+</div>
+{% endif %}
+
+{% endblock %}
+
+{% block extra_head %}
+<style>
+  .kanban-board { align-items: stretch; }
+  .kanban-col { background:#eef0f3; border-radius:8px; padding:12px; min-width:220px; max-width:220px; flex-shrink:0; display:flex; flex-direction:column; }
+  .kanban-col-header { padding-bottom:8px; margin-bottom:8px; border-bottom:2px solid #d7dae0; }
+  .kanban-body { display:flex; flex-direction:column; gap:8px; min-height:70px; flex:1; }
+  .kanban-body.drag-over { background:rgba(255,193,7,.12); border-radius:6px; }
+  .kanban-card { background:#fff; border:1px solid #e3e5e9; border-radius:6px; box-shadow:0 1px 2px rgba(16,24,40,.06); padding:8px 10px; font-size:13px; cursor:grab; }
+  .kanban-card:active { cursor:grabbing; }
+  .kanban-card.dragging { opacity:.4; }
+  .kanban-empty { border:1px dashed #c8cbd2; border-radius:6px; padding:10px; text-align:center; font-size:12px; color:#9094a0; }
+  .kanban-divider { width:1px; align-self:stretch; background:#d7dae0; flex-shrink:0; }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.querySelectorAll('.kanban-card').forEach(card => {
+  card.addEventListener('dragstart', e => { e.dataTransfer.setData('text/plain', card.dataset.contactoId); card.classList.add('dragging'); });
+  card.addEventListener('dragend', () => card.classList.remove('dragging'));
+});
+document.querySelectorAll('.kanban-body').forEach(col => {
+  col.addEventListener('dragover', e => { e.preventDefault(); col.classList.add('drag-over'); });
+  col.addEventListener('dragleave', () => col.classList.remove('drag-over'));
+  col.addEventListener('drop', e => {
+    e.preventDefault(); col.classList.remove('drag-over');
+    const contactoId = e.dataTransfer.getData('text/plain');
+    const estadoId = col.dataset.estadoId;
+    const form = document.getElementById('status-form');
+    form.action = `/ma/contacto/${contactoId}/estado/`;
+    form.querySelector('[name=estado_id]').value = estadoId;
+    form.submit();
+  });
+});
+</script>
+{% endblock %}

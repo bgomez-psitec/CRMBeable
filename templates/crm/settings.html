@@ -19,7 +19,7 @@
 </div>
 
 {% if is_admin %}
-<div class="row g-3">
+<div class="row g-3 mb-3">
   <div class="col-md-4">
     <div class="card card-body h-100">
       <div class="fw-semibold mb-2">Estados de presentación</div>
@@ -61,6 +61,39 @@
       {% empty %}<div class="text-muted small">Sin elementos.</div>{% endfor %}
       <form method="post" class="d-flex gap-2 mt-2">{% csrf_token %}<input type="hidden" name="section" value="catalogo"><input type="hidden" name="tipo" value="relacion">
         <input name="nombre" class="form-control form-control-sm" placeholder="Nueva etapa">
+        <button class="btn btn-sm btn-outline-secondary">Añadir</button>
+      </form>
+    </div>
+  </div>
+</div>
+
+<div class="row g-3">
+  <div class="col-md-6">
+    <div class="card card-body h-100">
+      <div class="fw-semibold mb-2">Estados M&amp;A</div>
+      {% for e in estados_ma %}
+      <div class="d-flex justify-content-between align-items-center mb-1">
+        <span>{{ e.nombre }}</span>
+        <form method="post" class="m-0"><input type="hidden" name="section" value="catalogo"><input type="hidden" name="tipo" value="estado_ma"><input type="hidden" name="delete_id" value="{{ e.id }}">{% csrf_token %}<button class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button></form>
+      </div>
+      {% empty %}<div class="text-muted small">Sin elementos.</div>{% endfor %}
+      <form method="post" class="d-flex gap-2 mt-2">{% csrf_token %}<input type="hidden" name="section" value="catalogo"><input type="hidden" name="tipo" value="estado_ma">
+        <input name="nombre" class="form-control form-control-sm" placeholder="Nuevo estado M&A">
+        <button class="btn btn-sm btn-outline-secondary">Añadir</button>
+      </form>
+    </div>
+  </div>
+  <div class="col-md-6">
+    <div class="card card-body h-100">
+      <div class="fw-semibold mb-2">Estados de colaboración</div>
+      {% for e in estados_colab %}
+      <div class="d-flex justify-content-between align-items-center mb-1">
+        <span>{{ e.nombre }}</span>
+        <form method="post" class="m-0"><input type="hidden" name="section" value="catalogo"><input type="hidden" name="tipo" value="estado_colab"><input type="hidden" name="delete_id" value="{{ e.id }}">{% csrf_token %}<button class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button></form>
+      </div>
+      {% empty %}<div class="text-muted small">Sin elementos.</div>{% endfor %}
+      <form method="post" class="d-flex gap-2 mt-2">{% csrf_token %}<input type="hidden" name="section" value="catalogo"><input type="hidden" name="tipo" value="estado_colab">
+        <input name="nombre" class="form-control form-control-sm" placeholder="Nuevo estado colaboración">
         <button class="btn btn-sm btn-outline-secondary">Añadir</button>
       </form>
     </div>

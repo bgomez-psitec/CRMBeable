@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load crm_filters %}
 {% block title %}{{ investor.name }} — CRM Gestora{% endblock %}
 {% block topbar_title %}{{ investor.name }}{% endblock %}
 {% block topbar_sub %}{{ investor.type }} · {{ investor.country }}{% endblock %}
@@ -40,7 +41,7 @@
         <tr style="cursor:pointer" onclick="location.href='{% url 'crm:round_detail' it.round_id %}'">
           <td><b>{{ it.company.name }}</b><div class="text-muted small">{{ it.round.type }}</div></td>
           <td><span class="badge text-bg-info">{{ it.status.nombre|default:"—" }}</span></td>
-          <td class="text-end fw-semibold">{{ it.ticket|floatformat:0|default:"—" }} €</td>
+          <td class="text-end fw-semibold">{{ it.ticket|euros }} €</td>
         </tr>
         {% empty %}<tr><td class="text-muted">Sin presentaciones.</td></tr>{% endfor %}
       </table>

@@ -9,15 +9,21 @@ from django.urls import reverse
 from django.utils import timezone
 
 from accounts.models import Role, User
-from crm.forms import CompanyForm, RoundForm, UserForm
+from crm.forms import ColaboracionForm, CompanyForm, ContactoMAForm, ProcesoMAForm, RoundForm, UserForm
 from crm.models import (
-    Company, EstadoPresentacion, EtapaRelacion, FaseRonda, InboxMessage, Interaction, Introduction, Investor,
-    InvestorLog, Round,
+    Colaboracion, ColaboradorContacto, Colaborador, Company, CompradorContacto, Comprador,
+    ContactoMA, EstadoColaboracion, EstadoMA, EstadoPresentacion, EtapaRelacion,
+    FaseRonda, InboxMessage, Interaction, InteraccionColaboracion, InteraccionMA,
+    Introduction, Investor, InvestorLog, ProcesoMA, Round,
 )
 from crm.permissions import (
     allowed_company_ids, can_edit, can_see_company, visible_companies, visible_introductions, visible_investors,
 )
-from crm.utils import active_rounds, company_invertido, round_invertido, round_weighted, summarize_email
+from crm.utils import (
+    MA_ESTADO_W, MA_TERMINAL, COLLAB_TERMINAL,
+    active_rounds, company_invertido, proceso_ma_vendido, proceso_ma_weighted,
+    round_invertido, round_weighted, summarize_email,
+)
 
 
 @login_required
@@ -113,6 +119,9 @@ def company_detail(request, pk):
         pct = round(ri / r.target * 100) if r.target else 0
         rounds_data.append({'round': r, 'invertido': ri, 'pct': min(pct, 100), 'count': r.introductions.count()})
 
+    procesos_ma = company.procesos_ma.all()
+    colaboraciones = company.colaboraciones.select_related('colaborador', 'status').all()
+
     return render(request, 'crm/company_detail.html', {
         'active_nav': 'myco' if request.user.role == 'ceo' else 'companies',
         'company': company,
@@ -121,6 +130,8 @@ def company_detail(request, pk):
             'presentaciones_activas': sum(r['round'].introductions.exclude(status__nombre__in=['Descartado', 'No contactado']).count() for r in rounds_data),
         },
         'rounds_data': rounds_data,
+        'procesos_ma': procesos_ma,
+        'colaboraciones': colaboraciones,
         'can_edit': can_edit(request.user),
     })
 
@@ -465,6 +476,256 @@ def users(request):
     })
 
 
+# ─── M&A ─────────────────────────────────────────────────────────────────────
+
+@login_required
+def proceso_ma_create(request, company_pk):
+    if not can_edit(request.user) or not can_see_company(request.user, company_pk):
+        return HttpResponseForbidden()
+    company = get_object_or_404(Company, pk=company_pk)
+    if request.method == 'POST':
+        form = ProcesoMAForm(request.POST)
+        if form.is_valid():
+            p = form.save(commit=False)
+            p.company = company
+            p.save()
+            messages.success(request, 'Proceso M&A creado.')
+            return redirect('crm:proceso_ma_detail', pk=p.pk)
+    else:
+        form = ProcesoMAForm()
+    return render(request, 'crm/proceso_ma_form.html', {
+        'active_nav': 'companies', 'form': form, 'company': company,
+        'title': f'Nuevo proceso M&A — {company.name}',
+    })
+
+
+@login_required
+def proceso_ma_detail(request, pk):
+    proceso = get_object_or_404(ProcesoMA.objects.select_related('company'), pk=pk)
+    if not can_see_company(request.user, proceso.company_id):
+        return HttpResponseForbidden()
+
+    tab = request.GET.get('tab', 'matriz')
+    estados_ma = list(EstadoMA.objects.all())
+    contactos = proceso.contactos.select_related('comprador', 'status').all()
+
+    q = request.GET.get('q', '').strip().lower()
+    if q:
+        contactos = [c for c in contactos if q in c.comprador.name.lower()]
+
+    vendido_total = proceso_ma_vendido(proceso)
+    weighted = proceso_ma_weighted(proceso)
+    mejor_oferta = max((c.oferta_precio or 0 for c in proceso.contactos.all()), default=0)
+
+    pipe_stages = [e for e in estados_ma if e.nombre not in MA_TERMINAL]
+    end_stages = [e for e in estados_ma if e.nombre in MA_TERMINAL]
+
+    def stage_data(stage):
+        items = [c for c in contactos if c.status_id == stage.id]
+        return {
+            'estado': stage,
+            'items': items,
+            'total': sum(c.oferta_precio or 0 for c in items),
+            'peso': int(MA_ESTADO_W.get(stage.nombre, 0) * 100),
+        }
+
+    kpis = {
+        'precio_pedido': proceso.precio_pedido or 0,
+        'mejor_oferta': mejor_oferta,
+        'weighted': weighted,
+        'vendido': vendido_total,
+        'total_count': proceso.contactos.count(),
+        'vendido_count': proceso.contactos.filter(status__nombre='Vendido').count(),
+        'desc_count': proceso.contactos.filter(status__nombre='Descartado').count(),
+        'pipe_count': proceso.contactos.exclude(status__nombre__in=MA_TERMINAL).count(),
+    }
+
+    if request.method == 'POST' and can_edit(request.user):
+        form = ContactoMAForm(request.POST)
+        if form.is_valid():
+            c = form.save(commit=False)
+            c.proceso = proceso
+            c.save()
+            messages.success(request, 'Comprador añadido.')
+            return redirect('crm:proceso_ma_detail', pk=pk)
+    else:
+        form = ContactoMAForm()
+
+    return render(request, 'crm/proceso_ma_detail.html', {
+        'active_nav': 'companies',
+        'proceso': proceso, 'company': proceso.company,
+        'kpis': kpis, 'tab': tab, 'q': request.GET.get('q', ''),
+        'contactos': contactos,
+        'pipe_stages': [stage_data(s) for s in pipe_stages],
+        'end_stages': [stage_data(s) for s in end_stages],
+        'form': form,
+        'can_edit': can_edit(request.user),
+    })
+
+
+@login_required
+def contacto_ma_set_status(request, pk):
+    if request.method != 'POST' or not can_edit(request.user):
+        return HttpResponseForbidden()
+    contacto = get_object_or_404(ContactoMA, pk=pk)
+    if not can_see_company(request.user, contacto.proceso.company_id):
+        return HttpResponseForbidden()
+    estado = get_object_or_404(EstadoMA, pk=request.POST.get('estado_id'))
+    contacto.status = estado
+    contacto.save(update_fields=['status'])
+    return redirect(reverse('crm:proceso_ma_detail', kwargs={'pk': contacto.proceso_id}) + '?tab=pipeline')
+
+
+@login_required
+def compradores(request):
+    qs = Comprador.objects.select_related('relation').all()
+    q = request.GET.get('q', '').strip()
+    if q:
+        qs = qs.filter(name__icontains=q)
+    group = request.GET.get('group', '')
+    cards = [{'comprador': c, 'activos': c.contactos_ma.exclude(status__nombre__in=MA_TERMINAL).count()} for c in qs]
+    groups = None
+    if group in ('type', 'country'):
+        groups = {}
+        for card in cards:
+            key = getattr(card['comprador'], group) or '—'
+            groups.setdefault(key, []).append(card)
+    return render(request, 'crm/compradores.html', {
+        'active_nav': 'compradores', 'cards': cards, 'groups': groups, 'group': group, 'q': q,
+        'can_edit': can_edit(request.user),
+    })
+
+
+@login_required
+def comprador_detail(request, pk):
+    comprador = get_object_or_404(Comprador, pk=pk)
+    contactos_ma = comprador.contactos_ma.select_related('proceso__company', 'status').all()
+    if request.user.role != 'admin':
+        contactos_ma = contactos_ma.filter(proceso__company_id__in=allowed_company_ids(request.user))
+
+    chrono = []
+    for c in contactos_ma:
+        for inter in c.interactions.all():
+            chrono.append({'date': inter.date, 'type': inter.type or 'Nota', 'summary': inter.note,
+                           'company': c.proceso.company, 'proceso': c.proceso})
+    chrono.sort(key=lambda x: x['date'] or '', reverse=True)
+    last_contact = max((x['date'] for x in chrono if x['date']), default=None)
+
+    if request.method == 'POST' and can_edit(request.user):
+        contacto_id = request.POST.get('contacto_id')
+        if contacto_id:
+            contacto = get_object_or_404(ContactoMA, pk=contacto_id)
+            InteraccionMA.objects.create(
+                contacto=contacto,
+                type=request.POST.get('type', 'Nota'),
+                date=request.POST.get('date') or None,
+                note=request.POST.get('summary', ''),
+            )
+            messages.success(request, 'Interacción registrada.')
+        return redirect('crm:comprador_detail', pk=pk)
+
+    return render(request, 'crm/comprador_detail.html', {
+        'active_nav': 'compradores', 'comprador': comprador,
+        'contactos_ma': contactos_ma, 'chrono': chrono, 'last_contact': last_contact,
+        'can_edit': can_edit(request.user),
+    })
+
+
+# ─── Colaboraciones ───────────────────────────────────────────────────────────
+
+@login_required
+def colaboraciones_global(request):
+    from django.db.models import Q as DQ
+    companies = visible_companies(request.user)
+    qs = Colaboracion.objects.filter(company__in=companies).select_related('company', 'colaborador', 'status')
+    q = request.GET.get('q', '').strip()
+    estado_id = request.GET.get('estado', '')
+    if q:
+        qs = qs.filter(DQ(colaborador__name__icontains=q) | DQ(company__name__icontains=q) | DQ(descripcion__icontains=q))
+    if estado_id:
+        qs = qs.filter(status_id=estado_id)
+    return render(request, 'crm/colaboraciones_global.html', {
+        'active_nav': 'colaboraciones', 'colaboraciones': qs, 'q': q, 'estado_id': estado_id,
+        'estados': EstadoColaboracion.objects.all(),
+    })
+
+
+@login_required
+def colaboracion_create(request, company_pk):
+    if not can_edit(request.user) or not can_see_company(request.user, company_pk):
+        return HttpResponseForbidden()
+    company = get_object_or_404(Company, pk=company_pk)
+    if request.method == 'POST':
+        form = ColaboracionForm(request.POST)
+        if form.is_valid():
+            col = form.save(commit=False)
+            col.company = company
+            col.save()
+            messages.success(request, 'Colaboración creada.')
+            return redirect('crm:colaboracion_detail', pk=col.pk)
+    else:
+        form = ColaboracionForm()
+    return render(request, 'crm/colaboracion_form.html', {
+        'active_nav': 'companies', 'form': form, 'company': company,
+        'title': f'Nueva colaboración — {company.name}',
+    })
+
+
+@login_required
+def colaboracion_detail(request, pk):
+    col = get_object_or_404(Colaboracion.objects.select_related('company', 'colaborador', 'status'), pk=pk)
+    if not can_see_company(request.user, col.company_id):
+        return HttpResponseForbidden()
+
+    if request.method == 'POST' and can_edit(request.user):
+        InteraccionColaboracion.objects.create(
+            colaboracion=col,
+            type=request.POST.get('type', 'Nota'),
+            date=request.POST.get('date') or None,
+            note=request.POST.get('summary', ''),
+        )
+        messages.success(request, 'Interacción registrada.')
+        return redirect('crm:colaboracion_detail', pk=pk)
+
+    chrono = col.interactions.all()
+    return render(request, 'crm/colaboracion_detail.html', {
+        'active_nav': 'colaboraciones', 'col': col, 'chrono': chrono,
+        'can_edit': can_edit(request.user),
+    })
+
+
+@login_required
+def colaboradores(request):
+    qs = Colaborador.objects.all()
+    q = request.GET.get('q', '').strip()
+    if q:
+        qs = qs.filter(name__icontains=q)
+    group = request.GET.get('group', '')
+    cards = [{'colaborador': c, 'activos': c.colaboraciones.exclude(status__nombre__in=COLLAB_TERMINAL).count()} for c in qs]
+    groups = None
+    if group in ('type', 'country'):
+        groups = {}
+        for card in cards:
+            key = getattr(card['colaborador'], group) or '—'
+            groups.setdefault(key, []).append(card)
+    return render(request, 'crm/colaboradores.html', {
+        'active_nav': 'colaboradores', 'cards': cards, 'groups': groups, 'group': group, 'q': q,
+        'can_edit': can_edit(request.user),
+    })
+
+
+@login_required
+def colaborador_detail(request, pk):
+    colaborador = get_object_or_404(Colaborador, pk=pk)
+    colabs = colaborador.colaboraciones.select_related('company', 'status').all()
+    if request.user.role != 'admin':
+        colabs = colabs.filter(company_id__in=allowed_company_ids(request.user))
+    return render(request, 'crm/colaborador_detail.html', {
+        'active_nav': 'colaboradores', 'colaborador': colaborador, 'colabs': colabs,
+        'can_edit': can_edit(request.user),
+    })
+
+
 @login_required
 def settings_view(request):
     if request.method == 'POST':
@@ -477,7 +738,10 @@ def settings_view(request):
             request.user.save()
             messages.success(request, 'Perfil actualizado.')
         elif section == 'catalogo' and request.user.role == Role.ADMIN:
-            model = {'estado': EstadoPresentacion, 'fase': FaseRonda, 'relacion': EtapaRelacion}.get(request.POST.get('tipo'))
+            model = {
+                'estado': EstadoPresentacion, 'fase': FaseRonda, 'relacion': EtapaRelacion,
+                'estado_ma': EstadoMA, 'estado_colab': EstadoColaboracion,
+            }.get(request.POST.get('tipo'))
             if model:
                 nombre = request.POST.get('nombre', '').strip()
                 if request.POST.get('delete_id'):
@@ -492,5 +756,7 @@ def settings_view(request):
         'estados': EstadoPresentacion.objects.all(),
         'fases': FaseRonda.objects.all(),
         'relaciones': EtapaRelacion.objects.all(),
+        'estados_ma': EstadoMA.objects.all(),
+        'estados_colab': EstadoColaboracion.objects.all(),
         'is_admin': request.user.role == Role.ADMIN,
     })

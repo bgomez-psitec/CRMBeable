@@ -1,14 +1,15 @@
 {% extends "base.html" %}
+{% load crm_filters %}
 {% block title %}{{ company.name }} — {{ round.type }} — CRM Gestora{% endblock %}
 {% block topbar_title %}{{ company.name }} — {{ round.type }}{% endblock %}
 {% block topbar_sub %}{{ round.status.nombre|default:"—" }}{% if round.rstage %} · {{ round.rstage }}{% endif %} · {{ round.start|date:"d M Y" }} → {{ round.close|date:"d M Y" }}{% endblock %}
 {% block content %}
 <div class="row g-3 mb-4">
-  <div class="col"><div class="card card-body"><div class="text-muted small">Objetivo de ronda</div><div class="h5 mb-0">{{ kpis.target|floatformat:0 }} €</div><div class="small text-muted">{{ kpis.total_count }} inversores</div></div></div>
-  <div class="col"><div class="card card-body"><div class="text-muted small">Invertido ({{ kpis.pct }}%)</div><div class="h5 mb-0 text-success">{{ kpis.invertido|floatformat:0 }} €</div><div class="small text-muted">{{ kpis.inv_count }} invertidos</div></div></div>
-  <div class="col"><div class="card card-body"><div class="text-muted small">Pipeline ponderado</div><div class="h5 mb-0">{{ kpis.weighted|floatformat:0 }} €</div><div class="small text-muted">{{ kpis.other_count }} en proceso</div></div></div>
-  <div class="col"><div class="card card-body"><div class="text-muted small">Pipeline no ponderado</div><div class="h5 mb-0">{{ kpis.pipe_total|floatformat:0 }} €</div><div class="small text-muted">{{ kpis.pipe_count }} inversores</div></div></div>
-  <div class="col"><div class="card card-body"><div class="text-muted small">Descartado</div><div class="h5 mb-0 text-danger">{{ kpis.desc_total|floatformat:0 }} €</div><div class="small text-muted">{{ kpis.desc_count }} descartados</div></div></div>
+  <div class="col"><div class="card card-body"><div class="text-muted small">Objetivo de ronda</div><div class="h5 mb-0">{{ kpis.target|euros }} €</div><div class="small text-muted">{{ kpis.total_count }} inversores</div></div></div>
+  <div class="col"><div class="card card-body"><div class="text-muted small">Invertido ({{ kpis.pct }}%)</div><div class="h5 mb-0 text-success">{{ kpis.invertido|euros }} €</div><div class="small text-muted">{{ kpis.inv_count }} invertidos</div></div></div>
+  <div class="col"><div class="card card-body"><div class="text-muted small">Pipeline ponderado</div><div class="h5 mb-0">{{ kpis.weighted|euros }} €</div><div class="small text-muted">{{ kpis.other_count }} en proceso</div></div></div>
+  <div class="col"><div class="card card-body"><div class="text-muted small">Pipeline no ponderado</div><div class="h5 mb-0">{{ kpis.pipe_total|euros }} €</div><div class="small text-muted">{{ kpis.pipe_count }} inversores</div></div></div>
+  <div class="col"><div class="card card-body"><div class="text-muted small">Descartado</div><div class="h5 mb-0 text-danger">{{ kpis.desc_total|euros }} €</div><div class="small text-muted">{{ kpis.desc_count }} descartados</div></div></div>
 </div>
 
 <ul class="nav nav-tabs mb-3">
@@ -26,7 +27,7 @@
           <td><b>{{ it.investor.name }}</b><div class="text-muted small">{{ it.investor.country }}</div></td>
           <td class="text-muted">{{ it.investor.type }}</td>
           <td><span class="badge text-bg-info">{{ it.status.nombre|default:"—" }}</span></td>
-          <td class="fw-semibold">{{ it.ticket|floatformat:0|default:"—" }} €</td>
+          <td class="fw-semibold">{{ it.ticket|euros }} €</td>
           <td class="text-muted">{{ it.intro_by|default:"—" }}</td>
           <td>{{ it.next_action|default:"—" }}{% if it.next_date %} · <span class="text-warning">{{ it.next_date|date:"d M Y" }}</span>{% endif %}</td>
         </tr>
@@ -46,13 +47,13 @@
             <span class="fw-semibold">{{ stage.estado.nombre }} <span class="badge text-bg-secondary">{{ stage.items|length }}</span></span>
             <span class="text-muted small">Peso {{ stage.peso }}%</span>
           </div>
-          <div class="text-muted small">{{ stage.total|floatformat:0 }} €</div>
+          <div class="text-muted small">{{ stage.total|euros }} €</div>
         </div>
         <div class="kanban-body" data-estado-id="{{ stage.estado.id }}">
           {% for it in stage.items %}
             <div class="kanban-card" draggable="true" data-intro-id="{{ it.id }}">
               <b>{{ it.investor.name }}</b>
-              <div>{{ it.ticket|floatformat:0|default:"—" }} €</div>
+              <div>{{ it.ticket|euros }} €</div>
               <div class="text-muted small">{{ it.next_date|date:"d M"|default:"—" }}</div>
             </div>
           {% empty %}
@@ -66,13 +67,13 @@
       <div class="kanban-col" data-estado-id="{{ stage.estado.id }}">
         <div class="kanban-col-header">
           <span class="fw-semibold">{{ stage.estado.nombre }} <span class="badge text-bg-secondary">{{ stage.items|length }}</span></span>
-          <div class="text-muted small">{{ stage.total|floatformat:0 }} €</div>
+          <div class="text-muted small">{{ stage.total|euros }} €</div>
         </div>
         <div class="kanban-body" data-estado-id="{{ stage.estado.id }}">
           {% for it in stage.items %}
             <div class="kanban-card" draggable="true" data-intro-id="{{ it.id }}">
               <b>{{ it.investor.name }}</b>
-              <div>{{ it.ticket|floatformat:0|default:"—" }} €</div>
+              <div>{{ it.ticket|euros }} €</div>
             </div>
           {% empty %}
             <div class="kanban-empty">Sin inversores</div>

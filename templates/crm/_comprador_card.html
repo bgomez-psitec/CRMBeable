@@ -1,0 +1,15 @@
+{% load crm_filters %}
+<div class="col-md-6">
+  <div class="card h-100" style="cursor:pointer" onclick="location.href='{% url 'crm:comprador_detail' card.comprador.pk %}'">
+    <div class="card-body">
+      <div class="d-flex justify-content-between align-items-start">
+        <div>
+          <div class="fw-semibold">{{ card.comprador.name }}</div>
+          <div class="text-muted small">{{ card.comprador.country }}{% if card.comprador.type %} · {{ card.comprador.type }}{% endif %}</div>
+        </div>
+        <span class="badge text-bg-secondary">{{ card.activos }} en proceso</span>
+      </div>
+      {% if card.comprador.sectors %}<div class="text-muted small mt-1">{{ card.comprador.sectors }}</div>{% endif %}
+    </div>
+  </div>
+</div>

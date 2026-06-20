@@ -3,19 +3,19 @@ from django.db import transaction
 
 from accounts.models import Role, User
 from crm.models import (
-    Company,
-    EstadoPresentacion,
-    EtapaRelacion,
-    FaseRonda,
-    InboxMessage,
-    Introduction,
-    Investor,
-    InvestorContact,
-    Round,
+    Colaboracion, Colaborador, ColaboradorContacto,
+    Company, Comprador, CompradorContacto, ContactoMA,
+    EstadoColaboracion, EstadoMA, EstadoPresentacion,
+    EtapaRelacion, FaseRonda, InboxMessage, Introduction,
+    Investor, InvestorContact, ProcesoMA, Round,
 )
 
 ESTADOS = ['No contactado', 'Intro realizada', 'Reunión inicial', 'Interés', 'Term sheet',
            'Due diligence', 'Invertido', 'Descartado']
+ESTADOS_MA = ['No contactado', 'Identificado', 'Contactado', 'Reunión mantenida',
+              'NDA firmado', 'Due Diligence', 'Oferta recibida', 'Negociación', 'Vendido', 'Descartado']
+ESTADOS_COLAB = ['No contactado', 'Contactado', 'Reunión', 'Propuesta enviada',
+                 'Negociación', 'Activo', 'Descartado']
 ROUND_PHASES = ['Preparación', 'Listado de Inversores', 'Contactados los inversores', 'Reuniones',
                 'Firma de LOIs', 'DD', 'Cierre', 'Cerrada']
 RELATION_STAGES = ['Lead', 'Conocido', 'Inversor no Activo', 'Relación activa',
@@ -86,6 +86,41 @@ INTRODUCTIONS = [
     (3, 0, 0, '2026-03-20', 'Laura Méndez', 'Intro realizada', 500000, 'Enviar one-pager', '2026-06-23', ''),
 ]
 
+COMPRADORES = [
+    {'name': 'Siemens AG', 'type': 'Estratégico', 'country': 'Alemania', 'sectors': 'Robótica, Automatización',
+     'contacts': [{'name': 'Klaus Müller', 'role': 'Head of M&A', 'email': 'k.muller@siemens.com', 'phone': '+49 89 636 0'}]},
+    {'name': 'Roche Holding', 'type': 'Estratégico', 'country': 'Suiza', 'sectors': 'Salud, Farma',
+     'contacts': [{'name': 'Anne Dupont', 'role': 'Corporate Development', 'email': 'a.dupont@roche.com', 'phone': '+41 61 688 0'}]},
+    {'name': 'Vista Equity Partners', 'type': 'Private Equity', 'country': 'Estados Unidos', 'sectors': 'Software, IA',
+     'contacts': [{'name': 'James Carter', 'role': 'Principal', 'email': 'j.carter@vistaequity.com', 'phone': '+1 512 730 0'}]},
+]
+
+# (company_index, proceso_nombre, precio_pedido, start, close)
+PROCESOS_MA = [
+    (2, 'Proceso venta Nervia AI 2026', 45000000, '2026-03-01', '2026-12-31'),
+    (0, 'Exploración compradores Lumio', 25000000, '2026-04-01', '2026-12-31'),
+]
+
+# (proceso_index, comprador_index, status, oferta_precio, nda_firmado, dd_iniciado, date, intro_by, next_action, next_date)
+CONTACTOS_MA = [
+    (0, 2, 'Due Diligence', 38000000, True, True, '2026-03-15', 'Banco asesor', 'Revisar data room', '2026-06-30'),
+    (0, 1, 'NDA firmado', 0, True, False, '2026-04-01', 'Equipo gestora', 'Reunión técnica', '2026-06-25'),
+    (1, 0, 'Reunión mantenida', 0, False, False, '2026-04-15', 'Equipo gestora', 'Segunda reunión', '2026-06-28'),
+]
+
+COLABORADORES = [
+    {'name': 'Philips Healthcare', 'type': 'Cliente potencial', 'country': 'Países Bajos', 'sectors': 'Salud, MedTech'},
+    {'name': 'Indra Sistemas', 'type': 'Partner tecnológico', 'country': 'España', 'sectors': 'Defensa, IA, Robótica'},
+    {'name': 'Schneider Electric', 'type': 'Partner comercial', 'country': 'Francia', 'sectors': 'Energía, Automatización'},
+]
+
+# (company_index, colaborador_index, tipo_relacion, descripcion, status, date, next_action, next_date)
+COLABORACIONES = [
+    (1, 0, 'Cliente potencial', 'Piloto de diagnóstico asistido por IA', 'Reunión', '2026-03-10', 'Presentar prototipo', '2026-06-22'),
+    (0, 1, 'Partner tecnológico', 'Integración brazo robótico en línea de producción', 'Propuesta enviada', '2026-02-20', 'Validar propuesta técnica', '2026-06-20'),
+    (3, 2, 'Partner comercial', 'Distribución sistema de monitorización energética', 'Contactado', '2026-04-05', 'Reunión comercial', '2026-06-30'),
+]
+
 USERS = [
     {'username': 'admin', 'name': 'Admin Principal', 'email': 'admin@ventureos.vc', 'role': Role.ADMIN, 'mfa': True, 'companies': [], 'company': None},
     {'username': 'elena', 'name': 'Elena Torres', 'email': 'elena@ventureos.vc', 'role': Role.EMPLEADO, 'mfa': True, 'companies': [0, 1, 3], 'company': None},
@@ -128,15 +163,26 @@ class Command(BaseCommand):
         Round.objects.all().delete()
         InvestorContact.objects.all().delete()
         Investor.objects.all().delete()
+        ContactoMA.objects.all().delete()
+        ProcesoMA.objects.all().delete()
+        CompradorContacto.objects.all().delete()
+        Comprador.objects.all().delete()
+        Colaboracion.objects.all().delete()
+        ColaboradorContacto.objects.all().delete()
+        Colaborador.objects.all().delete()
         Company.objects.all().delete()
         User.objects.filter(is_superuser=False).delete()
         EstadoPresentacion.objects.all().delete()
         FaseRonda.objects.all().delete()
         EtapaRelacion.objects.all().delete()
+        EstadoMA.objects.all().delete()
+        EstadoColaboracion.objects.all().delete()
 
         estados = {nombre: EstadoPresentacion.objects.create(nombre=nombre, orden=i) for i, nombre in enumerate(ESTADOS)}
         fases = {nombre: FaseRonda.objects.create(nombre=nombre, orden=i) for i, nombre in enumerate(ROUND_PHASES)}
         relaciones = {nombre: EtapaRelacion.objects.create(nombre=nombre, orden=i) for i, nombre in enumerate(RELATION_STAGES)}
+        estados_ma = {nombre: EstadoMA.objects.create(nombre=nombre, orden=i) for i, nombre in enumerate(ESTADOS_MA)}
+        estados_colab = {nombre: EstadoColaboracion.objects.create(nombre=nombre, orden=i) for i, nombre in enumerate(ESTADOS_COLAB)}
 
         companies = []
         for c in COMPANIES:
@@ -182,6 +228,45 @@ class Command(BaseCommand):
             if u['companies']:
                 user.assigned_companies.set([companies[i]['obj'] for i in u['companies']])
         self.stdout.write(f'{len(USERS)} usuarios creados (password demo1234).')
+
+        compradores = []
+        for c in COMPRADORES:
+            comprador = Comprador.objects.create(name=c['name'], type=c['type'], country=c['country'], sectors=c['sectors'])
+            for contact in c['contacts']:
+                CompradorContacto.objects.create(comprador=comprador, **contact)
+            compradores.append(comprador)
+
+        procesos_ma = []
+        for (ci, nombre, precio, start, close) in PROCESOS_MA:
+            p = ProcesoMA.objects.create(
+                company=companies[ci]['obj'], nombre=nombre,
+                precio_pedido=precio, start=start, close=close,
+            )
+            procesos_ma.append(p)
+
+        for (pi, ci, status, oferta, nda, dd, date, intro_by, next_action, next_date) in CONTACTOS_MA:
+            ContactoMA.objects.create(
+                proceso=procesos_ma[pi], comprador=compradores[ci],
+                status=estados_ma[status], oferta_precio=oferta or None,
+                nda_firmado=nda, dd_iniciado=dd,
+                date=_date_or_none(date), intro_by=intro_by,
+                next_action=next_action, next_date=_date_or_none(next_date),
+            )
+        self.stdout.write(f'{len(compradores)} compradores y {len(procesos_ma)} procesos M&A creados.')
+
+        colaboradores = []
+        for c in COLABORADORES:
+            colaboradores.append(Colaborador.objects.create(name=c['name'], type=c['type'], country=c['country'], sectors=c['sectors']))
+
+        for (ci, coli, tipo, desc, status, date, next_action, next_date) in COLABORACIONES:
+            Colaboracion.objects.create(
+                company=companies[ci]['obj'], colaborador=colaboradores[coli],
+                tipo_relacion=tipo, descripcion=desc,
+                status=estados_colab[status],
+                date=_date_or_none(date), next_action=next_action,
+                next_date=_date_or_none(next_date),
+            )
+        self.stdout.write(f'{len(colaboradores)} colaboradores y {len(COLABORACIONES)} colaboraciones creadas.')
 
         for msg in INBOX:
             InboxMessage.objects.create(

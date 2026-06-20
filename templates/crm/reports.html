@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load crm_filters %}
 {% block title %}Informes — CRM Gestora{% endblock %}
 {% block topbar_title %}Informes{% endblock %}
 {% block content %}
@@ -14,11 +15,11 @@
       <div class="card-header fw-semibold">Rondas abiertas (agregado)</div>
       <div class="card-body">
         <table class="table table-sm mb-0">
-          <tr><td>Objetivo</td><td class="text-end">{{ open_agg.target|floatformat:0 }} €</td></tr>
-          <tr><td>Invertido</td><td class="text-end text-success">{{ open_agg.invertido|floatformat:0 }} €</td></tr>
-          <tr><td>Pipeline ponderado</td><td class="text-end">{{ open_agg.weighted|floatformat:0 }} €</td></tr>
-          <tr><td>Pipeline no ponderado ({{ open_agg.pipe_count }})</td><td class="text-end">{{ open_agg.pipe_total|floatformat:0 }} €</td></tr>
-          <tr><td>Descartado ({{ open_agg.desc_count }})</td><td class="text-end text-danger">{{ open_agg.desc_total|floatformat:0 }} €</td></tr>
+          <tr><td>Objetivo</td><td class="text-end">{{ open_agg.target|euros }} €</td></tr>
+          <tr><td>Invertido</td><td class="text-end text-success">{{ open_agg.invertido|euros }} €</td></tr>
+          <tr><td>Pipeline ponderado</td><td class="text-end">{{ open_agg.weighted|euros }} €</td></tr>
+          <tr><td>Pipeline no ponderado ({{ open_agg.pipe_count }})</td><td class="text-end">{{ open_agg.pipe_total|euros }} €</td></tr>
+          <tr><td>Descartado ({{ open_agg.desc_count }})</td><td class="text-end text-danger">{{ open_agg.desc_total|euros }} €</td></tr>
         </table>
       </div>
     </div>
@@ -28,9 +29,9 @@
       <div class="card-header fw-semibold">Rondas cerradas (agregado)</div>
       <div class="card-body">
         <table class="table table-sm mb-0">
-          <tr><td>Objetivo</td><td class="text-end">{{ closed_agg.target|floatformat:0 }} €</td></tr>
-          <tr><td>Invertido</td><td class="text-end text-success">{{ closed_agg.invertido|floatformat:0 }} €</td></tr>
-          <tr><td>Descartado ({{ closed_agg.desc_count }})</td><td class="text-end text-danger">{{ closed_agg.desc_total|floatformat:0 }} €</td></tr>
+          <tr><td>Objetivo</td><td class="text-end">{{ closed_agg.target|euros }} €</td></tr>
+          <tr><td>Invertido</td><td class="text-end text-success">{{ closed_agg.invertido|euros }} €</td></tr>
+          <tr><td>Descartado ({{ closed_agg.desc_count }})</td><td class="text-end text-danger">{{ closed_agg.desc_total|euros }} €</td></tr>
         </table>
       </div>
     </div>

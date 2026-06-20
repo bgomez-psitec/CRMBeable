@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load crm_filters %}
 {% block title %}{{ company.name }} — CRM Gestora{% endblock %}
 {% block topbar_title %}{{ company.name }}{% endblock %}
 {% block topbar_sub %}{{ company.country }}{% endblock %}
@@ -17,7 +18,7 @@
     <div class="col-md-3">MRL <b>{{ company.mrl|default:"—" }}</b></div>
     <div class="col-md-3">Time to market <b>{{ company.ttm|default:"—" }}</b></div>
     <div class="col-md-3">Revenue <b>{{ company.revenue|default:"—" }}</b></div>
-    <div class="col-md-3">Última valoración <b>{{ company.valuation|floatformat:0|default:"—" }} €</b></div>
+    <div class="col-md-3">Última valoración <b>{{ company.valuation|euros }} €</b></div>
     <div class="col-md-3">Fecha valoración <b>{{ company.valuation_date|date:"d M Y"|default:"—" }}</b></div>
   </div>
   {% if company.sectors %}
@@ -26,13 +27,13 @@
 </div>
 
 <div class="row g-3 mb-4">
-  <div class="col-md-3"><div class="card card-body"><div class="text-muted small">Objetivo rondas activas</div><div class="h5 mb-0">{{ kpis.target|floatformat:0 }} €</div></div></div>
-  <div class="col-md-3"><div class="card card-body"><div class="text-muted small">Captado (invertido)</div><div class="h5 mb-0">{{ kpis.invertido|floatformat:0 }} €</div></div></div>
-  <div class="col-md-3"><div class="card card-body"><div class="text-muted small">Pipeline ponderado</div><div class="h5 mb-0">{{ kpis.weighted|floatformat:0 }} €</div></div></div>
+  <div class="col-md-3"><div class="card card-body"><div class="text-muted small">Objetivo rondas activas</div><div class="h5 mb-0">{{ kpis.target|euros }} €</div></div></div>
+  <div class="col-md-3"><div class="card card-body"><div class="text-muted small">Captado (invertido)</div><div class="h5 mb-0">{{ kpis.invertido|euros }} €</div></div></div>
+  <div class="col-md-3"><div class="card card-body"><div class="text-muted small">Pipeline ponderado</div><div class="h5 mb-0">{{ kpis.weighted|euros }} €</div></div></div>
   <div class="col-md-3"><div class="card card-body"><div class="text-muted small">Presentaciones activas</div><div class="h5 mb-0">{{ kpis.presentaciones_activas }}</div></div></div>
 </div>
 
-<h6 class="text-muted text-uppercase small mb-2">Rondas</h6>
+<h6 class="text-muted text-uppercase small mb-2">Rondas de Inversión</h6>
 <div class="row g-3">
   {% for rd in rounds_data %}
   <div class="col-md-6">
@@ -44,7 +45,7 @@
         </div>
         <div class="text-muted small">{{ rd.count }} inversor{{ rd.count|pluralize:"es" }} · {{ rd.round.start|date:"d M Y" }} → {{ rd.round.close|date:"d M Y" }}</div>
         <div class="d-flex justify-content-between small mt-2">
-          <span>{{ rd.invertido|floatformat:0 }} € / {{ rd.round.target|floatformat:0 }} €</span>
+          <span>{{ rd.invertido|euros }} € / {{ rd.round.target|euros }} €</span>
           <span>{{ rd.pct }}%</span>
         </div>
         <div class="progress" style="height:6px"><div class="progress-bar bg-warning" style="width:{{ rd.pct }}%"></div></div>
@@ -54,5 +55,56 @@
   {% empty %}
   <div class="text-muted">Sin rondas. Crea la primera.</div>
   {% endfor %}
+</div>
+
+{# ── M&A ─────────────────────────────────────────────────────────────────── #}
+<div class="d-flex justify-content-between align-items-center mt-4 mb-2">
+  <h6 class="text-muted text-uppercase small mb-0">M&amp;A — Pipeline de venta</h6>
+  {% if can_edit %}<a class="btn btn-sm btn-outline-secondary" href="{% url 'crm:proceso_ma_create' company.pk %}"><i class="bi bi-plus-lg"></i> Nuevo proceso</a>{% endif %}
+</div>
+<div class="row g-3">
+  {% for p in procesos_ma %}
+  <div class="col-md-6">
+    <div class="card h-100" style="cursor:pointer" onclick="location.href='{% url 'crm:proceso_ma_detail' p.pk %}'">
+      <div class="card-body">
+        <div class="d-flex justify-content-between align-items-start">
+          <div class="fw-semibold">{{ p.nombre }}</div>
+          <span class="badge {% if p.cerrado %}text-bg-success{% else %}text-bg-warning{% endif %}">{% if p.cerrado %}Cerrado{% else %}Activo{% endif %}</span>
+        </div>
+        <div class="text-muted small">{{ p.start|date:"d M Y"|default:"—" }} → {{ p.close|date:"d M Y"|default:"—" }}</div>
+        <div class="d-flex justify-content-between small mt-2">
+          <span>Precio pedido: <b>{{ p.precio_pedido|euros|default:"—" }} €</b></span>
+          <span class="text-muted">{{ p.contactos.count }} comprador{{ p.contactos.count|pluralize:"es" }}</span>
+        </div>
+      </div>
+    </div>
+  </div>
+  {% empty %}
+  <div class="col text-muted small">Sin procesos M&amp;A. {% if can_edit %}<a href="{% url 'crm:proceso_ma_create' company.pk %}">Crear el primero.</a>{% endif %}</div>
+  {% endfor %}
+</div>
+
+{# ── Colaboraciones ───────────────────────────────────────────────────────── #}
+<div class="d-flex justify-content-between align-items-center mt-4 mb-2">
+  <h6 class="text-muted text-uppercase small mb-0">Colaboraciones</h6>
+  {% if can_edit %}<a class="btn btn-sm btn-outline-secondary" href="{% url 'crm:colaboracion_create' company.pk %}"><i class="bi bi-plus-lg"></i> Nueva colaboración</a>{% endif %}
+</div>
+<div class="card">
+  <table class="table mb-0">
+    <thead><tr><th>Colaborador</th><th>Tipo</th><th>Estado</th><th>Descripción</th><th>Próximo paso</th></tr></thead>
+    <tbody>
+      {% for col in colaboraciones %}
+      <tr style="cursor:pointer" onclick="location.href='{% url 'crm:colaboracion_detail' col.pk %}'">
+        <td><b>{{ col.colaborador.name }}</b><div class="text-muted small">{{ col.colaborador.country }}</div></td>
+        <td class="text-muted small">{{ col.tipo_relacion|default:"—" }}</td>
+        <td><span class="badge text-bg-info">{{ col.status.nombre|default:"—" }}</span></td>
+        <td class="text-muted small">{{ col.descripcion|default:"—" }}</td>
+        <td class="small">{{ col.next_action|default:"—" }}{% if col.next_date %} · <span class="text-warning">{{ col.next_date|date:"d M Y" }}</span>{% endif %}</td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="5" class="text-muted text-center py-3">Sin colaboraciones. {% if can_edit %}<a href="{% url 'crm:colaboracion_create' company.pk %}">Crear la primera.</a>{% endif %}</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
 </div>
 {% endblock %}

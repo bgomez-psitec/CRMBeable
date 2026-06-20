@@ -1,3 +1,4 @@
+{% load crm_filters %}
 <div class="col-md-6">
   <div class="card h-100" style="cursor:pointer" onclick="location.href='{% url 'crm:company_detail' card.company.pk %}'">
     <div class="card-body">
@@ -9,11 +10,11 @@
         <span class="badge text-bg-warning">{{ card.company.stage|default:"—" }}</span>
       </div>
       <div class="d-flex justify-content-between text-muted small mt-2">
-        <span>Valoración <b class="text-dark">{{ card.company.valuation|floatformat:0|default:"—" }} €</b></span>
+        <span>Valoración <b class="text-dark">{{ card.company.valuation|euros }} €</b></span>
       </div>
       <div class="mt-2">
         <div class="d-flex justify-content-between small">
-          <span>Captado activo: <b class="text-warning">{{ card.invertido|floatformat:0 }} €</b> / {{ card.target|floatformat:0 }} €</span>
+          <span>Captado activo: <b class="text-warning">{{ card.invertido|euros }} €</b> / {{ card.target|euros }} €</span>
           <span>{{ card.pct }}%</span>
         </div>
         <div class="progress" style="height:6px"><div class="progress-bar bg-warning" style="width:{{ card.pct }}%"></div></div>

@@ -1,6 +1,9 @@
 import re
 from decimal import Decimal
 
+MA_TERMINAL = ('Vendido', 'Descartado')
+COLLAB_TERMINAL = ('Activo', 'Descartado')
+
 ESTADO_W = {
     'No contactado': Decimal('0'),
     'Intro realizada': Decimal('0.1'),
@@ -89,6 +92,36 @@ def intro_last_contact(introduction):
 
 def company_invertido(company):
     return sum(round_invertido(r) for r in company.rounds.all())
+
+
+MA_ESTADO_W = {
+    'No contactado': Decimal('0'),
+    'Identificado': Decimal('0.05'),
+    'Contactado': Decimal('0.10'),
+    'Reunión mantenida': Decimal('0.20'),
+    'NDA firmado': Decimal('0.35'),
+    'Due Diligence': Decimal('0.55'),
+    'Oferta recibida': Decimal('0.75'),
+    'Negociación': Decimal('0.90'),
+    'Vendido': Decimal('1'),
+    'Descartado': Decimal('0'),
+}
+
+
+def proceso_ma_vendido(proceso):
+    return sum(
+        c.oferta_precio or 0
+        for c in proceso.contactos.all()
+        if c.status and c.status.nombre == 'Vendido'
+    )
+
+
+def proceso_ma_weighted(proceso):
+    return sum(
+        (c.oferta_precio or 0) * MA_ESTADO_W.get(c.status.nombre if c.status else '', Decimal('0'))
+        for c in proceso.contactos.all()
+        if not c.status or c.status.nombre != 'Vendido'
+    )
 
 
 def active_rounds(company):

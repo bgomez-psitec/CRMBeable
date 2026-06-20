@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load crm_filters %}
 {% block title %}Presentaciones — CRM Gestora{% endblock %}
 {% block topbar_title %}Presentaciones{% endblock %}
 {% block content %}
@@ -25,7 +26,7 @@
         <td class="text-muted">{{ it.round.type }}</td>
         <td>{{ it.investor.name }}</td>
         <td><span class="badge text-bg-info">{{ it.status.nombre|default:"—" }}</span></td>
-        <td class="fw-semibold">{{ it.ticket|floatformat:0|default:"—" }} €</td>
+        <td class="fw-semibold">{{ it.ticket|euros }} €</td>
         <td class="text-muted">{{ it.intro_by|default:"—" }}</td>
         <td>{{ it.next_action|default:"—" }}{% if it.next_date %} · <span class="text-warning">{{ it.next_date|date:"d M Y" }}</span>{% endif %}</td>
       </tr>

@@ -353,6 +353,178 @@ class Interaction(models.Model):
         return f'{self.introduction} — {self.date}'
 
 
+# ─── M&A ─────────────────────────────────────────────────────────────────────
+
+class EstadoMA(Catalogo):
+    pass
+
+
+class TipoComprador(models.TextChoices):
+    ESTRATEGICO = 'Estratégico', 'Estratégico'
+    PRIVATE_EQUITY = 'Private Equity', 'Private Equity'
+    FAMILY_OFFICE = 'Family Office', 'Family Office'
+    FONDO = 'Fondo de Inversión', 'Fondo de Inversión'
+    OTRO = 'Otro', 'Otro'
+
+
+class Comprador(models.Model):
+    name = models.CharField('Nombre', max_length=200)
+    type = models.CharField('Tipo', max_length=50, choices=TipoComprador.choices, blank=True)
+    country = models.CharField('País', max_length=100, blank=True)
+    sectors = models.CharField('Sectores', max_length=500, blank=True)
+    relation = models.ForeignKey(EtapaRelacion, on_delete=models.SET_NULL, null=True, blank=True, related_name='compradores')
+    notes = models.TextField(blank=True)
+
+    class Meta:
+        verbose_name = 'Comprador'
+        verbose_name_plural = 'Compradores'
+        ordering = ['name']
+
+    def __str__(self):
+        return self.name
+
+
+class CompradorContacto(models.Model):
+    comprador = models.ForeignKey(Comprador, on_delete=models.CASCADE, related_name='contacts')
+    name = models.CharField(max_length=150)
+    role = models.CharField(max_length=120, blank=True)
+    email = models.EmailField(blank=True)
+    phone = models.CharField(max_length=50, blank=True)
+
+    def __str__(self):
+        return f'{self.name} ({self.comprador})'
+
+
+class ProcesoMA(models.Model):
+    company = models.ForeignKey(Company, on_delete=models.CASCADE, related_name='procesos_ma')
+    nombre = models.CharField('Nombre del proceso', max_length=200)
+    precio_pedido = models.DecimalField('Precio pedido (€)', max_digits=14, decimal_places=2, null=True, blank=True)
+    cerrado = models.BooleanField('Proceso cerrado', default=False)
+    start = models.DateField('Inicio', null=True, blank=True)
+    close = models.DateField('Cierre estimado', null=True, blank=True)
+    notes = models.TextField(blank=True)
+
+    class Meta:
+        verbose_name = 'Proceso M&A'
+        verbose_name_plural = 'Procesos M&A'
+        ordering = ['-start']
+
+    def __str__(self):
+        return f'{self.nombre} — {self.company}'
+
+
+class ContactoMA(models.Model):
+    proceso = models.ForeignKey(ProcesoMA, on_delete=models.CASCADE, related_name='contactos')
+    comprador = models.ForeignKey(Comprador, on_delete=models.CASCADE, related_name='contactos_ma')
+    status = models.ForeignKey(EstadoMA, on_delete=models.SET_NULL, null=True, blank=True, related_name='contactos')
+    oferta_precio = models.DecimalField('Oferta (€)', max_digits=14, decimal_places=2, null=True, blank=True)
+    nda_firmado = models.BooleanField('NDA firmado', default=False)
+    dd_iniciado = models.BooleanField('DD iniciada', default=False)
+    date = models.DateField('Fecha contacto', null=True, blank=True)
+    intro_by = models.CharField('Presentado por', max_length=150, blank=True)
+    next_action = models.CharField('Próximo paso', max_length=255, blank=True)
+    next_date = models.DateField('Fecha próximo paso', null=True, blank=True)
+    notes = models.TextField(blank=True)
+
+    class Meta:
+        verbose_name = 'Contacto M&A'
+        verbose_name_plural = 'Contactos M&A'
+        ordering = ['-date']
+
+    def __str__(self):
+        return f'{self.comprador} → {self.proceso}'
+
+
+class InteraccionMA(models.Model):
+    contacto = models.ForeignKey(ContactoMA, on_delete=models.CASCADE, related_name='interactions')
+    date = models.DateField(null=True, blank=True)
+    type = models.CharField(max_length=50, blank=True)
+    note = models.TextField(blank=True)
+
+    class Meta:
+        ordering = ['-date']
+
+    def __str__(self):
+        return f'{self.contacto} — {self.date}'
+
+
+# ─── Colaboraciones ───────────────────────────────────────────────────────────
+
+class EstadoColaboracion(Catalogo):
+    pass
+
+
+class TipoColaborador(models.TextChoices):
+    CLIENTE = 'Cliente potencial', 'Cliente potencial'
+    PROVEEDOR = 'Proveedor potencial', 'Proveedor potencial'
+    PARTNER_TECH = 'Partner tecnológico', 'Partner tecnológico'
+    PARTNER_COM = 'Partner comercial', 'Partner comercial'
+    OTRO = 'Otro', 'Otro'
+
+
+class Colaborador(models.Model):
+    name = models.CharField('Nombre', max_length=200)
+    type = models.CharField('Tipo', max_length=50, choices=TipoColaborador.choices, blank=True)
+    country = models.CharField('País', max_length=100, blank=True)
+    sectors = models.CharField('Sectores', max_length=500, blank=True)
+    notes = models.TextField(blank=True)
+
+    class Meta:
+        verbose_name = 'Colaborador'
+        verbose_name_plural = 'Colaboradores'
+        ordering = ['name']
+
+    def __str__(self):
+        return self.name
+
+
+class ColaboradorContacto(models.Model):
+    colaborador = models.ForeignKey(Colaborador, on_delete=models.CASCADE, related_name='contacts')
+    name = models.CharField(max_length=150)
+    role = models.CharField(max_length=120, blank=True)
+    email = models.EmailField(blank=True)
+    phone = models.CharField(max_length=50, blank=True)
+
+    def __str__(self):
+        return f'{self.name} ({self.colaborador})'
+
+
+class Colaboracion(models.Model):
+    company = models.ForeignKey(Company, on_delete=models.CASCADE, related_name='colaboraciones')
+    colaborador = models.ForeignKey(Colaborador, on_delete=models.CASCADE, related_name='colaboraciones')
+    status = models.ForeignKey(EstadoColaboracion, on_delete=models.SET_NULL, null=True, blank=True, related_name='colaboraciones')
+    tipo_relacion = models.CharField('Tipo de relación', max_length=50, choices=TipoColaborador.choices, blank=True)
+    descripcion = models.CharField('Descripción', max_length=255, blank=True)
+    date = models.DateField('Fecha inicio', null=True, blank=True)
+    intro_by = models.CharField('Presentado por', max_length=150, blank=True)
+    next_action = models.CharField('Próximo paso', max_length=255, blank=True)
+    next_date = models.DateField('Fecha próximo paso', null=True, blank=True)
+    notes = models.TextField(blank=True)
+
+    class Meta:
+        verbose_name = 'Colaboración'
+        verbose_name_plural = 'Colaboraciones'
+        ordering = ['-date']
+
+    def __str__(self):
+        return f'{self.colaborador} ↔ {self.company}'
+
+
+class InteraccionColaboracion(models.Model):
+    colaboracion = models.ForeignKey(Colaboracion, on_delete=models.CASCADE, related_name='interactions')
+    date = models.DateField(null=True, blank=True)
+    type = models.CharField(max_length=50, blank=True)
+    note = models.TextField(blank=True)
+
+    class Meta:
+        ordering = ['-date']
+
+    def __str__(self):
+        return f'{self.colaboracion} — {self.date}'
+
+
+# ─── Bandeja ──────────────────────────────────────────────────────────────────
+
 class InboxMessage(models.Model):
     from_name = models.CharField(max_length=200)
     from_email = models.EmailField(blank=True)
