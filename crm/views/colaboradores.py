@@ -1,3 +1,4 @@
+import re as _re
 from crm.views.common import *
 from crm.views.docs import _save_contact_doc
 
@@ -163,7 +164,25 @@ def colaborador_detail(request, pk):
     colab_firmadas = [c for c in colabs if c.status and c.status.nombre == 'Activo']
     colab_descartadas = [c for c in colabs if c.status and c.status.nombre == 'Descartado']
 
-    chrono = list(colaborador.logs.select_related('round__company', 'proceso_ma__company', 'colaboracion__company').all())
+    chrono = []
+    for log in colaborador.logs.select_related('round__company', 'proceso_ma__company', 'colaboracion__company').all():
+        ctx = 'ronda' if log.round else ('ma' if log.proceso_ma else ('colaboracion' if log.colaboracion else (log.context or '')))
+        company = log.round.company if log.round else (log.proceso_ma.company if log.proceso_ma else (log.colaboracion.company if log.colaboracion else None))
+        if log.round:
+            process_label = f'{log.round.company.name} · {log.round.type}'
+        elif log.proceso_ma:
+            process_label = f'{log.proceso_ma.nombre} (M&A)'
+        elif log.colaboracion:
+            process_label = str(log.colaboracion.descripcion or (log.colaboracion.company.name if log.colaboracion.company else ''))
+        else:
+            process_label = ''
+        chrono.append({
+            'pk': log.pk, 'id': log.pk, 'date': log.date, 'type': log.type, 'summary': log.summary,
+            'created_by': log.created_by, 'attachment_url': log.attachment_url,
+            'context': ctx, 'round': log.round, 'proceso_ma': log.proceso_ma,
+            'colaboracion': log.colaboracion, 'company': company,
+            'process_label': process_label,
+        })
 
     if request.method == 'POST' and can_edit(request.user):
         return redirect('crm:colaborador_detail', pk=pk)
@@ -176,10 +195,12 @@ def colaborador_detail(request, pk):
     colaborador_companies = Company.objects.filter(
         colaboraciones__colaborador=colaborador
     ).distinct()
+    colab_slug = _re.sub(r'[^\w\-.]', '_', colaborador.name.strip())
     return render(request, 'crm/colaborador_detail.html', {
         'active_nav': 'colaboradores', 'colaborador': colaborador,
         'is_admin': request.user.role == 'admin',
         'colaborador_companies': colaborador_companies,
+        'docs_url': reverse('crm:docs_contactos_carpeta', args=('Colaboradores', colab_slug)),
         'intros': intros, 'contactos_ma': contactos_ma, 'colabs': colabs,
         'intros_activas': intros_activas, 'intros_invertidas': intros_invertidas,
         'intros_descartadas': intros_descartadas,
@@ -191,7 +212,7 @@ def colaborador_detail(request, pk):
         'log_rounds': log_rounds, 'log_ma': log_ma, 'log_colabs': log_colabs,
         'tipo_opts': TIPO_CONTACTO_OPTS,
         'etapas_relacion': EtapaRelacionColaborador.objects.all(),
-        'sector_opts': SECTOR_OPTS,
+        'sector_opts': get_sector_opts(),
         'can_edit': can_edit(request.user),
     })
 
@@ -281,11 +302,14 @@ def colaborador_doc_drop(request, pk):
     log_type  = request.POST.get('type', 'Nota')
     summary   = request.POST.get('summary', '').strip()
 
-    slug = _re.sub(r'[^\w\-.]', '_', colaborador.name.strip())
-    saved_path = _save_contact_doc(f, 'Colaboradores', colaborador.name)
-    actual_filename = pathlib.Path(saved_path).name
-    attachment_url = reverse('crm:docs_contactos_download',
-                             args=('colaboradores', slug, actual_filename))
+    try:
+        slug = _re.sub(r'[^\w\-.]', '_', colaborador.name.strip())
+        saved_path = _save_contact_doc(f, 'Colaboradores', colaborador.name)
+        actual_filename = pathlib.Path(saved_path).name
+        attachment_url = reverse('crm:docs_contactos_download',
+                                 args=('colaboradores', slug, actual_filename))
+    except Exception as exc:
+        return JsonResponse({'error': str(exc)}, status=500)
 
     if not summary:
         summary = actual_filename

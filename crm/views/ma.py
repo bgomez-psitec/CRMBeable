@@ -1,3 +1,4 @@
+import re as _re
 from crm.views.common import *
 from crm.views.docs import _save_contact_doc
 
@@ -376,9 +377,9 @@ def presentaciones_ma(request):
         ('comprador', 'Comprador'), ('estado', 'Estado'),
     ]
 
-    g1, g2, g3 = _parse_groups(request.GET, MA_GRP_KEYS.keys())
+    g1, g2, g3 = parse_groups(request.GET, MA_GRP_KEYS.keys())
     active_g = [g for g in (g1, g2, g3) if g]
-    groups = _build_groups(contactos, [MA_GRP_KEYS[g] for g in active_g]) if active_g else None
+    groups = build_groups(contactos, [MA_GRP_KEYS[g] for g in active_g]) if active_g else None
 
     all_procesos = ProcesoMA.objects.filter(company__in=companies).select_related('company').order_by('company__name', 'nombre')
     all_compradores = Colaborador.objects.filter(es_comprador=True).order_by('name')
@@ -473,9 +474,9 @@ def procesos_ma_global(request):
     estados_ma_all = EstadoMA.objects.all()
 
     # Grouping for list view (ContactoMA)
-    g1, g2, g3 = _parse_groups(request.GET, MA_CONTACTO_GROUP_KEYS)
+    g1, g2, g3 = parse_groups(request.GET, MA_CONTACTO_GROUP_KEYS)
     keyfns = [MA_CONTACTO_GROUP_KEYS[k] for k in (g1, g2, g3) if k]
-    groups = _build_groups(contactos_all, keyfns) if keyfns else None
+    groups = build_groups(contactos_all, keyfns) if keyfns else None
 
     return render(request, 'crm/procesos_ma_global.html', {
         'active_nav': 'ma_pipeline', 'procesos': procesos,

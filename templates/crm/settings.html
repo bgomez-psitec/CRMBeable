@@ -2,163 +2,224 @@
 {% block title %}Ajustes — CRM Gestora{% endblock %}
 {% block topbar_title %}Ajustes{% endblock %}
 {% block content %}
-<div class="dc-card dc-card__body mb-4">
-  <div class="fw-semibold mb-3"><i class="bi bi-person" style="color:var(--dc-accent)"></i> Perfil</div>
-  <form method="post" class="row g-2">
-    {% csrf_token %}
-    <input type="hidden" name="section" value="profile">
-    <div class="col-md-4"><label class="form-label">Nombre</label><input name="first_name" class="form-control" value="{{ user.first_name }}"></div>
-    <div class="col-md-4"><label class="form-label">Apellidos</label><input name="last_name" class="form-control" value="{{ user.last_name }}"></div>
-    <div class="col-md-4"><label class="form-label">Email</label><input type="email" name="email" class="form-control" value="{{ user.email }}"></div>
-    <div class="col-12 form-check mt-2">
-      <input type="checkbox" name="mfa_enabled" class="form-check-input" id="mfa" {% if user.mfa_enabled %}checked{% endif %}>
-      <label class="form-check-label" for="mfa">MFA activado</label>
+
+{# ── Tab nav ──────────────────────────────────────────────────────────────── #}
+<ul class="nav nav-tabs mb-4" id="settingsTabs" role="tablist" style="border-bottom:1px solid var(--dc-border)">
+  <li class="nav-item" role="presentation">
+    <button class="nav-link active" id="tab-perfil" data-bs-toggle="tab" data-bs-target="#pane-perfil"
+            type="button" role="tab" style="font-size:.875rem">
+      <i class="bi bi-person me-1"></i>Perfil
+    </button>
+  </li>
+  {% if is_admin %}
+  <li class="nav-item" role="presentation">
+    <button class="nav-link" id="tab-ronda" data-bs-toggle="tab" data-bs-target="#pane-ronda"
+            type="button" role="tab" style="font-size:.875rem">
+      <i class="bi bi-currency-euro me-1"></i>Ronda Inversión
+    </button>
+  </li>
+  <li class="nav-item" role="presentation">
+    <button class="nav-link" id="tab-ma" data-bs-toggle="tab" data-bs-target="#pane-ma"
+            type="button" role="tab" style="font-size:.875rem">
+      <i class="bi bi-briefcase me-1"></i>M&amp;A y Colaboración
+    </button>
+  </li>
+  <li class="nav-item" role="presentation">
+    <button class="nav-link" id="tab-participadas" data-bs-toggle="tab" data-bs-target="#pane-participadas"
+            type="button" role="tab" style="font-size:.875rem">
+      <i class="bi bi-building me-1"></i>Participadas
+    </button>
+  </li>
+  <li class="nav-item" role="presentation">
+    <button class="nav-link" id="tab-inversores" data-bs-toggle="tab" data-bs-target="#pane-inversores"
+            type="button" role="tab" style="font-size:.875rem">
+      <i class="bi bi-people me-1"></i>Inversores
+    </button>
+  </li>
+  {% endif %}
+</ul>
+
+<div class="tab-content" id="settingsTabsContent">
+
+  {# ── Perfil ──────────────────────────────────────────────────────────────── #}
+  <div class="tab-pane fade show active" id="pane-perfil" role="tabpanel">
+    <div class="dc-card dc-card__body" style="max-width:640px">
+      <form method="post" class="row g-3">
+        {% csrf_token %}
+        <input type="hidden" name="section" value="profile">
+        <div class="col-md-6"><label class="form-label">Nombre</label><input name="first_name" class="form-control" value="{{ user.first_name }}"></div>
+        <div class="col-md-6"><label class="form-label">Apellidos</label><input name="last_name" class="form-control" value="{{ user.last_name }}"></div>
+        <div class="col-12"><label class="form-label">Email</label><input type="email" name="email" class="form-control" value="{{ user.email }}"></div>
+        <div class="col-12 form-check ms-1">
+          <input type="checkbox" name="mfa_enabled" class="form-check-input" id="mfa" {% if user.mfa_enabled %}checked{% endif %}>
+          <label class="form-check-label" for="mfa">MFA activado</label>
+        </div>
+        <div class="col-12"><button type="submit" class="btn-accent">Guardar perfil</button></div>
+      </form>
     </div>
-    <div class="col-12"><button type="submit" class="btn-accent mt-2">Guardar perfil</button></div>
-  </form>
+  </div>
+
+  {% if is_admin %}
+
+  {# ── Ronda Inversión ─────────────────────────────────────────────────────── #}
+  <div class="tab-pane fade" id="pane-ronda" role="tabpanel">
+    <div class="row g-3">
+      <div class="col-md-4">{% with title="Estados Inversión" tipo="estado" items=estados %}{% include "crm/_catalogo_card.html" %}{% endwith %}</div>
+      <div class="col-md-4">{% with title="Fases Ronda Inversión" tipo="fase" items=fases %}{% include "crm/_catalogo_card.html" %}{% endwith %}</div>
+      <div class="col-md-4">{% with title="Etapas Relación Inversores" tipo="relacion" items=relaciones %}{% include "crm/_catalogo_card.html" %}{% endwith %}</div>
+    </div>
+  </div>
+
+  {# ── M&A y Colaboración ──────────────────────────────────────────────────── #}
+  <div class="tab-pane fade" id="pane-ma" role="tabpanel">
+    <div class="row g-3">
+      <div class="col-md-4">{% with title="Estados M&A" tipo="estado_ma" items=estados_ma %}{% include "crm/_catalogo_card.html" %}{% endwith %}</div>
+      <div class="col-md-4">{% with title="Fases Proceso M&A" tipo="fase_ma" items=fases_ma %}{% include "crm/_catalogo_card.html" %}{% endwith %}</div>
+      <div class="col-md-4">{% with title="Estados Colaboración" tipo="estado_colab" items=estados_colab %}{% include "crm/_catalogo_card.html" %}{% endwith %}</div>
+    </div>
+    <div class="row g-3 mt-0">
+      <div class="col-md-4">{% with title="Etapas Relación Colaboradores" tipo="relacion_colab" items=relaciones_colab %}{% include "crm/_catalogo_card.html" %}{% endwith %}</div>
+    </div>
+  </div>
+
+  {# ── Participadas ────────────────────────────────────────────────────────── #}
+  <div class="tab-pane fade" id="pane-participadas" role="tabpanel">
+    <div class="row g-3 mb-3">
+      <div class="col-md-4">{% with title="Fondos" tipo="fund" items=cat_funds %}{% include "crm/_catalogo_crud_card.html" %}{% endwith %}</div>
+      <div class="col-md-4">{% with title="Estados Inversión" tipo="estado_inversion" items=cat_estado_inversion %}{% include "crm/_catalogo_crud_card.html" %}{% endwith %}</div>
+      <div class="col-md-4">{% with title="Sectores" tipo="sector" items=cat_sector %}{% include "crm/_catalogo_crud_card.html" %}{% endwith %}</div>
+    </div>
+    <div class="row g-3 mb-3">
+      <div class="col-md-4">{% with title="Niveles (TRL/MRL)" tipo="nivel" items=cat_nivel %}{% include "crm/_catalogo_crud_card.html" %}{% endwith %}</div>
+      <div class="col-md-4">{% with title="Tiempo al Mercado" tipo="tiempo_mercado" items=cat_tiempo_mercado %}{% include "crm/_catalogo_crud_card.html" %}{% endwith %}</div>
+      <div class="col-md-4">{% with title="Facturación" tipo="facturacion" items=cat_facturacion %}{% include "crm/_catalogo_crud_card.html" %}{% endwith %}</div>
+    </div>
+    {# Provincias #}
+    <div class="dc-card">
+      <div class="dc-card__header"><h2 class="dc-card__title">Provincias</h2></div>
+      <div class="dc-card__body">
+        <p style="font-size:.82rem;color:var(--dc-text-muted)">Gestiona el listado de provincias disponibles en el formulario de Participadas.</p>
+        <table class="table table-sm" style="font-size:.84rem">
+          <thead><tr><th>Orden</th><th>Nombre</th><th>Habilitada</th><th></th></tr></thead>
+          <tbody>
+          {% for p in provincias %}
+          <tr>
+            <td style="width:80px">
+              <form method="post" class="d-flex gap-1 align-items-center">{% csrf_token %}
+                <input type="hidden" name="section" value="provincia">
+                <input type="hidden" name="action" value="orden">
+                <input type="number" name="orden_{{ p.pk }}" value="{{ p.orden }}"
+                       class="form-control form-control-sm" style="width:60px"
+                       onchange="this.closest('form').submit()">
+              </form>
+            </td>
+            <td style="vertical-align:middle">
+              <div class="cat-display d-flex align-items-center gap-1">
+                <span {% if not p.habilitada %}style="color:var(--dc-text-muted);text-decoration:line-through"{% endif %}>{{ p.nombre }}</span>
+                <button type="button" class="btn-icon" style="padding:1px 4px;opacity:.5"
+                        onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=.5"
+                        onclick="catEdit(this)">
+                  <i class="bi bi-pencil" style="font-size:.75rem"></i>
+                </button>
+              </div>
+              <form method="post" class="cat-edit-form m-0" style="display:none">{% csrf_token %}
+                <input type="hidden" name="section" value="provincia">
+                <input type="hidden" name="action" value="rename">
+                <input type="hidden" name="pk" value="{{ p.pk }}">
+                <div class="d-flex gap-1 align-items-center">
+                  <input type="text" name="nombre" value="{{ p.nombre }}" class="form-control form-control-sm">
+                  <button type="submit" class="btn-ghost" style="white-space:nowrap;font-size:.75rem;padding:2px 8px">Guardar</button>
+                  <button type="button" class="btn-ghost" style="font-size:.75rem;padding:2px 6px" onclick="catCancel(this)">✕</button>
+                </div>
+              </form>
+            </td>
+            <td style="vertical-align:middle">
+              <form method="post">{% csrf_token %}
+                <input type="hidden" name="section" value="provincia">
+                <input type="hidden" name="action" value="toggle">
+                <input type="hidden" name="pk" value="{{ p.pk }}">
+                <button type="submit" class="btn-ghost" style="padding:2px 8px;font-size:.75rem;
+                  {% if p.habilitada %}color:var(--dc-accent);border-color:var(--dc-accent)
+                  {% else %}color:var(--dc-text-muted){% endif %}">
+                  {% if p.habilitada %}Activa{% else %}Inactiva{% endif %}
+                </button>
+              </form>
+            </td>
+            <td style="vertical-align:middle">
+              <form method="post" onsubmit="return confirm('¿Eliminar «{{ p.nombre }}»? Esta acción no se puede deshacer.')">{% csrf_token %}
+                <input type="hidden" name="section" value="provincia">
+                <input type="hidden" name="action" value="delete">
+                <input type="hidden" name="pk" value="{{ p.pk }}">
+                <button type="submit" style="background:none;border:none;cursor:pointer;color:var(--dc-text-muted);opacity:.5"
+                        onmouseover="this.style.opacity=1;this.style.color='#ef4444'" onmouseout="this.style.opacity=.5;this.style.color='var(--dc-text-muted)'">
+                  <i class="bi bi-trash" style="font-size:.85rem"></i>
+                </button>
+              </form>
+            </td>
+          </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+        <form method="post" class="d-flex gap-2 mt-2">{% csrf_token %}
+          <input type="hidden" name="section" value="provincia">
+          <input type="hidden" name="action" value="create">
+          <input name="nombre" class="form-control form-control-sm" placeholder="Nueva provincia" style="max-width:220px">
+          <button class="btn-ghost" style="white-space:nowrap">Añadir</button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  {# ── Inversores ──────────────────────────────────────────────────────────── #}
+  <div class="tab-pane fade" id="pane-inversores" role="tabpanel">
+    <div class="row g-3 mb-3">
+      <div class="col-md-4">{% with title="Tipos de Inversor" tipo="tipo_inversor" items=cat_tipo_inversor %}{% include "crm/_catalogo_crud_card.html" %}{% endwith %}</div>
+      <div class="col-md-4">{% with title="Etapas de Inversión" tipo="etapa_inversion" items=cat_etapa_inversion %}{% include "crm/_catalogo_crud_card.html" %}{% endwith %}</div>
+      <div class="col-md-4">{% with title="Rangos de Ticket" tipo="rango_ticket" items=cat_rango_ticket %}{% include "crm/_catalogo_crud_card.html" %}{% endwith %}</div>
+    </div>
+    <div class="row g-3">
+      <div class="col-md-4">{% with title="Rangos AUM" tipo="rango_aum" items=cat_rango_aum %}{% include "crm/_catalogo_crud_card.html" %}{% endwith %}</div>
+      <div class="col-md-4">{% with title="Áreas Geográficas" tipo="area" items=cat_area %}{% include "crm/_catalogo_crud_card.html" %}{% endwith %}</div>
+    </div>
+  </div>
+
+  {% endif %}
 </div>
 
-{% if is_admin %}
-<div class="row g-3 mb-3">
-  <div class="col-md-4">
-    <div class="dc-card dc-card__body h-100">
-      <div class="fw-semibold mb-3">Estados Inversión</div>
-      {% for e in estados %}
-      <div class="d-flex justify-content-between align-items-center mb-2">
-        <span style="font-size:.875rem">{{ e.nombre }}</span>
-        <form method="post" class="m-0">
-          <input type="hidden" name="section" value="catalogo"><input type="hidden" name="tipo" value="estado"><input type="hidden" name="delete_id" value="{{ e.id }}">{% csrf_token %}
-          <button class="btn-icon btn-icon--danger"><i class="bi bi-trash"></i></button>
-        </form>
-      </div>
-      {% empty %}<div style="font-size:.8rem;color:var(--dc-text-muted)">Sin elementos.</div>{% endfor %}
-      <form method="post" class="d-flex gap-2 mt-3">{% csrf_token %}
-        <input type="hidden" name="section" value="catalogo"><input type="hidden" name="tipo" value="estado">
-        <input name="nombre" class="form-control form-control-sm" placeholder="Nuevo estado">
-        <button class="btn-ghost" style="white-space:nowrap">Añadir</button>
-      </form>
-    </div>
-  </div>
-  <div class="col-md-4">
-    <div class="dc-card dc-card__body h-100">
-      <div class="fw-semibold mb-3">Fases Ronda Inversión</div>
-      {% for f in fases %}
-      <div class="d-flex justify-content-between align-items-center mb-2">
-        <span style="font-size:.875rem">{{ f.nombre }}</span>
-        <form method="post" class="m-0">
-          <input type="hidden" name="section" value="catalogo"><input type="hidden" name="tipo" value="fase"><input type="hidden" name="delete_id" value="{{ f.id }}">{% csrf_token %}
-          <button class="btn-icon btn-icon--danger"><i class="bi bi-trash"></i></button>
-        </form>
-      </div>
-      {% empty %}<div style="font-size:.8rem;color:var(--dc-text-muted)">Sin elementos.</div>{% endfor %}
-      <form method="post" class="d-flex gap-2 mt-3">{% csrf_token %}
-        <input type="hidden" name="section" value="catalogo"><input type="hidden" name="tipo" value="fase">
-        <input name="nombre" class="form-control form-control-sm" placeholder="Nueva fase">
-        <button class="btn-ghost" style="white-space:nowrap">Añadir</button>
-      </form>
-    </div>
-  </div>
-  <div class="col-md-4">
-    <div class="dc-card dc-card__body h-100">
-      <div class="fw-semibold mb-3">Etapas Relación Inversores</div>
-      {% for r in relaciones %}
-      <div class="d-flex justify-content-between align-items-center mb-2">
-        <span style="font-size:.875rem">{{ r.nombre }}</span>
-        <form method="post" class="m-0">
-          <input type="hidden" name="section" value="catalogo"><input type="hidden" name="tipo" value="relacion"><input type="hidden" name="delete_id" value="{{ r.id }}">{% csrf_token %}
-          <button class="btn-icon btn-icon--danger"><i class="bi bi-trash"></i></button>
-        </form>
-      </div>
-      {% empty %}<div style="font-size:.8rem;color:var(--dc-text-muted)">Sin elementos.</div>{% endfor %}
-      <form method="post" class="d-flex gap-2 mt-3">{% csrf_token %}
-        <input type="hidden" name="section" value="catalogo"><input type="hidden" name="tipo" value="relacion">
-        <input name="nombre" class="form-control form-control-sm" placeholder="Nueva etapa">
-        <button class="btn-ghost" style="white-space:nowrap">Añadir</button>
-      </form>
-    </div>
-  </div>
-</div>
+<script>
+function catEdit(btn) {
+  const td = btn.closest('td');
+  td.querySelector('.cat-display').style.display = 'none';
+  const form = td.querySelector('.cat-edit-form');
+  form.style.display = '';
+  form.querySelector('input[name=nombre]').focus();
+}
+function catCancel(btn) {
+  const td = btn.closest('td');
+  td.querySelector('.cat-display').style.display = '';
+  td.querySelector('.cat-edit-form').style.display = 'none';
+}
 
-<div class="row g-3 mb-3">
-  <div class="col-md-4">
-    <div class="dc-card dc-card__body h-100">
-      <div class="fw-semibold mb-3">Etapas Relación Colaboradores</div>
-      {% for r in relaciones_colab %}
-      <div class="d-flex justify-content-between align-items-center mb-2">
-        <span style="font-size:.875rem">{{ r.nombre }}</span>
-        <form method="post" class="m-0">
-          <input type="hidden" name="section" value="catalogo"><input type="hidden" name="tipo" value="relacion_colab"><input type="hidden" name="delete_id" value="{{ r.id }}">{% csrf_token %}
-          <button class="btn-icon btn-icon--danger"><i class="bi bi-trash"></i></button>
-        </form>
-      </div>
-      {% empty %}<div style="font-size:.8rem;color:var(--dc-text-muted)">Sin elementos.</div>{% endfor %}
-      <form method="post" class="d-flex gap-2 mt-3">{% csrf_token %}
-        <input type="hidden" name="section" value="catalogo"><input type="hidden" name="tipo" value="relacion_colab">
-        <input name="nombre" class="form-control form-control-sm" placeholder="Nueva etapa">
-        <button class="btn-ghost" style="white-space:nowrap">Añadir</button>
-      </form>
-    </div>
-  </div>
-</div>
+(function () {
+  const KEY = 'settings_active_tab';
+  const tabs = document.querySelectorAll('#settingsTabs [data-bs-toggle="tab"]');
 
-<div class="row g-3">
-  <div class="col-md-4">
-    <div class="dc-card dc-card__body h-100">
-      <div class="fw-semibold mb-3">Estados M&amp;A</div>
-      {% for e in estados_ma %}
-      <div class="d-flex justify-content-between align-items-center mb-2">
-        <span style="font-size:.875rem">{{ e.nombre }}</span>
-        <form method="post" class="m-0">
-          <input type="hidden" name="section" value="catalogo"><input type="hidden" name="tipo" value="estado_ma"><input type="hidden" name="delete_id" value="{{ e.id }}">{% csrf_token %}
-          <button class="btn-icon btn-icon--danger"><i class="bi bi-trash"></i></button>
-        </form>
-      </div>
-      {% empty %}<div style="font-size:.8rem;color:var(--dc-text-muted)">Sin elementos.</div>{% endfor %}
-      <form method="post" class="d-flex gap-2 mt-3">{% csrf_token %}
-        <input type="hidden" name="section" value="catalogo"><input type="hidden" name="tipo" value="estado_ma">
-        <input name="nombre" class="form-control form-control-sm" placeholder="Nuevo estado M&A">
-        <button class="btn-ghost" style="white-space:nowrap">Añadir</button>
-      </form>
-    </div>
-  </div>
-  <div class="col-md-4">
-    <div class="dc-card dc-card__body h-100">
-      <div class="fw-semibold mb-3">Fases Proceso M&amp;A</div>
-      {% for f in fases_ma %}
-      <div class="d-flex justify-content-between align-items-center mb-2">
-        <span style="font-size:.875rem">{{ f.nombre }}</span>
-        <form method="post" class="m-0">
-          <input type="hidden" name="section" value="catalogo"><input type="hidden" name="tipo" value="fase_ma"><input type="hidden" name="delete_id" value="{{ f.id }}">{% csrf_token %}
-          <button class="btn-icon btn-icon--danger"><i class="bi bi-trash"></i></button>
-        </form>
-      </div>
-      {% empty %}<div style="font-size:.8rem;color:var(--dc-text-muted)">Sin elementos.</div>{% endfor %}
-      <form method="post" class="d-flex gap-2 mt-3">{% csrf_token %}
-        <input type="hidden" name="section" value="catalogo"><input type="hidden" name="tipo" value="fase_ma">
-        <input name="nombre" class="form-control form-control-sm" placeholder="Nueva fase M&A">
-        <button class="btn-ghost" style="white-space:nowrap">Añadir</button>
-      </form>
-    </div>
-  </div>
-  <div class="col-md-4">
-    <div class="dc-card dc-card__body h-100">
-      <div class="fw-semibold mb-3">Estados Colaboración</div>
-      {% for e in estados_colab %}
-      <div class="d-flex justify-content-between align-items-center mb-2">
-        <span style="font-size:.875rem">{{ e.nombre }}</span>
-        <form method="post" class="m-0">
-          <input type="hidden" name="section" value="catalogo"><input type="hidden" name="tipo" value="estado_colab"><input type="hidden" name="delete_id" value="{{ e.id }}">{% csrf_token %}
-          <button class="btn-icon btn-icon--danger"><i class="bi bi-trash"></i></button>
-        </form>
-      </div>
-      {% empty %}<div style="font-size:.8rem;color:var(--dc-text-muted)">Sin elementos.</div>{% endfor %}
-      <form method="post" class="d-flex gap-2 mt-3">{% csrf_token %}
-        <input type="hidden" name="section" value="catalogo"><input type="hidden" name="tipo" value="estado_colab">
-        <input name="nombre" class="form-control form-control-sm" placeholder="Nuevo estado colaboración">
-        <button class="btn-ghost" style="white-space:nowrap">Añadir</button>
-      </form>
-    </div>
-  </div>
-</div>
-{% endif %}
+  // Restore last active tab
+  const saved = localStorage.getItem(KEY);
+  if (saved) {
+    const btn = document.querySelector('#settingsTabs [data-bs-target="' + saved + '"]');
+    if (btn) {
+      tabs.forEach(t => { t.classList.remove('active'); document.querySelector(t.dataset.bsTarget).classList.remove('show','active'); });
+      btn.classList.add('active');
+      const pane = document.querySelector(saved);
+      if (pane) pane.classList.add('show', 'active');
+    }
+  }
+
+  // Save on tab change
+  tabs.forEach(btn => btn.addEventListener('shown.bs.tab', function () {
+    localStorage.setItem(KEY, this.dataset.bsTarget);
+  }));
+})();
+</script>
 {% endblock %}

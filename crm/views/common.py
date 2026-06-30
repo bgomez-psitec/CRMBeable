@@ -17,11 +17,12 @@ from accounts.models import Role, User
 
 from crm.forms import ColaboracionForm, CompanyForm, ContactoMAForm, IntroductionForm, ProcesoMAForm, RoundForm, UserForm
 from crm.models import (
-    Colaboracion, ColaboradorContacto, Colaborador, ColaboradorLog, Company,
-    ContactoMA, Documento, EstadoColaboracion, EstadoMA, EstadoPresentacion, EtapaRelacion, EtapaRelacionColaborador,
-    EtapaInversion, FaseMA, FaseRonda, InboxMessage, Interaction, InteraccionColaboracion, InteraccionMA,
-    Introduction, Investor, InvestorContact, InvestorLog, ProcesoMA, ProcesoMAFaseLog,
-    RangoAUM, RangoTicket, Round, RoundFaseLog, TipoInversor,
+    Area, Colaboracion, ColaboradorContacto, Colaborador, ColaboradorLog, Company,
+    ContactoMA, Documento, EstadoColaboracion, EstadoInversion, EstadoMA, EstadoPresentacion,
+    EtapaInversion, EtapaRelacion, EtapaRelacionColaborador, Facturacion,
+    FaseMA, FaseRonda, Fund, InboxMessage, Interaction, InteraccionColaboracion, InteraccionMA,
+    Introduction, Investor, InvestorContact, InvestorLog, Nivel, ProcesoMA, ProcesoMAFaseLog,
+    Provincia, RangoAUM, RangoTicket, Round, RoundFaseLog, Sector, TiempoMercado, TipoInversor,
 )
 from crm.permissions import (
     allowed_company_ids, can_edit, can_see_company, visible_companies, visible_introductions, visible_investors,
@@ -32,30 +33,21 @@ from crm.utils import (
     round_invertido, round_weighted,
 )
 
-AREA_OPTS = [
-    'Unknown', 'Worldwide', 'Southern Europe', 'Northern Europe',
-    'Western Europe', 'Central & Eastern Europe', 'North America',
-    'South & Central America', 'Northeast Asia', 'Southeast Asia',
-    'Australia and Oceania', 'Middle East', 'Africa', 'Other',
-]
+def get_area_opts():
+    return list(Area.objects.filter(habilitada=True).values_list('nombre', flat=True))
 
-SECTOR_OPTS = [
-    'Advanced Manufacturing and Processing',
-    'Advanced Materials',
-    'Artificial Intelligence',
-    'Data Mining',
-    'Industrial Biotechnology',
-    'Microelectronics or Nanoelectronics',
-    'Nanotechnology',
-    'Other',
-    'Other ICT',
-    'Pharma',
-    'Photonics',
-]
+
+def get_sector_opts():
+    return list(Sector.objects.filter(habilitada=True).values_list('nombre', flat=True))
+
+
+def get_etapa_inversion_opts():
+    return list(EtapaInversion.objects.filter(habilitada=True).values_list('nombre', flat=True))
+
 
 # ── Multi-level grouping helpers ────────────────────────────────────────────
 
-def _build_groups(items, keyfns):
+def build_groups(items, keyfns):
     """Recursively group a flat list by successive key functions."""
     if not keyfns:
         return items
@@ -64,11 +56,11 @@ def _build_groups(items, keyfns):
         raw.setdefault(keyfns[0](item), []).append(item)
     result = dict(sorted(raw.items()))
     if len(keyfns) > 1:
-        return {k: _build_groups(v, keyfns[1:]) for k, v in result.items()}
+        return {k: build_groups(v, keyfns[1:]) for k, v in result.items()}
     return result
 
 
-def _parse_groups(params, allowed_keys):
+def parse_groups(params, allowed_keys):
     """Extract and validate up to 3 group params, preventing duplicates."""
     valid = set(allowed_keys)
     g1 = params.get('group1', '')
@@ -110,11 +102,11 @@ MA_CONTACTO_GROUP_LABELS = [
 ]
 
 INV_GROUP_KEYS = {
-    'type':         lambda c: c['investor'].type or '—',
+    'type':         lambda c: str(c['investor'].type) if c['investor'].type else '—',
     'country':      lambda c: c['investor'].country or '—',
     'inv_stage':    lambda c: c['investor'].inv_stage or '—',
-    'aum':          lambda c: c['investor'].aum or '—',
-    'ticket_range': lambda c: c['investor'].ticket_range or '—',
+    'aum':          lambda c: str(c['investor'].aum) if c['investor'].aum else '—',
+    'ticket_range': lambda c: str(c['investor'].ticket_range) if c['investor'].ticket_range else '—',
     'pub_status':   lambda c: c['investor'].pub_status or '—',
     'relation':     lambda c: c['investor'].relation.nombre if c['investor'].relation else '—',
 }

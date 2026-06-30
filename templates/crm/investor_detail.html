@@ -4,6 +4,9 @@
 {% block topbar_title %}{{ investor.name }}{% endblock %}
 {% block topbar_sub %}{{ investor.type }} · {{ investor.country }}{% endblock %}
 {% block topbar_actions %}
+  <a class="btn-ghost" href="{{ docs_url }}">
+    <i class="bi bi-folder2-open"></i> Documentos
+  </a>
   {% if can_edit %}
     <button class="btn-ghost" data-bs-toggle="modal" data-bs-target="#editInvestorModal">
       <i class="bi bi-pencil"></i> Editar
@@ -448,8 +451,8 @@ document.querySelectorAll('[data-log-action="edit"][data-modal="inv-log-edit-mod
               <label class="form-label">Tipo de inversor</label>
               <select name="type" class="form-select">
                 <option value="">— Sin tipo —</option>
-                {% for val, lbl in tipo_inversor_choices %}
-                  <option value="{{ val }}" {% if investor.type == val %}selected{% endif %}>{{ lbl }}</option>
+                {% for t in tipo_inversor_choices %}
+                  <option value="{{ t.id }}" {% if investor.type_id == t.id %}selected{% endif %}>{{ t.nombre }}</option>
                 {% endfor %}
               </select>
             </div>
@@ -485,13 +488,13 @@ document.querySelectorAll('[data-log-action="edit"][data-modal="inv-log-edit-mod
                 <div id="invStageDropdown" style="display:none;position:absolute;z-index:1055;top:calc(100% + 2px);left:0;right:0;
                      background:var(--dc-surface);border:1px solid var(--dc-border);border-radius:var(--dc-radius-sm);
                      box-shadow:0 4px 16px rgba(0,0,0,.12);padding:8px 0;max-height:220px;overflow-y:auto">
-                  {% for val, lbl in etapa_inversion_choices %}
+                  {% for val in etapa_inversion_choices %}
                   <label style="display:flex;align-items:center;gap:8px;padding:6px 14px;cursor:pointer;font-size:.875rem;transition:background .1s"
                          onmouseover="this.style.background='var(--dc-hover)'" onmouseout="this.style.background=''">
                     <input type="checkbox" name="inv_stage" value="{{ val }}" class="inv-stage-cb"
                            {% if val in investor.inv_stage %}checked{% endif %}
                            style="width:15px;height:15px;flex-shrink:0;accent-color:var(--dc-accent)">
-                    {{ lbl }}
+                    {{ val }}
                   </label>
                   {% endfor %}
                 </div>
@@ -545,8 +548,8 @@ document.querySelectorAll('[data-log-action="edit"][data-modal="inv-log-edit-mod
               <label class="form-label">Ticket de inversión</label>
               <select name="ticket_range" class="form-select">
                 <option value="">— Sin rango —</option>
-                {% for val, lbl in rango_ticket_choices %}
-                  <option value="{{ val }}" {% if investor.ticket_range == val %}selected{% endif %}>{{ lbl }}</option>
+                {% for t in rango_ticket_choices %}
+                  <option value="{{ t.id }}" {% if investor.ticket_range_id == t.id %}selected{% endif %}>{{ t.nombre }}</option>
                 {% endfor %}
               </select>
             </div>
@@ -554,8 +557,8 @@ document.querySelectorAll('[data-log-action="edit"][data-modal="inv-log-edit-mod
               <label class="form-label">Fondos bajo gestión (AUM)</label>
               <select name="aum" class="form-select">
                 <option value="">— Sin AUM —</option>
-                {% for val, lbl in rango_aum_choices %}
-                  <option value="{{ val }}" {% if investor.aum == val %}selected{% endif %}>{{ lbl }}</option>
+                {% for t in rango_aum_choices %}
+                  <option value="{{ t.id }}" {% if investor.aum_id == t.id %}selected{% endif %}>{{ t.nombre }}</option>
                 {% endfor %}
               </select>
             </div>

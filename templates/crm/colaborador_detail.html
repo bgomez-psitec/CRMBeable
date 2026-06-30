@@ -4,6 +4,9 @@
 {% block topbar_title %}{{ colaborador.name }}{% endblock %}
 {% block topbar_sub %}{% if colaborador.country %}{{ colaborador.country }}{% else %}Contacto{% endif %}{% endblock %}
 {% block topbar_actions %}
+  <a class="btn-ghost" href="{{ docs_url }}">
+    <i class="bi bi-folder2-open"></i> Documentos
+  </a>
   {% if can_edit %}
     <button class="btn-ghost" data-bs-toggle="modal" data-bs-target="#editColaboradorModal">
       <i class="bi bi-pencil"></i> Editar
@@ -673,7 +676,7 @@ document.getElementById('colabLogModal')?.addEventListener('show.bs.modal', func
 <script>
 function filterColabChrono(ctx) {
   document.querySelectorAll('.chrono-entry').forEach(el => {
-    el.style.display = (!ctx || el.dataset.context === ctx) ? '' : 'none';
+    el.classList.toggle('d-none', !(!ctx || el.dataset.context === ctx));
   });
   document.querySelectorAll('.colab-chrono-filter-btn').forEach(btn => {
     btn.classList.toggle('active', btn.dataset.ctx === ctx);

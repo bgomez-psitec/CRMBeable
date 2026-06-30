@@ -3,7 +3,11 @@ from decimal import Decimal, InvalidOperation
 from django import forms
 
 from accounts.models import User
-from crm.models import Colaboracion, Company, ContactoMA, Introduction, ProcesoMA, Round
+from crm.models import (
+    Colaboracion, Company, ContactoMA, EstadoInversion, EtapaInversion,
+    Facturacion, Fund, Introduction, Nivel, ProcesoMA, RangoAUM, RangoTicket,
+    Round, TiempoMercado, TipoInversor,
+)
 
 _date_widget = lambda: forms.DateInput(attrs={'type': 'date'}, format='%Y-%m-%d')
 
@@ -58,6 +62,39 @@ class EsDecimalField(forms.Field):
 
 class CompanyForm(forms.ModelForm):
     valuation = EsDecimalField(label='Valoracion_(€)', required=False)
+    provincia = forms.ModelChoiceField(
+        queryset=None, required=False, label='Provincia',
+        empty_label='— Seleccionar —',
+    )
+    fund = forms.ModelChoiceField(
+        queryset=Fund.objects.filter(habilitada=True).order_by('orden', 'nombre'),
+        required=False, empty_label='— Seleccionar —', label='Fondo',
+    )
+    stage = forms.ModelChoiceField(
+        queryset=EstadoInversion.objects.filter(habilitada=True).order_by('orden', 'nombre'),
+        required=False, empty_label='— Seleccionar —', label='Fase',
+    )
+    trl = forms.ModelChoiceField(
+        queryset=Nivel.objects.filter(habilitada=True).order_by('orden', 'nombre'),
+        required=False, empty_label='— Seleccionar —', label='TRL',
+    )
+    mrl = forms.ModelChoiceField(
+        queryset=Nivel.objects.filter(habilitada=True).order_by('orden', 'nombre'),
+        required=False, empty_label='— Seleccionar —', label='MRL',
+    )
+    ttm = forms.ModelChoiceField(
+        queryset=TiempoMercado.objects.filter(habilitada=True).order_by('orden', 'nombre'),
+        required=False, empty_label='— Seleccionar —', label='Time_to_market',
+    )
+    revenue = forms.ModelChoiceField(
+        queryset=Facturacion.objects.filter(habilitada=True).order_by('orden', 'nombre'),
+        required=False, empty_label='— Seleccionar —', label='Facturacion',
+    )
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        from crm.models import Provincia as ProvinciaModel
+        self.fields['provincia'].queryset = ProvinciaModel.objects.filter(habilitada=True)
 
     class Meta:
         model = Company
@@ -66,10 +103,7 @@ class CompanyForm(forms.ModelForm):
         labels = {
             'name': 'Nombre',
             'int_code': 'Codigo_interno',
-            'fund': 'Fondo',
             'country': 'Pais',
-            'stage': 'Fase',
-            'revenue': 'Facturacion',
             'valuation_date': 'Fecha_de_Valoracion',
         }
         widgets = {
@@ -80,6 +114,10 @@ class CompanyForm(forms.ModelForm):
 
 class RoundForm(forms.ModelForm):
     target = EsDecimalField(label='Objetivo_(€)', required=False)
+    rstage = forms.ModelChoiceField(
+        queryset=EtapaInversion.objects.filter(habilitada=True).order_by('orden', 'nombre'),
+        required=False, empty_label='— Seleccionar —', label='Etapa',
+    )
 
     class Meta:
         model = Round
@@ -87,7 +125,6 @@ class RoundForm(forms.ModelForm):
         labels = {
             'type': 'Tipo',
             'status': 'Estado',
-            'rstage': 'Etapa',
             'start': 'Fecha_inicio',
             'close': 'Fecha_cierre',
         }

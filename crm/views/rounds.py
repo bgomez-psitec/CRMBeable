@@ -1,3 +1,4 @@
+import re as _re
 from crm.views.common import *
 from crm.views.docs import _save_contact_doc
 
@@ -390,9 +391,9 @@ def presentaciones_pipeline(request):
 
     all_rounds = Round.objects.filter(company__in=companies).select_related('company').order_by('company__name', 'type')
 
-    g1, g2, g3 = _parse_groups(request.GET, PRES_GROUP_KEYS)
+    g1, g2, g3 = parse_groups(request.GET, PRES_GROUP_KEYS)
     keyfns = [PRES_GROUP_KEYS[k] for k in (g1, g2, g3) if k]
-    groups = _build_groups(intros, keyfns) if keyfns else None
+    groups = build_groups(intros, keyfns) if keyfns else None
 
     return render(request, 'crm/presentaciones_pipeline.html', {
         'active_nav': 'pres_pipeline',
@@ -443,9 +444,9 @@ def presentaciones(request):
 
     intros = list(intros)
 
-    g1, g2, g3 = _parse_groups(request.GET, _PRES_GROUP_KEYS_TABLE.keys())
+    g1, g2, g3 = parse_groups(request.GET, _PRES_GROUP_KEYS_TABLE.keys())
     active_groups = [g for g in (g1, g2, g3) if g]
-    groups = _build_groups(intros, [_PRES_GROUP_KEYS_TABLE[g] for g in active_groups]) if active_groups else None
+    groups = build_groups(intros, [_PRES_GROUP_KEYS_TABLE[g] for g in active_groups]) if active_groups else None
 
     return render(request, 'crm/presentaciones.html', {
         'active_nav': 'presentaciones', 'intros': intros, 'groups': groups,

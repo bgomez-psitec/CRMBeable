@@ -91,7 +91,7 @@ def company_create(request):
         form = CompanyForm()
     return render(request, 'crm/company_form.html', {
         'active_nav': 'companies', 'form': form, 'title': 'Nueva participada',
-        'sector_opts': SECTOR_OPTS,
+        'sector_opts': get_sector_opts(),
     })
 
 
@@ -181,5 +181,5 @@ def company_edit(request, pk):
         form = CompanyForm(instance=company)
     return render(request, 'crm/company_form.html', {
         'active_nav': 'companies', 'form': form, 'title': f'Editar {company.name}',
-        'company': company, 'sector_opts': SECTOR_OPTS,
+        'company': company, 'sector_opts': get_sector_opts(),
     })

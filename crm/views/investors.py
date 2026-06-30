@@ -1,3 +1,4 @@
+import re as _re
 from crm.views.common import *
 from crm.views.docs import _save_contact_doc
 
@@ -25,7 +26,7 @@ def investors(request):
     if tipoinv_filter:
         qs = qs.filter(tipo_inversion__icontains=tipoinv_filter)
 
-    g1, g2, g3 = _parse_groups(request.GET, INV_GROUP_KEYS.keys())
+    g1, g2, g3 = parse_groups(request.GET, INV_GROUP_KEYS.keys())
 
     cards = []
     for v in qs.select_related('relation'):
@@ -33,7 +34,7 @@ def investors(request):
         cards.append({'investor': v, 'active': active})
 
     active_groups = [g for g in (g1, g2, g3) if g]
-    groups = _build_groups(cards, [INV_GROUP_KEYS[g] for g in active_groups]) if active_groups else None
+    groups = build_groups(cards, [INV_GROUP_KEYS[g] for g in active_groups]) if active_groups else None
 
     etapas = list(EtapaRelacion.objects.all())
     pipe_stages = []
@@ -51,9 +52,9 @@ def investors(request):
         'view': view, 'pipe_stages': pipe_stages,
         'can_edit': can_edit(request.user),
         'etapas_relacion': EtapaRelacion.objects.all(),
-        'sector_opts': SECTOR_OPTS,
-        'tipo_inversor_choices': TipoInversor.choices,
-        'etapa_inversion_choices': EtapaInversion.choices,
+        'sector_opts': get_sector_opts(),
+        'tipo_inversor_choices': list(TipoInversor.objects.filter(habilitada=True).values_list('id', 'nombre')),
+        'etapa_inversion_choices': [(v, v) for v in get_etapa_inversion_opts()],
         'tipo_filter': tipo_filter,
         'cat_filter': cat_filter,
         'tipoinv_filter': tipoinv_filter,
@@ -134,19 +135,21 @@ def investor_detail(request, pk):
     investor_companies = Company.objects.filter(
         rounds__introductions__investor=investor
     ).distinct()
+    inv_slug = _re.sub(r'[^\w\-.]', '_', investor.name.strip())
     return render(request, 'crm/investor_detail.html', {
         'active_nav': 'investors', 'investor': investor, 'intros': intros, 'chrono': chrono,
         'colaboraciones': colaboraciones, 'contactos_ma': contactos_ma,
         'last_contact': last_contact, 'can_edit': can_edit(request.user),
         'is_admin': request.user.role == 'admin',
         'investor_companies': investor_companies,
+        'docs_url': reverse('crm:docs_contactos_carpeta', args=('Inversores', inv_slug)),
         'log_rounds': log_rounds, 'log_ma': log_ma, 'log_colabs': log_colabs,
         'etapas_relacion': EtapaRelacion.objects.all(),
-        'tipo_inversor_choices': TipoInversor.choices,
-        'etapa_inversion_choices': EtapaInversion.choices,
-        'rango_ticket_choices': RangoTicket.choices,
-        'rango_aum_choices': RangoAUM.choices,
-        'sector_opts': SECTOR_OPTS, 'area_opts': AREA_OPTS,
+        'tipo_inversor_choices': TipoInversor.objects.filter(habilitada=True),
+        'etapa_inversion_choices': get_etapa_inversion_opts(),
+        'rango_ticket_choices': RangoTicket.objects.filter(habilitada=True),
+        'rango_aum_choices': RangoAUM.objects.filter(habilitada=True),
+        'sector_opts': get_sector_opts(), 'area_opts': get_area_opts(),
         # KPIs Rondas
         'intros_activas_count': len(intros_activas),
         'intros_descartadas_count': len(intros_descartadas),
@@ -175,7 +178,7 @@ def investor_create(request):
             obj = Investor.objects.create(
                 name=name,
                 country=request.POST.get('country', '').strip(),
-                type=request.POST.get('type', '').strip(),
+                type_id=request.POST.get('type') or None,
                 sectors=', '.join(request.POST.getlist('sectors')),
             )
             relation_id = request.POST.get('relation')
@@ -204,14 +207,14 @@ def investor_edit(request, pk):
     investor = get_object_or_404(Investor, pk=pk)
     if request.method == 'POST':
         investor.name = request.POST.get('name', investor.name).strip()
-        investor.type = request.POST.get('type', '')
+        investor.type_id = request.POST.get('type') or None
         investor.country = request.POST.get('country', '').strip()
         investor.sectors = ', '.join(request.POST.getlist('sectors'))
         investor.areas = ', '.join(request.POST.getlist('areas'))
         investor.tipo_inversion = ', '.join(request.POST.getlist('tipo_inversion'))
         investor.inv_stage = ', '.join(request.POST.getlist('inv_stage'))
-        investor.ticket_range = request.POST.get('ticket_range', '')
-        investor.aum = request.POST.get('aum', '')
+        investor.ticket_range_id = request.POST.get('ticket_range') or None
+        investor.aum_id = request.POST.get('aum') or None
         investor.pub_status = request.POST.get('pub_status', '').strip()
         investor.relation_id = request.POST.get('relation') or None
         investor.notes = request.POST.get('notes', '').strip()
@@ -385,9 +388,9 @@ def investor_contacts(request):
 
     contacts = list(qs.order_by('investor__name', 'name'))
 
-    g1, g2, _ = _parse_groups(request.GET, CON_GROUP_KEYS.keys())
+    g1, g2, _ = parse_groups(request.GET, CON_GROUP_KEYS.keys())
     active_groups = [g for g in (g1, g2) if g]
-    groups = _build_groups(contacts, [CON_GROUP_KEYS[g] for g in active_groups]) if active_groups else None
+    groups = build_groups(contacts, [CON_GROUP_KEYS[g] for g in active_groups]) if active_groups else None
 
     all_investors = visible_investors(request.user).order_by('name')
 

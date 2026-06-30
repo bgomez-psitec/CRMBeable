@@ -29,7 +29,13 @@ Construida como port fiel y productivo del prototipo funcional `CRM_Gestora_ES_V
   - Eliminación de emails desde la bandeja y desde la cronología de contactos.
 - **Informes**: KPIs agregados de rondas abiertas/cerradas, comunicaciones por ronda y contactados en la última semana.
 - **Usuarios** (solo admin): alta/edición de usuarios, rol, MFA, participadas asignadas.
-- **Ajustes**: edición de perfil y de los catálogos configurables (estados de presentación, fases de ronda, etapas de relación, estados M&A, estados de colaboración).
+- **Centro de documentos**: carpeta de archivos por participada (rondas, procesos M&A), inversor y colaborador. Soporta **drag & drop de archivos .msg** (emails de Outlook) directamente sobre la cronología de contactos — se extrae el remitente, destinatario, asunto y fecha, se pre-rellena el formulario de log y el archivo queda guardado en la carpeta del contacto.
+- **Ajustes** (solo admin): edición de perfil y gestión completa de catálogos configurables, organizados en cinco pestañas:
+  - **Ronda Inversión**: Estados de presentación, Fases de ronda, Etapas de relación con inversores.
+  - **M&A y Colaboración**: Estados M&A, Fases de proceso M&A, Estados de colaboración, Etapas de relación con colaboradores.
+  - **Participadas**: Fondos, Estados de inversión, Sectores, Niveles (TRL/MRL), Tiempo al mercado, Facturación, Provincias.
+  - **Inversores**: Tipos de inversor, Etapas de inversión, Rangos de ticket, Rangos AUM, Áreas geográficas.
+  - Todos los catálogos permiten **crear, renombrar, reordenar, habilitar/inhabilitar y eliminar** entradas con confirmación. Los campos antes definidos como `TextChoices` son ahora modelos de BD editables desde la interfaz.
 - **Control de acceso por roles (RBAC) aplicado en servidor**, no solo en la interfaz:
   - **admin**: acceso total a todas las participadas, inversores, M&A, colaboraciones, informes y administración.
   - **empleado**: acceso restringido a sus participadas asignadas (y a los inversores/presentaciones/M&A/colaboraciones relacionados).
@@ -71,9 +77,11 @@ requirements.txt     Dependencias Python
 |---|---|
 | Fundraising | `Round`, `Introduction`, `Interaction`, `EstadoPresentacion`, `FaseRonda`, `RoundFaseLog` |
 | M&A | `ProcesoMA`, `ContactoMA`, `InteraccionMA`, `Comprador`, `EstadoMA`, `FaseMA`, `ProcesoMAFaseLog` |
-| Colaboraciones | `Colaboracion`, `InteraccionColaboracion`, `Colaborador`, `ColaboradorLog`, `EstadoColaboracion` |
+| Colaboraciones | `Colaboracion`, `InteraccionColaboracion`, `Colaborador`, `ColaboradorLog`, `EstadoColaboracion`, `EtapaRelacionColaborador` |
 | Inversores | `Investor`, `InvestorContact`, `InvestorLog`, `EtapaRelacion` |
 | Bandeja | `InboxMessage` (FKs a `Investor`, `Colaborador`, `Round`, `ProcesoMA`) |
+| Documentos | Archivos en filesystem bajo `CONTACT_DOCS_ROOT`; `Documento` vinculado a participada/ronda/proceso |
+| Catálogos (BD) | `Fund`, `Area`, `TipoInversor`, `EtapaInversion`, `RangoTicket`, `RangoAUM`, `Nivel`, `TiempoMercado`, `Facturacion`, `EstadoInversion`, `Sector`, `Provincia` — todos con `nombre`, `orden`, `habilitada` |
 
 ## Modelo de roles
 
@@ -192,6 +200,9 @@ sudo ./scripts/deploy.sh
 - ✅ Selección múltiple de sectores en el formulario de Participadas.
 - ✅ Filtros de cronología por contexto (Ronda / M&A / Colaboraciones) en fichas de Inversor y Colaborador.
 - ✅ Bandeja de entrada rediseñada: detección automática de contacto, selección en cascada Participada → Proceso, creación de nuevo contacto inline, identificación `Bandeja de entrada` en cronología, eliminación de emails.
+- ✅ **Centro de documentos**: carpeta de archivos por participada, inversor y colaborador con drag & drop de `.msg` (emails de Outlook) sobre la cronología; enlace directo a documentos desde la ficha de cada inversor y colaborador.
+- ✅ **Catálogos como modelos de BD**: los 11 campos que eran `TextChoices` (Fondo, Sector, Tipo inversor, Etapa inversión, Rango ticket, Rango AUM, Nivel, Tiempo mercado, Facturación, Estado inversión, Área) son ahora tablas editables desde Ajustes, con orden, habilitación y renombrado en línea.
+- ✅ **Ajustes reorganizado en pestañas**: Perfil / Ronda Inversión / M&A y Colaboración / Participadas / Inversores, con UI uniforme (crear, renombrar, reordenar, habilitar/inhabilitar, eliminar con confirmación).
 - ⏳ **Auth0**: pendiente de integrar para sustituir el login demo actual (variables ya previstas en `.env.example`).
 - ⏳ **Microsoft Graph (Outlook)**: pendiente de integrar para sincronizar la bandeja de entrada con buzones reales (variables ya previstas en `.env.example`); actualmente la bandeja se gestiona de forma manual.
 

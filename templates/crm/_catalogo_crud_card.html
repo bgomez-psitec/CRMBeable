@@ -1,0 +1,76 @@
+<div class="dc-card dc-card__body h-100">
+  <div class="fw-semibold mb-3">{{ title }}</div>
+  <table class="table table-sm mb-0" style="font-size:.84rem">
+    <thead><tr><th style="width:60px">Orden</th><th>Nombre</th><th style="width:80px">Estado</th><th style="width:56px"></th></tr></thead>
+    <tbody>
+    {% for e in items %}
+    <tr>
+      <td>
+        <form method="post" class="m-0">{% csrf_token %}
+          <input type="hidden" name="section" value="catalogo_crud">
+          <input type="hidden" name="tipo" value="{{ tipo }}">
+          <input type="hidden" name="action" value="orden">
+          <input type="number" name="orden_{{ e.pk }}" value="{{ e.orden }}"
+                 class="form-control form-control-sm" style="width:54px"
+                 onchange="this.closest('form').submit()">
+        </form>
+      </td>
+      <td style="vertical-align:middle">
+        <div class="cat-display d-flex align-items-center gap-1">
+          <span {% if not e.habilitada %}style="color:var(--dc-text-muted);text-decoration:line-through"{% endif %}>{{ e.nombre }}</span>
+          <button type="button" class="btn-icon" style="padding:1px 4px;opacity:.5"
+                  onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=.5"
+                  onclick="catEdit(this)">
+            <i class="bi bi-pencil" style="font-size:.75rem"></i>
+          </button>
+        </div>
+        <form method="post" class="cat-edit-form m-0" style="display:none">{% csrf_token %}
+          <input type="hidden" name="section" value="catalogo_crud">
+          <input type="hidden" name="tipo" value="{{ tipo }}">
+          <input type="hidden" name="action" value="rename">
+          <input type="hidden" name="pk" value="{{ e.pk }}">
+          <div class="d-flex gap-1 align-items-center">
+            <input type="text" name="nombre" value="{{ e.nombre }}" class="form-control form-control-sm">
+            <button type="submit" class="btn-ghost" style="white-space:nowrap;font-size:.75rem;padding:2px 8px">Guardar</button>
+            <button type="button" class="btn-ghost" style="font-size:.75rem;padding:2px 6px" onclick="catCancel(this)">✕</button>
+          </div>
+        </form>
+      </td>
+      <td style="vertical-align:middle">
+        <form method="post" class="m-0">{% csrf_token %}
+          <input type="hidden" name="section" value="catalogo_crud">
+          <input type="hidden" name="tipo" value="{{ tipo }}">
+          <input type="hidden" name="action" value="toggle">
+          <input type="hidden" name="pk" value="{{ e.pk }}">
+          <button type="submit" class="btn-ghost" style="padding:2px 8px;font-size:.75rem;
+            {% if e.habilitada %}color:var(--dc-accent);border-color:var(--dc-accent)
+            {% else %}color:var(--dc-text-muted){% endif %}">
+            {% if e.habilitada %}Activo{% else %}Inactivo{% endif %}
+          </button>
+        </form>
+      </td>
+      <td style="vertical-align:middle">
+        <form method="post" onsubmit="return confirm('¿Eliminar «{{ e.nombre }}»? Esta acción no se puede deshacer.')">{% csrf_token %}
+          <input type="hidden" name="section" value="catalogo_crud">
+          <input type="hidden" name="tipo" value="{{ tipo }}">
+          <input type="hidden" name="action" value="delete">
+          <input type="hidden" name="pk" value="{{ e.pk }}">
+          <button type="submit" style="background:none;border:none;cursor:pointer;color:var(--dc-text-muted);opacity:.5"
+                  onmouseover="this.style.opacity=1;this.style.color='#ef4444'" onmouseout="this.style.opacity=.5;this.style.color='var(--dc-text-muted)'">
+            <i class="bi bi-trash" style="font-size:.85rem"></i>
+          </button>
+        </form>
+      </td>
+    </tr>
+    {% empty %}
+    <tr><td colspan="4" style="font-size:.8rem;color:var(--dc-text-muted)">Sin elementos.</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  <form method="post" class="d-flex gap-2 mt-3">{% csrf_token %}
+    <input type="hidden" name="section" value="catalogo_crud">
+    <input type="hidden" name="tipo" value="{{ tipo }}">
+    <input name="nombre" class="form-control form-control-sm" placeholder="Nuevo elemento" style="max-width:200px">
+    <button class="btn-ghost" style="white-space:nowrap">Añadir</button>
+  </form>
+</div>

@@ -1,3 +1,4 @@
+import re as _re
 from crm.views.common import *
 
 
@@ -193,8 +194,7 @@ def docs_contactos_carpeta(request, tipo, slug):
     """Lista los archivos dentro de CONTACT_DOCS_ROOT/<tipo>/<slug>/."""
     root = pathlib.Path(settings.CONTACT_DOCS_ROOT)
     carpeta = root / tipo.capitalize() / slug
-    if not carpeta.exists():
-        raise Http404
+    carpeta.mkdir(parents=True, exist_ok=True)
 
     if request.method == 'POST' and can_edit(request.user):
         fname = request.POST.get('delete_file', '')

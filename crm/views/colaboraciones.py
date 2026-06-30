@@ -1,3 +1,4 @@
+import re as _re
 from crm.views.common import *
 from crm.views.docs import _save_contact_doc
 
@@ -61,9 +62,9 @@ def colaboraciones_pipeline(request):
     if sin_estado:
         pipe_stages.insert(0, {'estado': None, 'items': sin_estado})
 
-    g1, g2, g3 = _parse_groups(request.GET, COLAB_PIPE_GROUP_KEYS)
+    g1, g2, g3 = parse_groups(request.GET, COLAB_PIPE_GROUP_KEYS)
     keyfns = [COLAB_PIPE_GROUP_KEYS[k] for k in (g1, g2, g3) if k]
-    groups = _build_groups(colaboraciones, keyfns) if keyfns else None
+    groups = build_groups(colaboraciones, keyfns) if keyfns else None
 
     return render(request, 'crm/colaboraciones_pipeline.html', {
         'active_nav': 'colaboraciones',
@@ -129,10 +130,10 @@ def colaboraciones_global(request):
         ('tipo', 'Tipo'), ('estado', 'Estado'),
     ]
 
-    g1, g2, g3 = _parse_groups(request.GET, COL_GRP_KEYS.keys())
+    g1, g2, g3 = parse_groups(request.GET, COL_GRP_KEYS.keys())
     active_g = [g for g in (g1, g2, g3) if g]
     colaboraciones = list(qs)
-    groups = _build_groups(colaboraciones, [COL_GRP_KEYS[g] for g in active_g]) if active_g else None
+    groups = build_groups(colaboraciones, [COL_GRP_KEYS[g] for g in active_g]) if active_g else None
 
     from crm.models import Colaborador as ColabModel
     all_colaboradores = ColabModel.objects.order_by('name')
