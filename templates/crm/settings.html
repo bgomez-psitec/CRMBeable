@@ -49,6 +49,7 @@
         <input type="hidden" name="section" value="profile">
         <div class="col-md-6"><label class="form-label">Nombre</label><input name="first_name" class="form-control" value="{{ user.first_name }}"></div>
         <div class="col-md-6"><label class="form-label">Apellidos</label><input name="last_name" class="form-control" value="{{ user.last_name }}"></div>
+        <div class="col-12"><label class="form-label">Usuario</label><input class="form-control" value="{{ user.username }}" disabled></div>
         <div class="col-12"><label class="form-label">Email</label><input type="email" name="email" class="form-control" value="{{ user.email }}"></div>
         <div class="col-12 form-check ms-1">
           <input type="checkbox" name="mfa_enabled" class="form-check-input" id="mfa" {% if user.mfa_enabled %}checked{% endif %}>

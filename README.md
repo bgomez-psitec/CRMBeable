@@ -30,7 +30,7 @@ Construida como port fiel y productivo del prototipo funcional `CRM_Gestora_ES_V
 - **Informes**: KPIs agregados de rondas abiertas/cerradas, comunicaciones por ronda y contactados en la última semana.
 - **Usuarios** (solo admin): alta/edición de usuarios, rol, MFA, participadas asignadas.
 - **Centro de documentos**: carpeta de archivos por participada (rondas, procesos M&A), inversor y colaborador. Soporta **drag & drop de archivos .msg** (emails de Outlook) directamente sobre la cronología de contactos — se extrae el remitente, destinatario, asunto y fecha, se pre-rellena el formulario de log y el archivo queda guardado en la carpeta del contacto.
-- **Ajustes** (solo admin): edición de perfil y gestión completa de catálogos configurables, organizados en cinco pestañas:
+- **Ajustes** (solo admin): edición de perfil (nombre, apellidos, usuario, email, MFA) y gestión completa de catálogos configurables, organizados en cinco pestañas:
   - **Ronda Inversión**: Estados de presentación, Fases de ronda, Etapas de relación con inversores.
   - **M&A y Colaboración**: Estados M&A, Fases de proceso M&A, Estados de colaboración, Etapas de relación con colaboradores.
   - **Participadas**: Fondos, Estados de inversión, Sectores, Niveles (TRL/MRL), Tiempo al mercado, Facturación, Provincias.
