@@ -1,0 +1,117 @@
+{% extends "base.html" %}
+{% load crm_filters %}
+{% block title %}Contactos de Inversores — CRM Gestora{% endblock %}
+{% block topbar_title %}Contactos de Inversores{% endblock %}
+{% block topbar_sub %}Directorio de personas de contacto{% endblock %}
+{% block topbar_actions %}
+  <a href="{% url 'crm:investors' %}" class="btn-ghost">
+    <i class="bi bi-arrow-left"></i> Volver a Inversores
+  </a>
+{% endblock %}
+{% block content %}
+
+<form method="get" class="d-flex gap-2 mb-4 flex-wrap align-items-center">
+  <input type="text" name="q" value="{{ q }}" class="form-control" style="max-width:220px" placeholder="Nombre, cargo, email…">
+
+  <select name="investor" class="form-select" style="max-width:200px" onchange="this.form.submit()">
+    <option value="">Todos los inversores</option>
+    {% for inv in all_investors %}
+      <option value="{{ inv.pk }}" {% if investor_id == inv.pk|stringformat:"s" %}selected{% endif %}>{{ inv.name }}</option>
+    {% endfor %}
+  </select>
+
+  {# Nivel 1 #}
+  <select name="group1" class="form-select" style="max-width:190px" onchange="this.form.submit()">
+    <option value="">Sin agrupar</option>
+    {% for val, lbl in group_labels %}
+      <option value="{{ val }}" {% if group1 == val %}selected{% endif %}>Agrupar: {{ lbl }}</option>
+    {% endfor %}
+  </select>
+
+  {# Nivel 2 (solo 2 campos disponibles) #}
+  {% if group1 %}
+  <select name="group2" class="form-select" style="max-width:190px" onchange="this.form.submit()">
+    <option value="">— 2ª agrupación —</option>
+    {% for val, lbl in group_labels %}
+      {% if val != group1 %}
+        <option value="{{ val }}" {% if group2 == val %}selected{% endif %}>{{ lbl }}</option>
+      {% endif %}
+    {% endfor %}
+  </select>
+  {% endif %}
+
+  <button type="submit" class="btn-ghost" style="align-self:center">Buscar</button>
+  {% if q or investor_id or group1 %}
+    <a href="{% url 'crm:investor_contacts' %}" class="btn-ghost" style="color:var(--dc-danger);border-color:rgba(239,68,68,.3)">
+      <i class="bi bi-x"></i> Limpiar
+    </a>
+  {% endif %}
+</form>
+
+{% if groups %}
+  {# Nivel 1 #}
+  {% for k1, v1 in groups.items %}
+  <div class="dc-card mb-2">
+    <button class="dc-card__header w-100 text-start" style="background:none;border:none;cursor:pointer"
+            type="button" data-bs-toggle="collapse" data-bs-target="#g1-{{ forloop.counter }}"
+            aria-expanded="false">
+      <h2 class="dc-card__title d-flex align-items-center gap-2 mb-0">
+        {% if group1 == 'investor' %}<i class="bi bi-briefcase" style="color:var(--dc-accent)"></i>
+        {% elif group1 == 'role' %}<i class="bi bi-person-badge" style="color:var(--dc-accent)"></i>
+        {% endif %}
+        {{ k1 }}
+        <span class="dc-badge dc-badge--grey ms-1">{{ v1|count_items }}</span>
+      </h2>
+      <i class="bi bi-chevron-right grp-chevron"></i>
+    </button>
+    <div class="collapse" id="g1-{{ forloop.counter }}">
+      {% if group2 %}
+        {# Nivel 2 #}
+        {% for k2, v2 in v1.items %}
+        <div class="grp-l2-wrap">
+          <button class="grp-l2-header" type="button"
+                  data-bs-toggle="collapse" data-bs-target="#g2-{{ forloop.parentloop.counter }}-{{ forloop.counter }}"
+                  aria-expanded="false">
+            <span class="d-flex align-items-center gap-2">
+              {{ k2 }}
+              <span class="dc-badge dc-badge--grey">{{ v2|length }}</span>
+            </span>
+            <i class="bi bi-chevron-right grp-chevron"></i>
+          </button>
+          <div class="collapse dc-table-wrap" id="g2-{{ forloop.parentloop.counter }}-{{ forloop.counter }}">
+            {% include "crm/_contact_table_body.html" with contacts=v2 %}
+          </div>
+        </div>
+        {% endfor %}
+      {% else %}
+        <div class="dc-table-wrap">
+          {% include "crm/_contact_table_body.html" with contacts=v1 %}
+        </div>
+      {% endif %}
+    </div>
+  </div>
+  {% empty %}
+  <div style="text-align:center;padding:48px;color:var(--dc-text-muted)">Sin contactos que coincidan.</div>
+  {% endfor %}
+
+{% else %}
+  <div class="dc-card">
+    <div class="dc-table-wrap">
+      {% include "crm/_contact_table_body.html" with contacts=contacts %}
+    </div>
+  </div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  document.querySelectorAll('.collapse').forEach(el => {
+    const btn = document.querySelector(`[data-bs-target="#${el.id}"]`);
+    if (!btn) return;
+    el.addEventListener('show.bs.collapse', () => btn.querySelector('.grp-chevron')?.classList.add('rotated'));
+    el.addEventListener('hide.bs.collapse', () => btn.querySelector('.grp-chevron')?.classList.remove('rotated'));
+  });
+});
+</script>
+{% endblock %}

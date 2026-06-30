@@ -3,73 +3,332 @@
 {% block topbar_title %}Bandeja de entrada{% endblock %}
 {% block content %}
 <div class="row g-3">
+  {# ── Lista de mensajes ── #}
   <div class="col-md-4">
-    <div class="card" style="max-height:75vh;overflow-y:auto">
+    <div class="dc-card" style="max-height:80vh;overflow-y:auto">
       <div class="list-group list-group-flush">
         {% for m in msgs %}
-        <a href="?id={{ m.id }}" class="list-group-item list-group-item-action {% if selected.id == m.id %}active{% endif %}">
+        <a href="?id={{ m.id }}" class="list-group-item list-group-item-action {% if selected.id == m.id %}active{% endif %}"
+           style="border-left:none;border-right:none;border-radius:0">
           <div class="d-flex justify-content-between">
-            <b>{{ m.from_name }}</b>
-            {% if m.unread and not m.saved %}<span class="badge text-bg-warning rounded-circle">&nbsp;</span>{% endif %}
-            {% if m.saved %}<i class="bi bi-check2-circle text-success"></i>{% endif %}
+            <b style="font-size:.85rem">{{ m.from_name }}</b>
+            {% if m.unread and not m.saved %}<span class="dc-badge dc-badge--amber">&nbsp;</span>{% endif %}
+            {% if m.saved %}<i class="bi bi-check2-circle" style="color:var(--dc-accent)"></i>{% endif %}
           </div>
-          <div class="small text-truncate">{{ m.subject }}</div>
-          <div class="small text-muted">{{ m.date|date:"d M Y" }}</div>
+          <div style="font-size:.78rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ m.subject }}</div>
+          <div style="font-size:.75rem;color:var(--dc-text-muted)">{{ m.date|date:"d M Y" }}</div>
         </a>
         {% empty %}
-        <div class="list-group-item text-muted text-center py-4">Sin mensajes.</div>
+        <div style="padding:32px;text-align:center;color:var(--dc-text-muted);font-size:.875rem">Sin mensajes.</div>
         {% endfor %}
       </div>
     </div>
   </div>
 
+  {# ── Panel de detalle ── #}
   <div class="col-md-8">
     {% if selected %}
-    <div class="card card-body">
+    <div class="dc-card dc-card__body">
+
+      {# Cabecera del email #}
       <div class="d-flex justify-content-between mb-2">
         <div>
-          <div class="fw-semibold">{{ selected.subject }}</div>
-          <div class="text-muted small">{{ selected.from_name }} &lt;{{ selected.from_email }}&gt; · {{ selected.date|date:"d M Y" }}</div>
+          <div class="fw-semibold" style="font-size:1rem">{{ selected.subject }}</div>
+          <div style="font-size:.8rem;color:var(--dc-text-muted)">
+            {{ selected.from_name }} &lt;{{ selected.from_email }}&gt; · {{ selected.date|date:"d M Y" }}
+          </div>
         </div>
-        {% if selected.saved %}<span class="badge text-bg-success align-self-start">Guardado</span>{% endif %}
+        <div class="d-flex align-items-start gap-2">
+          {% if selected.saved %}<span class="dc-badge dc-badge--green align-self-start">Guardado</span>{% endif %}
+          {% if can_edit %}
+          <form method="post" action="{% url 'crm:inbox_delete' selected.id %}"
+                onsubmit="return confirm('¿Eliminar este email?')">
+            {% csrf_token %}
+            <button type="submit" class="btn-ghost"
+                    style="color:var(--dc-danger);border-color:rgba(239,68,68,.3);padding:3px 10px;font-size:.8rem">
+              <i class="bi bi-trash"></i> Eliminar
+            </button>
+          </form>
+          {% endif %}
+        </div>
       </div>
-      <div class="border rounded p-3 mb-3 small" style="white-space:pre-line">{{ selected.body }}</div>
+
+      {# Cuerpo del email #}
+      <div style="border:1px solid var(--dc-border);border-radius:var(--dc-radius-sm);padding:14px;
+                  margin-bottom:16px;font-size:.84rem;white-space:pre-line;background:#f8fafc;
+                  max-height:220px;overflow-y:auto">{{ selected.body }}</div>
+
+      {# ── Banner: contacto detectado o no encontrado ── #}
+      {% if matched_contact %}
+      <div class="d-flex align-items-center gap-2 mb-3 px-3 py-2"
+           style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;font-size:.84rem">
+        <i class="bi bi-person-check-fill" style="color:#16a34a;font-size:1rem"></i>
+        <span>Contacto encontrado: <b>{{ matched_contact.label }}</b>
+          <span style="color:var(--dc-text-muted)">({{ matched_contact.type|capfirst }})</span>
+          · <code style="font-size:.78rem">{{ matched_contact.via }}</code>
+        </span>
+      </div>
+      {% elif selected.from_email and not selected.saved %}
+      <div class="mb-3 px-3 py-2"
+           style="background:#fffbeb;border:1px solid #fde68a;border-radius:8px;font-size:.84rem">
+        <div class="d-flex align-items-center gap-2 mb-2">
+          <i class="bi bi-person-x" style="color:#b45309;font-size:1rem"></i>
+          <span><b>{{ selected.from_email }}</b> no existe en la base de datos de contactos.</span>
+        </div>
+        <div class="d-flex align-items-center gap-2">
+          <input type="checkbox" id="chk-create-contact" onchange="toggleCreateContact(this.checked)"
+                 style="width:15px;height:15px;accent-color:var(--dc-accent)">
+          <label for="chk-create-contact" style="margin:0;cursor:pointer">Añadir como nuevo contacto</label>
+        </div>
+        <div id="new-contact-fields" style="display:none;margin-top:10px">
+          <input type="hidden" name="create_contact" id="inp-create-contact" value="0">
+          <div class="row g-2">
+            <div class="col-4">
+              <select name="new_contact_type" id="nc-type" class="form-select form-select-sm"
+                      onchange="onNcTypeChange()">
+                <option value="">— Tipo —</option>
+                <option value="investor">Inversor</option>
+                <option value="colaborador">Colaborador</option>
+              </select>
+            </div>
+            <div class="col-8">
+              <select name="new_contact_entity_id" id="nc-entity" class="form-select form-select-sm">
+                <option value="">— Seleccionar —</option>
+              </select>
+            </div>
+            <div class="col-6">
+              <input type="text" name="new_contact_name" class="form-control form-control-sm"
+                     placeholder="Nombre" value="{{ selected.from_name }}">
+            </div>
+            <div class="col-6">
+              <input type="text" name="new_contact_role" class="form-control form-control-sm"
+                     placeholder="Cargo (opcional)">
+            </div>
+          </div>
+        </div>
+      </div>
+      {% endif %}
+
+      {% if selected.saved %}
+      {# Ya guardado — mostrar vinculaciones #}
+      <div class="mb-3" style="font-size:.82rem;color:var(--dc-text-muted)">
+        {% if selected.investor %}Vinculado a inversor: <b>{{ selected.investor.name }}</b>{% endif %}
+        {% if selected.colaborador %}Vinculado a colaborador: <b>{{ selected.colaborador.name }}</b>{% endif %}
+        {% if selected.round %} · Ronda: <b>{{ selected.round.company.name }} — {{ selected.round.type }}</b>{% endif %}
+        {% if selected.proceso_ma %} · Proceso M&amp;A: <b>{{ selected.proceso_ma.nombre }}</b>{% endif %}
+      </div>
+      {% endif %}
 
       {% if can_edit %}
-      <form method="post">
+      {# ── Formulario de vinculación ── #}
+      <form method="post" id="inbox-form">
         {% csrf_token %}
         <input type="hidden" name="message_id" value="{{ selected.id }}">
-        <div class="mb-2">
-          <label class="form-label small">Resumen (heurístico, editable)</label>
-          <textarea name="summary" class="form-control" rows="3">{{ summary }}</textarea>
-        </div>
-        <div class="row g-2 mb-3">
-          <div class="col-md-6">
-            <label class="form-label small">Inversor</label>
-            <select name="investor_id" class="form-select">
-              <option value="">— Seleccionar —</option>
-              {% for inv in investors %}
-                <option value="{{ inv.id }}" {% if selected.investor_id == inv.id or suggested_investor.id == inv.id %}selected{% endif %}>{{ inv.name }}</option>
-              {% endfor %}
-            </select>
+
+        <hr style="margin:14px 0">
+
+        {# PASO 1: Contacto #}
+        <div class="mb-3">
+          <label class="form-label fw-semibold" style="font-size:.82rem">
+            <span class="dc-badge dc-badge--grey me-1">1</span> Contacto
+          </label>
+          <div class="row g-2">
+            <div class="col-4">
+              <select id="contact-type" name="contact_type" class="form-select form-select-sm"
+                      onchange="onContactTypeChange()">
+                <option value="">— Tipo —</option>
+                <option value="investor"
+                  {% if matched_contact.type == 'investor' or selected.investor %}selected{% endif %}>
+                  Inversor
+                </option>
+                <option value="colaborador"
+                  {% if matched_contact.type == 'colaborador' or selected.colaborador %}selected{% endif %}>
+                  Colaborador
+                </option>
+              </select>
+            </div>
+            <div class="col-8">
+              <select id="contact-id" name="contact_id" class="form-select form-select-sm">
+                <option value="">— Seleccionar —</option>
+              </select>
+            </div>
           </div>
-          <div class="col-md-6">
-            <label class="form-label small">Ronda</label>
-            <select name="round_id" class="form-select">
-              <option value="">— Sin vincular —</option>
-              {% for r in open_rounds %}
-                <option value="{{ r.id }}" {% if selected.round_id == r.id %}selected{% endif %}>{{ r.company.name }} — {{ r.type }}</option>
-              {% endfor %}
-            </select>
+        </div>
+
+        {# PASO 2: Participada #}
+        <div class="mb-3">
+          <label class="form-label fw-semibold" style="font-size:.82rem">
+            <span class="dc-badge dc-badge--grey me-1">2</span> Participada
+          </label>
+          <select id="company-sel" class="form-select form-select-sm" onchange="onCompanyChange()">
+            <option value="">— Seleccionar participada —</option>
+          </select>
+        </div>
+
+        {# PASO 3: Proceso #}
+        <div class="mb-3" id="proceso-block" style="display:none">
+          <label class="form-label fw-semibold" style="font-size:.82rem">
+            <span class="dc-badge dc-badge--grey me-1">3</span> Añadir a cronología de
+          </label>
+          <div class="row g-2">
+            <div class="col-5">
+              <select id="proceso-type" name="proceso_type" class="form-select form-select-sm"
+                      onchange="onProcesoTypeChange()">
+                <option value="">— Tipo de proceso —</option>
+                <option value="round">Ronda de Inversión</option>
+                <option value="ma">Proceso M&amp;A</option>
+              </select>
+            </div>
+            <div class="col-7">
+              <select id="proceso-id" name="proceso_id" class="form-select form-select-sm"
+                      style="display:none">
+                <option value="">— Seleccionar —</option>
+              </select>
+            </div>
           </div>
         </div>
-        <button type="submit" class="btn btn-warning"><i class="bi bi-check2"></i> OK, guardar</button>
+
+        {# Resumen #}
+        <div class="mb-3">
+          <label class="form-label" style="font-size:.78rem;font-weight:500">Nota / Resumen</label>
+          <textarea name="summary" class="form-control" rows="3"
+                    style="font-size:.84rem">{{ summary }}</textarea>
+        </div>
+
+        <button type="submit" class="btn-accent" style="font-size:.85rem">
+          <i class="bi bi-check2"></i> Guardar en cronología
+        </button>
       </form>
       {% endif %}
+
     </div>
     {% else %}
-    <div class="text-muted text-center py-5">Sin mensaje seleccionado.</div>
+    <div style="text-align:center;padding:64px;color:var(--dc-text-muted)">Sin mensaje seleccionado.</div>
     {% endif %}
   </div>
 </div>
+
+{% block extra_js %}
+<script>
+const INVESTORS     = {{ investors_json|safe }};
+const COLABORADORES = {{ colaboradores_json|safe }};
+const COMPANIES     = {{ companies_json|safe }};
+
+const MATCHED = {
+  type: "{{ matched_contact.type|default:'' }}",
+  id:   {{ matched_contact.obj.pk|default:'null' }},
+};
+const SEL_INVESTOR    = {{ selected.investor_id|default:'null' }};
+const SEL_COLABORADOR = {{ selected.colaborador_id|default:'null' }};
+const SEL_ROUND       = {{ selected.round_id|default:'null' }};
+const SEL_PROCESO_MA  = {{ selected.proceso_ma_id|default:'null' }};
+
+function onContactTypeChange() {
+  const type = document.getElementById('contact-type').value;
+  const sel  = document.getElementById('contact-id');
+  sel.innerHTML = '<option value="">— Seleccionar —</option>';
+  const list = type === 'investor' ? INVESTORS : type === 'colaborador' ? COLABORADORES : [];
+  list.forEach(c => {
+    const opt = document.createElement('option');
+    opt.value = c.id; opt.textContent = c.name;
+    if ((type === 'investor'    && c.id === SEL_INVESTOR) ||
+        (type === 'colaborador' && c.id === SEL_COLABORADOR) ||
+        (MATCHED.type === type  && c.id === MATCHED.id)) {
+      opt.selected = true;
+    }
+    sel.appendChild(opt);
+  });
+  resetCompany();
+}
+
+function resetCompany() {
+  const cs = document.getElementById('company-sel');
+  cs.innerHTML = '<option value="">— Seleccionar participada —</option>';
+  COMPANIES.forEach(c => {
+    const opt = document.createElement('option');
+    opt.value = c.id; opt.textContent = c.name; cs.appendChild(opt);
+  });
+  // Preseleccionar si hay round/proceso guardado
+  if (SEL_ROUND || SEL_PROCESO_MA) {
+    for (const c of COMPANIES) {
+      if (SEL_ROUND    && c.rounds.some(r => r.id === SEL_ROUND))    { cs.value = c.id; break; }
+      if (SEL_PROCESO_MA && c.procesos.some(p => p.id === SEL_PROCESO_MA)) { cs.value = c.id; break; }
+    }
+  }
+  onCompanyChange();
+}
+
+function onCompanyChange() {
+  const cid   = parseInt(document.getElementById('company-sel').value);
+  const block = document.getElementById('proceso-block');
+  if (!cid) { block.style.display = 'none'; return; }
+  block.style.display = '';
+  const company = COMPANIES.find(c => c.id === cid);
+  if (!company) { block.style.display = 'none'; return; }
+
+  document.getElementById('proceso-type').value = '';
+  document.getElementById('proceso-id').style.display = 'none';
+
+  if (SEL_ROUND && company.rounds.some(r => r.id === SEL_ROUND)) {
+    document.getElementById('proceso-type').value = 'round';
+    onProcesoTypeChange(SEL_ROUND, null);
+  } else if (SEL_PROCESO_MA && company.procesos.some(p => p.id === SEL_PROCESO_MA)) {
+    document.getElementById('proceso-type').value = 'ma';
+    onProcesoTypeChange(null, SEL_PROCESO_MA);
+  }
+}
+
+function onProcesoTypeChange(preselectRound, preselectMA) {
+  const type    = document.getElementById('proceso-type').value;
+  const cid     = parseInt(document.getElementById('company-sel').value);
+  const company = COMPANIES.find(c => c.id === cid);
+  const sel     = document.getElementById('proceso-id');
+  sel.innerHTML = '<option value="">— Seleccionar —</option>';
+
+  if (!type || !company) { sel.style.display = 'none'; return; }
+  sel.style.display = '';
+
+  const list = type === 'round' ? company.rounds : company.procesos;
+  list.forEach(item => {
+    const opt = document.createElement('option');
+    opt.value = item.id; opt.textContent = item.label;
+    if ((preselectRound && item.id === preselectRound) ||
+        (preselectMA    && item.id === preselectMA)) {
+      opt.selected = true;
+    }
+    sel.appendChild(opt);
+  });
+}
+
+function toggleCreateContact(checked) {
+  document.getElementById('new-contact-fields').style.display = checked ? '' : 'none';
+  document.getElementById('inp-create-contact').value = checked ? '1' : '0';
+}
+
+function onNcTypeChange() {
+  const type = document.getElementById('nc-type').value;
+  const sel  = document.getElementById('nc-entity');
+  sel.innerHTML = '<option value="">— Seleccionar —</option>';
+  const list = type === 'investor' ? INVESTORS : type === 'colaborador' ? COLABORADORES : [];
+  list.forEach(c => {
+    const opt = document.createElement('option');
+    opt.value = c.id; opt.textContent = c.name;
+    sel.appendChild(opt);
+  });
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  const ct = document.getElementById('contact-type');
+  if (!ct) return;
+  if (ct.value) {
+    onContactTypeChange();
+  } else if (MATCHED.type) {
+    ct.value = MATCHED.type;
+    onContactTypeChange();
+  } else {
+    resetCompany();
+  }
+});
+</script>
+{% endblock %}
 {% endblock %}

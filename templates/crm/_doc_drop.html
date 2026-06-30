@@ -1,0 +1,121 @@
+{# Partial: drag-and-drop de documentos sobre la cronología.                 #}
+{# Requiere window.DOC_DROP_CFG = { uploadUrl, dropZoneId, modalId }         #}
+
+{# ── Overlay visual sobre la zona de cronología ──────────────────────────── #}
+<div id="docDropOverlay" style="
+  display:none;position:absolute;inset:0;z-index:100;
+  background:rgba(var(--dc-accent-rgb),.14);backdrop-filter:blur(2px);
+  border:2px dashed var(--dc-accent);border-radius:10px;
+  align-items:center;justify-content:center;pointer-events:none">
+  <div style="text-align:center;color:var(--dc-accent)">
+    <i class="bi bi-file-earmark-arrow-down" style="font-size:2.4rem;display:block;margin-bottom:6px"></i>
+    <div style="font-size:.95rem;font-weight:700">Suelta para añadir a la cronología</div>
+    <div style="font-size:.8rem;opacity:.7">Se abrirá el formulario de registro</div>
+  </div>
+</div>
+
+{# ── Spinner de subida ────────────────────────────────────────────────────── #}
+<div id="docUploadSpinner" style="
+  display:none;position:fixed;inset:0;z-index:10002;
+  background:rgba(0,0,0,.45);align-items:center;justify-content:center">
+  <div class="dc-card" style="padding:28px 40px;text-align:center">
+    <div class="spinner-border text-primary mb-3" role="status"></div>
+    <div style="font-size:.9rem;font-weight:600">Guardando documento…</div>
+  </div>
+</div>
+
+<script>
+(function () {
+  const cfg = window.DOC_DROP_CFG;
+  if (!cfg) return;
+
+  const dropZone = document.getElementById(cfg.dropZoneId);
+  const overlay  = document.getElementById('docDropOverlay');
+  const spinner  = document.getElementById('docUploadSpinner');
+  if (!dropZone) return;
+
+  dropZone.style.position = 'relative';
+  dropZone.appendChild(overlay);
+
+  // Archivo pendiente cuando viene de drag-and-drop
+  window._docDropFile = null;
+
+  // ── Eventos de drag ──────────────────────────────────────────────────────
+  dropZone.addEventListener('dragenter', e => {
+    if (e.dataTransfer.types.includes('Files')) overlay.style.display = 'flex';
+  });
+  dropZone.addEventListener('dragleave', e => {
+    if (!dropZone.contains(e.relatedTarget)) overlay.style.display = 'none';
+  });
+  dropZone.addEventListener('dragover', e => e.preventDefault());
+  dropZone.addEventListener('drop', e => {
+    e.preventDefault();
+    overlay.style.display = 'none';
+    const file = e.dataTransfer.files[0];
+    if (!file) return;
+
+    // .msg siempre lo gestiona _email_drop.html (document-level drop o _emailDropHandler)
+    if (file.name.toLowerCase().endsWith('.msg')) {
+      if (window._emailDropHandler) window._emailDropHandler(file);
+      return;
+    }
+
+    window._docDropFile = file;
+    _prefillLogModal(file);
+  });
+
+  function _prefillLogModal(file) {
+    // Tipo → Nota por defecto
+    if (typeof invLogSetType === 'function')    invLogSetType('Nota');
+    else if (typeof colabLogSetType === 'function') colabLogSetType('Nota');
+
+    // Fecha → hoy
+    const dateEl = document.getElementById('log-date') || document.getElementById('colab-log-date');
+    if (dateEl) dateEl.value = new Date().toISOString().slice(0, 10);
+
+    // Resumen → nombre del archivo
+    const summaryEl = document.getElementById('log-summary') || document.getElementById('colab-log-summary');
+    if (summaryEl) summaryEl.value = file.name;
+
+    // Abrir modal unificado
+    const modalEl = document.getElementById(cfg.modalId);
+    if (modalEl) bootstrap.Modal.getOrCreateInstance(modalEl).show();
+  }
+
+  // ── Interceptar envío del form cuando hay archivo de drag ────────────────
+  ['invLogForm', 'colabLogForm'].forEach(formId => {
+    const form = document.getElementById(formId);
+    if (!form) return;
+    form.addEventListener('submit', function (e) {
+      if (!window._docDropFile) return; // envío normal si no hay drag
+      e.preventDefault();
+
+      spinner.style.display = 'flex';
+      const fd = new FormData();
+      fd.append('csrfmiddlewaretoken', form.querySelector('[name=csrfmiddlewaretoken]').value);
+      fd.append('file',    window._docDropFile);
+      fd.append('date',    (document.getElementById('log-date')    || document.getElementById('colab-log-date'))?.value    || '');
+      fd.append('type',    (document.getElementById('log-type')    || document.getElementById('colab-log-type'))?.value    || 'Nota');
+      fd.append('summary', (document.getElementById('log-summary') || document.getElementById('colab-log-summary'))?.value || '');
+      fd.append('context', (document.getElementById('log-context') || document.getElementById('colab-log-context'))?.value || '');
+      fd.append('round_id',        (document.getElementById('log-round-sel')  || document.getElementById('colab-log-round-sel'))?.value  || '');
+      fd.append('proceso_ma_id',   (document.getElementById('log-ma-sel')     || document.getElementById('colab-log-ma-sel'))?.value     || '');
+      fd.append('colaboracion_id', (document.getElementById('log-colab-sel')  || document.getElementById('colab-log-colab-sel'))?.value  || '');
+
+      fetch(cfg.uploadUrl, { method: 'POST', body: fd })
+        .then(r => r.json())
+        .then(data => {
+          spinner.style.display = 'none';
+          window._docDropFile = null;
+          if (data.error) { alert('Error: ' + data.error); return; }
+          location.reload();
+        })
+        .catch(err => {
+          spinner.style.display = 'none';
+          window._docDropFile = null;
+          alert('Error al guardar: ' + err);
+        });
+    });
+  });
+})();
+</script>

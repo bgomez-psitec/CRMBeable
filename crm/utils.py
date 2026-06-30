@@ -4,6 +4,17 @@ from decimal import Decimal
 MA_TERMINAL = ('Vendido', 'Descartado')
 COLLAB_TERMINAL = ('Activo', 'Descartado')
 
+COLLAB_ESTADO_W = {
+    'No contactado':       Decimal('0'),
+    'Contactado':          Decimal('0.10'),
+    'Reunión inicial':     Decimal('0.25'),
+    'Interés confirmado':  Decimal('0.40'),
+    'PoC / Piloto':        Decimal('0.60'),
+    'Acuerdo firmado':     Decimal('1.0'),
+    'Activo':              Decimal('1.0'),
+    'Descartado':          Decimal('0'),
+}
+
 ESTADO_W = {
     'No contactado': Decimal('0'),
     'Intro realizada': Decimal('0.1'),
@@ -15,50 +26,6 @@ ESTADO_W = {
     'Descartado': Decimal('0'),
 }
 
-_GREETING_RE = re.compile(
-    r'^(hola|buenos d|buenas|estimad|querid|gracias|un saludo|saludos|espero)', re.IGNORECASE
-)
-_SENTENCE_SPLIT_RE = re.compile(r'(?<=[.!?])\s+')
-_WHITESPACE_RE = re.compile(r'\s+')
-
-_STRONG_PATTERNS = [
-    (re.compile(r'term sheet|invert|ticket|comprom|firma|acuerdo|cierre|liderar', re.IGNORECASE), 3),
-    (re.compile(r'data room|due dilig|diligenc|valorac|propuesta|reuni|llamad|próxim|proxim|sigu|enviar|adjunt|plazo|fecha', re.IGNORECASE), 2),
-    (re.compile(r'interes|interés|duda|pregunt|necesit', re.IGNORECASE), 1),
-]
-
-
-def summarize_email(subject, body):
-    """Resumen heurístico de un email, sin IA. Puerto de summarizeEmail() del prototipo."""
-    text = _WHITESPACE_RE.sub(' ', body or '').strip()
-    sentences = [s.strip() for s in _SENTENCE_SPLIT_RE.split(text) if len(s.strip()) > 4] if text else []
-    sentences = [s for s in sentences if not _GREETING_RE.match(s)]
-
-    scored = []
-    for i, s in enumerate(sentences):
-        score = sum(weight for pattern, weight in _STRONG_PATTERNS if pattern.search(s))
-        scored.append({'s': s, 'i': i, 'sc': score})
-
-    picked_scored = sorted((x for x in scored if x['sc'] > 0), key=lambda x: -x['sc'])[:2]
-    picked_scored.sort(key=lambda x: x['i'])
-    picked = [x['s'] for x in picked_scored]
-
-    if len(picked) < 2:
-        for s in sentences:
-            if len(picked) >= 2:
-                break
-            if s not in picked:
-                picked.append(s)
-
-    lines = []
-    if subject and subject.strip():
-        lines.append(subject.strip())
-    for s in picked:
-        if len(lines) < 3:
-            lines.append(s[:127] + '…' if len(s) > 130 else s)
-    if not lines:
-        lines.append('Email sin contenido relevante.')
-    return '\n'.join(lines[:3])
 
 
 def round_invertido(round_obj):

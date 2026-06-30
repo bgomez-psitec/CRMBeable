@@ -1,0 +1,24 @@
+<table class="dc-table">
+  <thead>
+    <tr>
+      {% if group != 'investor' %}<th>Inversor</th>{% endif %}
+      <th>Nombre</th>
+      {% if group != 'role' %}<th>Cargo</th>{% endif %}
+      <th>Email</th>
+      <th>Teléfono</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for c in contacts %}
+    <tr style="cursor:pointer" onclick="location.href='{% url 'crm:investor_detail' c.investor_id %}'">
+      {% if group != 'investor' %}<td><b>{{ c.investor.name }}</b></td>{% endif %}
+      <td>{{ c.name }}</td>
+      {% if group != 'role' %}<td style="color:var(--dc-text-muted)">{{ c.role|default:"—" }}</td>{% endif %}
+      <td>{% if c.email %}<a href="mailto:{{ c.email }}" onclick="event.stopPropagation()">{{ c.email }}</a>{% else %}—{% endif %}</td>
+      <td style="color:var(--dc-text-muted)">{{ c.phone|default:"—" }}</td>
+    </tr>
+    {% empty %}
+    <tr><td colspan="5" style="text-align:center;padding:32px;color:var(--dc-text-muted)">Sin contactos que coincidan.</td></tr>
+    {% endfor %}
+  </tbody>
+</table>

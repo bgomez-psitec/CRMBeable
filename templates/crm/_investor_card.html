@@ -1,18 +1,15 @@
-<div class="col-md-6">
-  <div class="card h-100" style="cursor:pointer" onclick="location.href='{% url 'crm:investor_detail' card.investor.pk %}'">
-    <div class="card-body">
-      <div class="d-flex justify-content-between align-items-start">
-        <div>
-          <div class="fw-semibold">{{ card.investor.name }}</div>
-          <div class="text-muted small">{{ card.investor.type }} · {{ card.investor.country }}</div>
-        </div>
-        <span class="badge text-bg-success">{{ card.investor.relation.nombre|default:"—" }}</span>
-      </div>
-      <div class="d-flex justify-content-between text-muted small mt-2">
-        <span>Ticket <b class="text-dark">{{ card.investor.ticket_range|default:"—" }}</b></span>
-        <span>{{ card.active }} ronda{{ card.active|pluralize:"s" }} activa{{ card.active|pluralize:"s" }}</span>
-      </div>
-      {% if card.investor.sectors %}<div class="text-muted small mt-2">{{ card.investor.sectors }}</div>{% endif %}
+<div class="col-md-6 col-xl-4">
+  <div class="dc-card" style="cursor:pointer;padding:8px 12px" onclick="location.href='{% url 'crm:investor_detail' card.investor.pk %}'">
+    <div class="d-flex justify-content-between align-items-center gap-2">
+      <span class="fw-semibold text-truncate" style="font-size:.875rem">{{ card.investor.name }}</span>
+      <span class="dc-badge dc-badge--green flex-shrink-0" style="font-size:.68rem">{{ card.investor.relation.nombre|default:"—" }}</span>
+    </div>
+    <div class="d-flex gap-2 flex-wrap mt-1" style="font-size:.75rem;color:var(--dc-text-muted)">
+      {% if card.investor.type %}<span>{{ card.investor.type }}</span>{% endif %}
+      {% if card.investor.country %}<span>· {{ card.investor.country }}</span>{% endif %}
+      {% if card.investor.ticket_range %}<span>· Ticket <b style="color:var(--dc-text)">{{ card.investor.ticket_range }}</b></span>{% endif %}
+      {% if card.active %}<span style="color:var(--dc-accent)">· {{ card.active }} ronda{{ card.active|pluralize:"s" }} activa{{ card.active|pluralize:"s" }}</span>{% endif %}
+      {% if card.investor.sectors %}<span class="text-truncate">· {{ card.investor.sectors }}</span>{% endif %}
     </div>
   </div>
 </div>

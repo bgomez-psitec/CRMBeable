@@ -3,91 +3,890 @@
 {% block title %}{{ investor.name }} — CRM Gestora{% endblock %}
 {% block topbar_title %}{{ investor.name }}{% endblock %}
 {% block topbar_sub %}{{ investor.type }} · {{ investor.country }}{% endblock %}
+{% block topbar_actions %}
+  {% if can_edit %}
+    <button class="btn-ghost" data-bs-toggle="modal" data-bs-target="#editInvestorModal">
+      <i class="bi bi-pencil"></i> Editar
+    </button>
+  {% endif %}
+{% endblock %}
 {% block content %}
-<div class="card card-body mb-4">
-  <div class="d-flex justify-content-between">
-    <div>
-      <div class="row g-2 small">
-        <div class="col-md-3">Etapa <b>{{ investor.inv_stage|default:"—" }}</b></div>
-        <div class="col-md-3">Ticket <b>{{ investor.ticket_range|default:"—" }}</b></div>
-        <div class="col-md-3">AUM <b>{{ investor.aum|default:"—" }}</b></div>
-        <div class="col-md-3">Estado público <b>{{ investor.pub_status|default:"—" }}</b></div>
+
+{# ── Header ───────────────────────────────────────────────────────────────── #}
+<div class="dc-card dc-card__body mb-3">
+  <div class="d-flex align-items-start gap-3 mb-3">
+    {# Avatar #}
+    <div style="width:38px;height:38px;border-radius:50%;background:var(--dc-accent);color:#fff;
+                display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.9rem;flex-shrink:0">
+      {{ investor.name|slice:":2"|upper }}
+    </div>
+
+    {# Columna izquierda: nombre + metadatos #}
+    <div class="flex-grow-1 min-w-0">
+      <div class="d-flex align-items-center gap-2 mb-1 flex-wrap">
+        <span class="fw-bold" style="font-size:1rem">{{ investor.name }}</span>
+        {% if investor.relation %}<span class="dc-badge dc-badge--green" style="font-size:.7rem">{{ investor.relation.nombre }}</span>{% endif %}
+        {% if investor.type %}<span class="dc-badge dc-badge--grey" style="font-size:.7rem">{{ investor.type }}</span>{% endif %}
       </div>
-      {% if investor.sectors %}<div class="text-muted small mt-2">Sectores: {{ investor.sectors }}</div>{% endif %}
+      <div class="d-flex gap-3 flex-wrap" style="font-size:.78rem;color:var(--dc-text-muted)">
+        {% if investor.inv_stage %}<span>Etapa <b style="color:var(--dc-text)">{{ investor.inv_stage }}</b></span>{% endif %}
+        {% if investor.ticket_range %}<span>Ticket <b style="color:var(--dc-text)">{{ investor.ticket_range }}</b></span>{% endif %}
+        {% if investor.aum %}<span>AUM <b style="color:var(--dc-text)">{{ investor.aum }}</b></span>{% endif %}
+        {% if investor.pub_status %}<span>Estado <b style="color:var(--dc-text)">{{ investor.pub_status }}</b></span>{% endif %}
+        {% if investor.country %}<span>País <b style="color:var(--dc-text)">{{ investor.country }}</b></span>{% endif %}
+        <span>Último contacto <b style="color:var(--dc-accent)">{{ last_contact|date:"d M Y"|default:"—" }}</b></span>
+      </div>
     </div>
-    <span class="badge text-bg-success align-self-start">{{ investor.relation.nombre|default:"—" }}</span>
-  </div>
-  <div class="text-muted small mt-2">Último contacto: <b class="text-dark">{{ last_contact|date:"d M Y"|default:"—" }}</b></div>
-</div>
 
-<div class="row g-3 mb-4">
-  <div class="col-md-6">
-    <div class="card card-body h-100">
-      <div class="fw-semibold mb-2"><i class="bi bi-people"></i> Contactos</div>
-      {% for c in investor.contacts.all %}
-        <div class="mb-2">
-          <b>{{ c.name }}</b> <span class="text-muted">· {{ c.role }}</span>
-          <div class="small text-primary">{{ c.email }} · {{ c.phone }}</div>
-        </div>
-      {% empty %}<div class="text-muted">Sin contactos.</div>{% endfor %}
-      {% if investor.notes %}<div class="mt-2 small text-muted"><b class="text-dark">Relación histórica:</b> {{ investor.notes }}</div>{% endif %}
-    </div>
-  </div>
-  <div class="col-md-6">
-    <div class="card card-body h-100">
-      <div class="fw-semibold mb-2"><i class="bi bi-arrow-left-right"></i> Presentaciones ({{ intros|length }})</div>
-      <table class="table table-sm mb-0">
-        {% for it in intros %}
-        <tr style="cursor:pointer" onclick="location.href='{% url 'crm:round_detail' it.round_id %}'">
-          <td><b>{{ it.company.name }}</b><div class="text-muted small">{{ it.round.type }}</div></td>
-          <td><span class="badge text-bg-info">{{ it.status.nombre|default:"—" }}</span></td>
-          <td class="text-end fw-semibold">{{ it.ticket|euros }} €</td>
-        </tr>
-        {% empty %}<tr><td class="text-muted">Sin presentaciones.</td></tr>{% endfor %}
-      </table>
-    </div>
-  </div>
-</div>
-
-<div class="card card-body">
-  <div class="d-flex justify-content-between align-items-center mb-3">
-    <div class="fw-semibold"><i class="bi bi-clock-history"></i> Cronología de contactos</div>
-    {% if can_edit %}
-    <div class="d-flex gap-2">
-      <button class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#logModal" onclick="document.getElementById('log-type').value='Email'"><i class="bi bi-envelope"></i> Guardar email</button>
-      <button class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#logModal" onclick="document.getElementById('log-type').value='Llamada'"><i class="bi bi-telephone"></i> Llamada</button>
-      <button class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#logModal" onclick="document.getElementById('log-type').value='Reunión'"><i class="bi bi-people"></i> Reunión</button>
+    {# Columna derecha: sectores + áreas #}
+    {% if investor.sectors or investor.areas %}
+    <div style="flex-shrink:0;width:220px">
+      {% if investor.sectors %}
+      <div style="display:flex;flex-wrap:wrap;gap:3px;margin-bottom:3px">
+        {% for s in investor.sectors|split_csv %}<span class="dc-badge dc-badge--grey" style="font-size:.68rem;padding:2px 6px">{{ s }}</span>{% endfor %}
+      </div>
+      {% endif %}
+      {% if investor.areas %}
+      <div style="display:flex;flex-wrap:wrap;gap:3px;align-items:center">
+        <i class="bi bi-geo-alt" style="font-size:.7rem;color:var(--dc-text-muted)"></i>
+        {% for a in investor.areas|split_csv %}<span class="dc-badge dc-badge--blue" style="font-size:.68rem;padding:2px 6px">{{ a }}</span>{% endfor %}
+      </div>
+      {% endif %}
     </div>
     {% endif %}
   </div>
 
-  {% for x in chrono %}
-  <div class="d-flex gap-3 py-2 border-bottom">
-    <div style="width:90px;flex-shrink:0" class="small text-warning">{{ x.date|date:"d M Y"|default:"—" }}<div class="text-muted">{{ x.type }}</div></div>
-    <div class="flex-grow-1">
-      {% if x.company %}<span class="badge text-bg-light text-dark mb-1">{{ x.company.name }}{% if x.round %} · {{ x.round.type }}{% endif %}</span>{% endif %}
-      <div class="small" style="white-space:pre-line">{{ x.summary }}</div>
+  {# Contactos de la firma #}
+  {% if investor.contacts.all %}
+  <div class="d-flex gap-3 flex-wrap mt-1" style="border-top:1px solid var(--dc-border);padding-top:12px">
+    {% for c in investor.contacts.all %}
+    <div style="background:var(--dc-hover);border:1px solid var(--dc-border);border-radius:8px;padding:8px 14px;min-width:180px">
+      <div style="font-size:.82rem"><b>{{ c.name }}</b>{% if c.role %} <span style="color:var(--dc-text-muted)">· {{ c.role }}</span>{% endif %}</div>
+      {% if c.email %}<div style="font-size:.75rem;color:var(--dc-accent)">{{ c.email }}</div>{% endif %}
+      {% if c.phone %}<div style="font-size:.75rem;color:var(--dc-text-muted)">{{ c.phone }}</div>{% endif %}
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+</div>
+
+{# ── Tabs ─────────────────────────────────────────────────────────────────── #}
+<ul class="nav nav-tabs mb-0" id="invTabs" role="tablist"
+    style="border-bottom:1px solid var(--dc-border);margin-bottom:0">
+  <li class="nav-item">
+    <button class="nav-link active" id="tab-rondas" data-bs-toggle="tab" data-bs-target="#pane-rondas" type="button">
+      <i class="bi bi-currency-euro me-1"></i> Rondas de inversión
+    </button>
+  </li>
+  <li class="nav-item">
+    <button class="nav-link" id="tab-ma" data-bs-toggle="tab" data-bs-target="#pane-ma" type="button">
+      <i class="bi bi-building-gear me-1"></i> M&amp;A
+    </button>
+  </li>
+  <li class="nav-item">
+    <button class="nav-link" id="tab-colab" data-bs-toggle="tab" data-bs-target="#pane-colab" type="button">
+      <i class="bi bi-diagram-3 me-1"></i> Colaboraciones
+    </button>
+  </li>
+</ul>
+
+<div class="tab-content">
+
+  {# ── Tab 1: Rondas de inversión ─────────────────────────────────────────── #}
+  <div class="tab-pane fade show active" id="pane-rondas">
+    {# KPIs #}
+    <div class="row g-0" style="border:1px solid var(--dc-border);border-top:none;border-bottom:1px solid var(--dc-border)">
+      <div class="col border-end" style="padding:16px 20px;text-align:center">
+        <div style="font-size:.72rem;color:var(--dc-text-muted);text-transform:uppercase;letter-spacing:.05em">Presentaciones</div>
+        <div style="font-size:1.5rem;font-weight:700;color:var(--dc-accent)">{{ intros|length }}</div>
+        <div style="font-size:.75rem;color:var(--dc-text-muted)">{{ intros_activas_count }} activas</div>
+      </div>
+      <div class="col border-end" style="padding:16px 20px;text-align:center">
+        <div style="font-size:.72rem;color:var(--dc-text-muted);text-transform:uppercase;letter-spacing:.05em">Ticket invertido</div>
+        <div style="font-size:1.5rem;font-weight:700;color:var(--dc-accent)">{{ ticket_invertido|euros }} €</div>
+        <div style="font-size:.75rem;color:var(--dc-text-muted)">capital comprometido</div>
+      </div>
+      <div class="col border-end" style="padding:16px 20px;text-align:center">
+        <div style="font-size:.72rem;color:var(--dc-text-muted);text-transform:uppercase;letter-spacing:.05em">Pipeline ponderado</div>
+        <div style="font-size:1.5rem;font-weight:700;color:var(--dc-accent)">{{ ticket_weighted|euros }} €</div>
+        <div style="font-size:.75rem;color:var(--dc-text-muted)">potencial ajustado</div>
+      </div>
+      <div class="col" style="padding:16px 20px;text-align:center">
+        <div style="font-size:.72rem;color:var(--dc-text-muted);text-transform:uppercase;letter-spacing:.05em">Descartadas</div>
+        <div style="font-size:1.5rem;font-weight:700;color:var(--dc-danger)">{{ intros_descartadas_count }}</div>
+        <div style="font-size:.75rem;color:var(--dc-text-muted)">presentaciones</div>
+      </div>
+    </div>
+
+    {# Tabla #}
+    <div class="dc-card" style="border-radius:0 0 var(--dc-radius) var(--dc-radius);border-top:none">
+      <table class="dc-table">
+        <thead>
+          <tr>
+            <th>Participada</th>
+            <th>Ronda</th>
+            <th>Estado</th>
+            <th style="text-align:right">Ticket</th>
+            <th>Próximo paso</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for it in intros %}
+          <tr style="cursor:pointer" onclick="location.href='{% url 'crm:round_detail' it.round_id %}'">
+            <td><b>{{ it.company.name }}</b></td>
+            <td style="color:var(--dc-text-muted)">{{ it.round.type }}</td>
+            <td><span class="dc-badge dc-badge--blue">{{ it.status.nombre|default:"—" }}</span></td>
+            <td style="text-align:right;font-weight:600;white-space:nowrap">{% if it.ticket %}{{ it.ticket|euros }} €{% else %}—{% endif %}</td>
+            <td style="font-size:.8rem;color:var(--dc-text-muted)">{{ it.next_action|default:"—" }}</td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="5" style="text-align:center;padding:32px;color:var(--dc-text-muted)">Sin presentaciones registradas.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
     </div>
   </div>
+
+  {# ── Tab 2: M&A ─────────────────────────────────────────────────────────── #}
+  <div class="tab-pane fade" id="pane-ma">
+    {# KPIs #}
+    <div class="row g-0" style="border:1px solid var(--dc-border);border-top:none;border-bottom:1px solid var(--dc-border)">
+      <div class="col border-end" style="padding:16px 20px;text-align:center">
+        <div style="font-size:.72rem;color:var(--dc-text-muted);text-transform:uppercase;letter-spacing:.05em">Procesos M&amp;A</div>
+        <div style="font-size:1.5rem;font-weight:700;color:var(--dc-accent)">{{ contactos_ma|length }}</div>
+        <div style="font-size:.75rem;color:var(--dc-text-muted)">{{ ma_activos_count }} activos</div>
+      </div>
+      <div class="col border-end" style="padding:16px 20px;text-align:center">
+        <div style="font-size:.72rem;color:var(--dc-text-muted);text-transform:uppercase;letter-spacing:.05em">Mejor oferta</div>
+        <div style="font-size:1.5rem;font-weight:700;color:var(--dc-accent)">{% if ma_mejor_oferta %}{{ ma_mejor_oferta|euros }} €{% else %}—{% endif %}</div>
+        <div style="font-size:.75rem;color:var(--dc-text-muted)">{{ ma_activos_count }} activos</div>
+      </div>
+      <div class="col border-end" style="padding:16px 20px;text-align:center">
+        <div style="font-size:.72rem;color:var(--dc-text-muted);text-transform:uppercase;letter-spacing:.05em">Oferta ponderada</div>
+        <div style="font-size:1.5rem;font-weight:700;color:var(--dc-accent)">{{ ma_weighted|euros }} €</div>
+        <div style="font-size:.75rem;color:var(--dc-text-muted)">{{ ma_activos_count }} en proceso</div>
+      </div>
+      <div class="col border-end" style="padding:16px 20px;text-align:center">
+        <div style="font-size:.72rem;color:var(--dc-text-muted);text-transform:uppercase;letter-spacing:.05em">Vendidos</div>
+        <div style="font-size:1.5rem;font-weight:700;color:#22c55e">{{ ma_vendidos_count }}</div>
+        <div style="font-size:.75rem;color:var(--dc-text-muted)">cerrados</div>
+      </div>
+      <div class="col" style="padding:16px 20px;text-align:center">
+        <div style="font-size:.72rem;color:var(--dc-text-muted);text-transform:uppercase;letter-spacing:.05em">Descartados</div>
+        <div style="font-size:1.5rem;font-weight:700;color:var(--dc-danger)">{{ ma_descartados_count }}</div>
+        <div style="font-size:.75rem;color:var(--dc-text-muted)">procesos</div>
+      </div>
+    </div>
+
+    {# Tabla #}
+    <div class="dc-card" style="border-radius:0 0 var(--dc-radius) var(--dc-radius);border-top:none">
+      <table class="dc-table">
+        <thead>
+          <tr>
+            <th>Participada</th>
+            <th>Proceso</th>
+            <th>Estado</th>
+            <th style="text-align:right">Oferta</th>
+            <th>Próximo paso</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for c in contactos_ma %}
+          <tr style="cursor:pointer" onclick="location.href='{% url 'crm:proceso_ma_detail' c.proceso_id %}'">
+            <td><b>{{ c.proceso.company.name }}</b></td>
+            <td style="color:var(--dc-text-muted)">{{ c.proceso.nombre }}</td>
+            <td><span class="dc-badge dc-badge--amber">{{ c.status.nombre|default:"—" }}</span></td>
+            <td style="text-align:right;font-weight:600;white-space:nowrap">{% if c.oferta_precio %}{{ c.oferta_precio|euros }} €{% else %}—{% endif %}</td>
+            <td style="font-size:.8rem;color:var(--dc-text-muted)">{{ c.next_action|default:"—" }}</td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="7" style="text-align:center;padding:32px;color:var(--dc-text-muted)">Sin procesos M&amp;A registrados.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  {# ── Tab 3: Colaboraciones ──────────────────────────────────────────────── #}
+  <div class="tab-pane fade" id="pane-colab">
+    {# KPIs #}
+    <div class="row g-0" style="border:1px solid var(--dc-border);border-top:none;border-bottom:1px solid var(--dc-border)">
+      <div class="col border-end" style="padding:16px 20px;text-align:center">
+        <div style="font-size:.72rem;color:var(--dc-text-muted);text-transform:uppercase;letter-spacing:.05em">Colaboraciones</div>
+        <div style="font-size:1.5rem;font-weight:700;color:var(--dc-accent)">{{ colaboraciones|length }}</div>
+        <div style="font-size:.75rem;color:var(--dc-text-muted)">{{ colab_activas_count }} en proceso</div>
+      </div>
+      <div class="col border-end" style="padding:16px 20px;text-align:center">
+        <div style="font-size:.72rem;color:var(--dc-text-muted);text-transform:uppercase;letter-spacing:.05em">Acuerdos firmados</div>
+        <div style="font-size:1.5rem;font-weight:700;color:#22c55e">{{ colab_firmadas_count }}</div>
+        <div style="font-size:.75rem;color:var(--dc-text-muted)">activos</div>
+      </div>
+      <div class="col border-end" style="padding:16px 20px;text-align:center">
+        <div style="font-size:.72rem;color:var(--dc-text-muted);text-transform:uppercase;letter-spacing:.05em">En pipeline</div>
+        <div style="font-size:1.5rem;font-weight:700;color:var(--dc-accent)">{{ colab_activas_count }}</div>
+        <div style="font-size:.75rem;color:var(--dc-text-muted)">sin cerrar</div>
+      </div>
+      <div class="col" style="padding:16px 20px;text-align:center">
+        <div style="font-size:.72rem;color:var(--dc-text-muted);text-transform:uppercase;letter-spacing:.05em">Descartadas</div>
+        <div style="font-size:1.5rem;font-weight:700;color:var(--dc-danger)">{{ colab_descartadas_count }}</div>
+        <div style="font-size:.75rem;color:var(--dc-text-muted)">colaboraciones</div>
+      </div>
+    </div>
+
+    {# Tabla #}
+    <div class="dc-card" style="border-radius:0 0 var(--dc-radius) var(--dc-radius);border-top:none">
+      <table class="dc-table">
+        <thead>
+          <tr>
+            <th>Empresa</th>
+            <th>Tipo</th>
+            <th>Estado</th>
+            <th>Descripción</th>
+            <th>Próximo paso</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for col in colaboraciones %}
+          <tr style="cursor:pointer" onclick="location.href='{% url 'crm:colaboracion_detail' col.pk %}'">
+            <td><b>{{ col.company.name }}</b></td>
+            <td style="color:var(--dc-text-muted)">{{ col.tipo_relacion|default:"—" }}</td>
+            <td><span class="dc-badge dc-badge--blue">{{ col.status.nombre|default:"—" }}</span></td>
+            <td style="font-size:.8rem;color:var(--dc-text-muted)">{{ col.descripcion|default:"—" }}</td>
+            <td style="font-size:.8rem;color:var(--dc-text-muted)">{{ col.next_action|default:"—" }}</td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="5" style="text-align:center;padding:32px;color:var(--dc-text-muted)">Sin colaboraciones registradas.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+</div>{# /tab-content #}
+
+{# ── Relación histórica ────────────────────────────────────────────────────── #}
+{% if investor.notes %}
+<div class="dc-card dc-card__body mt-3">
+  <div class="fw-semibold mb-2" style="font-size:.875rem"><i class="bi bi-journal-text me-1" style="color:var(--dc-accent)"></i> Relación histórica</div>
+  <div style="font-size:.855rem;white-space:pre-line">{{ investor.notes }}</div>
+</div>
+{% endif %}
+
+{# ── Cronología ────────────────────────────────────────────────────────────── #}
+<div class="dc-card dc-card__body mt-3" id="cronologiaSection">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <div class="fw-semibold"><i class="bi bi-clock-history" style="color:var(--dc-accent)"></i> Cronología de contactos</div>
+    {% if can_edit %}
+    <div class="d-flex gap-2">
+      <button class="btn-ghost" data-bs-toggle="modal" data-bs-target="#logModal" onclick="document.getElementById('log-type').value='Email'"><i class="bi bi-envelope"></i> Email</button>
+      <button class="btn-ghost" data-bs-toggle="modal" data-bs-target="#logModal" onclick="document.getElementById('log-type').value='Llamada'"><i class="bi bi-telephone"></i> Llamada</button>
+      <button class="btn-ghost" data-bs-toggle="modal" data-bs-target="#logModal" onclick="document.getElementById('log-type').value='Reunión'"><i class="bi bi-people"></i> Reunión</button>
+      <button class="btn-ghost" data-bs-toggle="modal" data-bs-target="#logModal" onclick="openNota()"><i class="bi bi-sticky"></i> Nota</button>
+    </div>
+    {% endif %}
+  </div>
+  <div class="d-flex gap-1 mb-3 flex-wrap" id="inv-chrono-filters">
+    <button class="btn-ghost chrono-filter-btn active" data-ctx="" style="font-size:.78rem;padding:3px 10px;border-radius:20px" onclick="filterInvChrono('')">Todos</button>
+    <button class="btn-ghost chrono-filter-btn" data-ctx="ronda" style="font-size:.78rem;padding:3px 10px;border-radius:20px" onclick="filterInvChrono('ronda')">Ronda de Inversión</button>
+    <button class="btn-ghost chrono-filter-btn" data-ctx="ma" style="font-size:.78rem;padding:3px 10px;border-radius:20px" onclick="filterInvChrono('ma')">Proceso M&amp;A</button>
+    <button class="btn-ghost chrono-filter-btn" data-ctx="colaboracion" style="font-size:.78rem;padding:3px 10px;border-radius:20px" onclick="filterInvChrono('colaboracion')">Colaboraciones</button>
+  </div>
+  {% for x in chrono %}
+  <div class="chrono-entry py-2 border-bottom" id="log-{{ x.id }}" data-context="{{ x.context }}" style="transition:background .4s">
+    {# Línea 1: fecha · tipo · contexto/ronda/participada · autor · acciones #}
+    <div class="d-flex align-items-center gap-2" style="font-size:.8rem;min-width:0">
+      {% if x.type == 'Email' %}<i class="bi bi-envelope flex-shrink-0" style="color:var(--dc-accent);width:14px;text-align:center"></i>
+      {% elif x.type == 'Llamada' %}<i class="bi bi-telephone flex-shrink-0" style="color:#3b82f6;width:14px;text-align:center"></i>
+      {% elif x.type == 'Reunión' %}<i class="bi bi-people flex-shrink-0" style="color:#f59e0b;width:14px;text-align:center"></i>
+      {% else %}<i class="bi bi-sticky flex-shrink-0" style="color:var(--dc-text-muted);width:14px;text-align:center"></i>{% endif %}
+      <span class="fw-semibold flex-shrink-0" style="color:var(--dc-accent)">{{ x.date|date:"d M Y"|default:"—" }}</span>
+      <span class="flex-shrink-0" style="color:var(--dc-text-muted)">{{ x.type }}</span>
+      {% if x.context == 'ronda' %}
+        <span class="flex-shrink-0 dc-badge" style="font-size:.68rem;background:rgba(16,185,129,.12);color:#059669;border:1px solid rgba(16,185,129,.25)"><i class="bi bi-graph-up-arrow me-1"></i>Ronda de Inversión</span>
+      {% elif x.context == 'ma' %}
+        <span class="flex-shrink-0 dc-badge" style="font-size:.68rem;background:rgba(245,158,11,.12);color:#d97706;border:1px solid rgba(245,158,11,.25)"><i class="bi bi-briefcase me-1"></i>Proceso M&amp;A</span>
+      {% elif x.context == 'colaboracion' %}
+        <span class="flex-shrink-0 dc-badge" style="font-size:.68rem;background:rgba(139,92,246,.12);color:#7c3aed;border:1px solid rgba(139,92,246,.25)"><i class="bi bi-handshake me-1"></i>Colaboración</span>
+      {% endif %}
+      {% if x.process_label %}
+        <span class="flex-shrink-0 dc-badge dc-badge--grey" style="font-size:.68rem" title="{{ x.process_label }}">{{ x.process_label }}</span>
+      {% endif %}
+      <span class="flex-shrink-0 ms-auto" style="font-size:.72rem;color:var(--dc-text-muted)"><i class="bi bi-person"></i> {{ x.created_by|default:"—" }}</span>
+      {% if x.attachment_url %}
+      <a href="{{ x.attachment_url }}" target="_blank" title="Abrir adjunto" class="flex-shrink-0"
+         style="color:var(--dc-accent);opacity:.7;line-height:1;padding:2px 4px"
+         onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=.7">
+        <i class="bi bi-file-earmark-arrow-down"></i>
+      </a>
+      {% endif %}
+      {% if can_edit and x.editable and x.id %}
+      {% if x.delete_url != x.delete_url|cut:x.delete_url %}{% endif %}{# solo InvestorLog tiene editar #}
+      {% if x.delete_url and 'interaction' not in x.delete_url %}
+      <button type="button" title="Editar" data-log-action="edit" data-modal="inv-log-edit-modal"
+              data-url="{% url 'crm:investor_log_edit' x.id %}"
+              data-date="{{ x.date|date:'Y-m-d'|default:'' }}"
+              data-summary="{{ x.summary|escapejs }}"
+              style="background:none;border:none;cursor:pointer;padding:2px 4px;color:var(--dc-text-muted);opacity:.5;line-height:1;flex-shrink:0"
+              onmouseover="this.style.opacity=1;this.style.color='var(--dc-accent)'" onmouseout="this.style.opacity=.5;this.style.color='var(--dc-text-muted)'">
+        <i class="bi bi-pencil" style="font-size:.8rem"></i>
+      </button>
+      {% endif %}
+      <form method="post" action="{{ x.delete_url }}" class="flex-shrink-0"
+            onsubmit="return confirm('¿Eliminar esta entrada de la cronología?')">
+        {% csrf_token %}
+        <button type="submit" title="Eliminar" style="background:none;border:none;cursor:pointer;padding:2px 4px;color:var(--dc-text-muted);opacity:.5;line-height:1"
+                onmouseover="this.style.opacity=1;this.style.color='#ef4444'" onmouseout="this.style.opacity=.5;this.style.color='var(--dc-text-muted)'">
+          <i class="bi bi-x-lg" style="font-size:.8rem"></i>
+        </button>
+      </form>
+      {% endif %}
+    </div>
+    {# Línea 2: texto del log #}
+    <div style="font-size:.835rem;color:var(--dc-text);padding-left:22px;margin-top:2px;line-height:1.45">{{ x.summary|format_log }}</div>
+  </div>
   {% empty %}
-  <div class="text-muted text-center py-4">Sin contactos registrados todavía.</div>
+  <div style="text-align:center;padding:32px;color:var(--dc-text-muted)">Sin contactos registrados todavía.</div>
   {% endfor %}
 </div>
 
-{% if can_edit %}
-<div class="modal fade" id="logModal" tabindex="-1">
-  <div class="modal-dialog">
-    <form method="post" action="{% url 'crm:investor_log_create' investor.pk %}" class="modal-content">
+{# ── Modal edición de entrada de cronología ──────────────────────────────── #}
+<div id="inv-log-edit-modal" style="display:none;position:fixed;inset:0;z-index:10001;background:rgba(0,0,0,.5);align-items:center;justify-content:center">
+  <div class="dc-card" style="width:540px;max-width:96vw;padding:28px">
+    <div class="d-flex align-items-center gap-2 mb-4">
+      <i class="bi bi-pencil-square" style="color:var(--dc-accent);font-size:1.1rem"></i>
+      <h5 style="margin:0;font-size:1rem;font-weight:700">Editar entrada de cronología</h5>
+      <button type="button" onclick="document.getElementById('inv-log-edit-modal').style.display='none'"
+              style="margin-left:auto;background:none;border:none;font-size:1.2rem;cursor:pointer;color:var(--dc-text-muted)">
+        <i class="bi bi-x-lg"></i>
+      </button>
+    </div>
+    <form id="inv-log-edit-form" method="post">
       {% csrf_token %}
-      <div class="modal-header"><h5 class="modal-title">Registrar contacto</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
-      <div class="modal-body">
-        <input type="hidden" name="type" id="log-type" value="Nota">
-        <div class="mb-2"><label class="form-label">Fecha</label><input type="date" name="date" class="form-control"></div>
-        <div class="mb-2"><label class="form-label">Resumen</label><textarea name="summary" class="form-control" rows="3"></textarea></div>
+      <div class="mb-3">
+        <label style="font-size:.78rem;font-weight:600;color:var(--dc-text-muted);display:block;margin-bottom:4px">Fecha</label>
+        <input type="date" name="date" id="inv-log-edit-date"
+               style="width:180px;padding:7px 10px;border:1px solid var(--dc-border);border-radius:6px;
+                      background:var(--dc-surface);color:var(--dc-text);font-size:.85rem">
       </div>
-      <div class="modal-footer"><button type="submit" class="btn btn-warning">Guardar</button></div>
+      <div class="mb-4">
+        <label style="font-size:.78rem;font-weight:600;color:var(--dc-text-muted);display:block;margin-bottom:4px">Texto / resumen</label>
+        <textarea name="summary" id="inv-log-edit-summary" rows="5" spellcheck="false"
+                  style="width:100%;padding:9px 11px;border:1px solid var(--dc-border);border-radius:6px;
+                         background:var(--dc-surface);color:var(--dc-text);font-size:.855rem;
+                         line-height:1.6;resize:vertical"></textarea>
+      </div>
+      <div class="d-flex gap-2 justify-content-end">
+        <button type="button" class="btn-ghost"
+                onclick="document.getElementById('inv-log-edit-modal').style.display='none'">Cancelar</button>
+        <button type="submit" class="btn-primary">
+          <i class="bi bi-check2 me-1"></i>Guardar cambios
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+<script>
+document.querySelectorAll('[data-log-action="edit"][data-modal="inv-log-edit-modal"]').forEach(btn => {
+  btn.addEventListener('click', function() {
+    document.getElementById('inv-log-edit-form').action = this.dataset.url;
+    document.getElementById('inv-log-edit-date').value   = this.dataset.date || '';
+    document.getElementById('inv-log-edit-summary').value = this.dataset.summary || '';
+    document.getElementById('inv-log-edit-modal').style.display = 'flex';
+  });
+});
+</script>
+
+{% if can_edit %}
+{# ── Modal Editar inversor ─────────────────────────────────────────────────── #}
+<div class="modal fade" id="editInvestorModal" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <form method="post" action="{% url 'crm:investor_edit' investor.pk %}" class="modal-content dc-form">
+      {% csrf_token %}
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="bi bi-pencil me-2"></i>Editar inversor</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body" style="padding:0">
+
+        <div style="padding:20px 24px 16px">
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label class="form-label">Nombre <span style="color:var(--dc-danger)">*</span></label>
+              <input type="text" name="name" class="form-control" value="{{ investor.name }}" required>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Relación</label>
+              <select name="relation" class="form-select">
+                <option value="">— Sin relación —</option>
+                {% for r in etapas_relacion %}
+                  <option value="{{ r.pk }}" {% if investor.relation_id == r.pk %}selected{% endif %}>{{ r.nombre }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">País</label>
+              <input type="text" name="country" class="form-control" value="{{ investor.country }}" list="country-list" autocomplete="off">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Estado público</label>
+              <select name="pub_status" class="form-select">
+                <option value="">— Sin especificar —</option>
+                <option value="Público" {% if investor.pub_status == "Público" %}selected{% endif %}>Público</option>
+                <option value="Privado" {% if investor.pub_status == "Privado" %}selected{% endif %}>Privado</option>
+                <option value="Desconocido" {% if investor.pub_status == "Desconocido" %}selected{% endif %}>Desconocido</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <div style="border-top:1px solid var(--dc-border);padding:16px 24px">
+          <div class="fw-semibold mb-3" style="font-size:.875rem">
+            <i class="bi bi-bar-chart-line me-1" style="color:var(--dc-accent)"></i> Datos generales de inversión
+          </div>
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label class="form-label">Tipo de inversor</label>
+              <select name="type" class="form-select">
+                <option value="">— Sin tipo —</option>
+                {% for val, lbl in tipo_inversor_choices %}
+                  <option value="{{ val }}" {% if investor.type == val %}selected{% endif %}>{{ lbl }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Tipo de inversión</label>
+              <div class="multiselect-wrap" style="position:relative">
+                <button type="button" class="form-select text-start multiselect-toggle" id="tipoInvToggle"
+                        style="cursor:pointer;background:var(--dc-surface);color:var(--dc-text)">
+                  <span id="tipoInvLabel">{% if investor.tipo_inversion %}{{ investor.tipo_inversion }}{% else %}Selecciona…{% endif %}</span>
+                </button>
+                <div id="tipoInvDropdown" style="display:none;position:absolute;z-index:1055;top:calc(100% + 2px);left:0;right:0;
+                     background:var(--dc-surface);border:1px solid var(--dc-border);border-radius:var(--dc-radius-sm);
+                     box-shadow:0 4px 16px rgba(0,0,0,.12);padding:8px 0">
+                  {% for val in "LP,Inversión Directa"|split_csv %}
+                  <label style="display:flex;align-items:center;gap:8px;padding:6px 14px;cursor:pointer;font-size:.875rem;transition:background .1s"
+                         onmouseover="this.style.background='var(--dc-hover)'" onmouseout="this.style.background=''">
+                    <input type="checkbox" name="tipo_inversion" value="{{ val }}" class="tipo-inv-cb"
+                           {% if val in investor.tipo_inversion %}checked{% endif %}
+                           style="width:15px;height:15px;flex-shrink:0;accent-color:var(--dc-accent)">
+                    {{ val }}
+                  </label>
+                  {% endfor %}
+                </div>
+              </div>
+            </div>
+            <div class="col-12">
+              <label class="form-label">Etapa de inversión</label>
+              <div class="multiselect-wrap" style="position:relative">
+                <button type="button" class="form-select text-start multiselect-toggle" id="invStageToggle"
+                        style="cursor:pointer;background:var(--dc-surface);color:var(--dc-text)">
+                  <span id="invStageLabel">{% if investor.inv_stage %}{{ investor.inv_stage }}{% else %}Selecciona etapas…{% endif %}</span>
+                </button>
+                <div id="invStageDropdown" style="display:none;position:absolute;z-index:1055;top:calc(100% + 2px);left:0;right:0;
+                     background:var(--dc-surface);border:1px solid var(--dc-border);border-radius:var(--dc-radius-sm);
+                     box-shadow:0 4px 16px rgba(0,0,0,.12);padding:8px 0;max-height:220px;overflow-y:auto">
+                  {% for val, lbl in etapa_inversion_choices %}
+                  <label style="display:flex;align-items:center;gap:8px;padding:6px 14px;cursor:pointer;font-size:.875rem;transition:background .1s"
+                         onmouseover="this.style.background='var(--dc-hover)'" onmouseout="this.style.background=''">
+                    <input type="checkbox" name="inv_stage" value="{{ val }}" class="inv-stage-cb"
+                           {% if val in investor.inv_stage %}checked{% endif %}
+                           style="width:15px;height:15px;flex-shrink:0;accent-color:var(--dc-accent)">
+                    {{ lbl }}
+                  </label>
+                  {% endfor %}
+                </div>
+              </div>
+            </div>
+            <div class="col-12">
+              <label class="form-label">Sector</label>
+              <div class="multiselect-wrap" style="position:relative">
+                <button type="button" class="form-select text-start multiselect-toggle" id="sectorToggle"
+                        style="cursor:pointer;background:var(--dc-surface);color:var(--dc-text)">
+                  <span id="sectorLabel">{% if investor.sectors %}{{ investor.sectors }}{% else %}Selecciona sectores…{% endif %}</span>
+                </button>
+                <div id="sectorDropdown" style="display:none;position:absolute;z-index:1055;top:calc(100% + 2px);left:0;right:0;
+                     background:var(--dc-surface);border:1px solid var(--dc-border);border-radius:var(--dc-radius-sm);
+                     box-shadow:0 4px 16px rgba(0,0,0,.12);padding:8px 0;max-height:260px;overflow-y:auto">
+                  {% for s in sector_opts %}
+                  <label style="display:flex;align-items:center;gap:8px;padding:6px 14px;cursor:pointer;font-size:.875rem;transition:background .1s"
+                         onmouseover="this.style.background='var(--dc-hover)'" onmouseout="this.style.background=''">
+                    <input type="checkbox" name="sectors" value="{{ s }}" class="sector-cb"
+                           {% if s in investor.sectors %}checked{% endif %}
+                           style="width:15px;height:15px;flex-shrink:0;accent-color:var(--dc-accent)">
+                    {{ s }}
+                  </label>
+                  {% endfor %}
+                </div>
+              </div>
+            </div>
+            <div class="col-12">
+              <label class="form-label">Área de inversión</label>
+              <div class="multiselect-wrap" style="position:relative">
+                <button type="button" class="form-select text-start multiselect-toggle" id="areaToggle"
+                        style="cursor:pointer;background:var(--dc-surface);color:var(--dc-text)">
+                  <span id="areaLabel">{% if investor.areas %}{{ investor.areas }}{% else %}Selecciona áreas…{% endif %}</span>
+                </button>
+                <div id="areaDropdown" style="display:none;position:absolute;z-index:1055;top:calc(100% + 2px);left:0;right:0;
+                     background:var(--dc-surface);border:1px solid var(--dc-border);border-radius:var(--dc-radius-sm);
+                     box-shadow:0 4px 16px rgba(0,0,0,.12);padding:8px 0;max-height:260px;overflow-y:auto">
+                  {% for a in area_opts %}
+                  <label style="display:flex;align-items:center;gap:8px;padding:6px 14px;cursor:pointer;font-size:.875rem;transition:background .1s"
+                         onmouseover="this.style.background='var(--dc-hover)'" onmouseout="this.style.background=''">
+                    <input type="checkbox" name="areas" value="{{ a }}" class="area-cb"
+                           {% if a in investor.areas %}checked{% endif %}
+                           style="width:15px;height:15px;flex-shrink:0;accent-color:var(--dc-accent)">
+                    {{ a }}
+                  </label>
+                  {% endfor %}
+                </div>
+              </div>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Ticket de inversión</label>
+              <select name="ticket_range" class="form-select">
+                <option value="">— Sin rango —</option>
+                {% for val, lbl in rango_ticket_choices %}
+                  <option value="{{ val }}" {% if investor.ticket_range == val %}selected{% endif %}>{{ lbl }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Fondos bajo gestión (AUM)</label>
+              <select name="aum" class="form-select">
+                <option value="">— Sin AUM —</option>
+                {% for val, lbl in rango_aum_choices %}
+                  <option value="{{ val }}" {% if investor.aum == val %}selected{% endif %}>{{ lbl }}</option>
+                {% endfor %}
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <div style="border-top:1px solid var(--dc-border);padding:16px 24px">
+          <div class="d-flex justify-content-between align-items-center mb-3">
+            <div class="fw-semibold" style="font-size:.875rem">
+              <i class="bi bi-people me-1" style="color:var(--dc-accent)"></i> Contactos
+            </div>
+            <button type="button" class="btn-ghost" style="font-size:.8rem;padding:4px 10px" onclick="addContactRow()">
+              <i class="bi bi-plus"></i> Añadir contacto
+            </button>
+          </div>
+          <div id="contactRows">
+            {% for c in investor.contacts.all %}
+            <div class="contact-row mb-3 p-3" style="background:var(--dc-hover);border-radius:8px;position:relative">
+              <input type="hidden" name="contact_id" value="{{ c.pk }}">
+              {% if is_admin %}
+              <button type="button" onclick="this.closest('.contact-row').remove()"
+                      style="position:absolute;top:8px;right:8px;background:none;border:none;cursor:pointer;color:var(--dc-text-muted);font-size:1rem">
+                <i class="bi bi-x"></i>
+              </button>
+              {% endif %}
+              <div class="row g-2">
+                <div class="col-md-6">
+                  <label class="form-label" style="font-size:.8rem">Nombre</label>
+                  <input type="text" name="contact_name" class="form-control form-control-sm" value="{{ c.name }}">
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label" style="font-size:.8rem">Cargo</label>
+                  <input type="text" name="contact_role" class="form-control form-control-sm" value="{{ c.role }}">
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label" style="font-size:.8rem">Email</label>
+                  <input type="email" name="contact_email" class="form-control form-control-sm" value="{{ c.email }}">
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label" style="font-size:.8rem">Teléfono</label>
+                  <input type="text" name="contact_phone" class="form-control form-control-sm" value="{{ c.phone }}">
+                </div>
+              </div>
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+
+        <div style="border-top:1px solid var(--dc-border);padding:16px 24px 20px">
+          <div class="fw-semibold mb-3" style="font-size:.875rem">
+            <i class="bi bi-journal-text me-1" style="color:var(--dc-accent)"></i> Relación histórica / notas
+          </div>
+          <textarea name="notes" class="form-control" rows="4" placeholder="Coinvierte con nosotros desde…">{{ investor.notes }}</textarea>
+        </div>
+
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn-ghost" data-bs-dismiss="modal">Cancelar</button>
+        <button type="submit" class="btn-accent">Guardar cambios</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="modal fade" id="logModal" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <form method="post" action="{% url 'crm:investor_log_create' investor.pk %}" class="modal-content" enctype="multipart/form-data" id="invLogForm">
+      {% csrf_token %}
+      <div class="modal-header">
+        <h5 class="modal-title">Registrar en cronología</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        {# Tipo — botones #}
+        <input type="hidden" name="type" id="log-type" value="Nota">
+        <div class="mb-3">
+          <label class="form-label fw-semibold" style="font-size:.8rem;color:var(--dc-text-muted)">TIPO</label>
+          <div class="d-flex gap-2 flex-wrap">
+            <button type="button" class="log-type-pill" data-type="Nota"    style="display:inline-flex;align-items:center;gap:5px;padding:5px 14px;border-radius:20px;border:1.5px solid var(--dc-border);background:var(--dc-surface);cursor:pointer;font-size:.82rem;font-weight:500;color:var(--dc-text-muted);transition:all .15s"><i class="bi bi-sticky" style="color:var(--dc-text-muted)"></i> Nota</button>
+            <button type="button" class="log-type-pill" data-type="Llamada" style="display:inline-flex;align-items:center;gap:5px;padding:5px 14px;border-radius:20px;border:1.5px solid var(--dc-border);background:var(--dc-surface);cursor:pointer;font-size:.82rem;font-weight:500;color:var(--dc-text-muted);transition:all .15s"><i class="bi bi-telephone" style="color:#3b82f6"></i> Llamada</button>
+            <button type="button" class="log-type-pill" data-type="Reunión" style="display:inline-flex;align-items:center;gap:5px;padding:5px 14px;border-radius:20px;border:1.5px solid var(--dc-border);background:var(--dc-surface);cursor:pointer;font-size:.82rem;font-weight:500;color:var(--dc-text-muted);transition:all .15s"><i class="bi bi-people" style="color:#f59e0b"></i> Reunión</button>
+            <button type="button" class="log-type-pill" data-type="Email"   style="display:inline-flex;align-items:center;gap:5px;padding:5px 14px;border-radius:20px;border:1.5px solid var(--dc-border);background:var(--dc-surface);cursor:pointer;font-size:.82rem;font-weight:500;color:var(--dc-text-muted);transition:all .15s"><i class="bi bi-envelope" style="color:var(--dc-accent)"></i> Email</button>
+          </div>
+        </div>
+        {# Fecha #}
+        <div class="row g-2 mb-2">
+          <div class="col-sm-4">
+            <label class="form-label fw-semibold" style="font-size:.8rem;color:var(--dc-text-muted)">FECHA</label>
+            <input type="date" name="date" id="log-date" class="form-control form-control-sm">
+          </div>
+          {# Contexto #}
+          <div class="col-sm-4">
+            <label class="form-label fw-semibold" style="font-size:.8rem;color:var(--dc-text-muted)">CONTEXTO</label>
+            <select name="context" id="log-context" class="form-select form-select-sm" onchange="invLogContextChange(this.value)">
+              <option value="">— General —</option>
+              <option value="ronda">📈 Ronda de Inversión</option>
+              <option value="ma">💼 Proceso M&amp;A</option>
+              <option value="colaboracion">🤝 Colaboración</option>
+            </select>
+          </div>
+          {# Proceso #}
+          <div class="col-sm-4" id="log-process-col" style="display:none">
+            <label class="form-label fw-semibold" style="font-size:.8rem;color:var(--dc-text-muted)">PROCESO</label>
+            <select name="round_id" id="log-round-sel" class="form-select form-select-sm" style="display:none">
+              <option value="">— Selecciona ronda —</option>
+              {% for r in log_rounds %}<option value="{{ r.pk }}">{{ r.company.name }} · {{ r.type }}</option>{% endfor %}
+            </select>
+            <select name="proceso_ma_id" id="log-ma-sel" class="form-select form-select-sm" style="display:none">
+              <option value="">— Selecciona proceso —</option>
+              {% for m in log_ma %}<option value="{{ m.pk }}">{{ m.nombre }} ({{ m.company.name }})</option>{% endfor %}
+            </select>
+            <select name="colaboracion_id" id="log-colab-sel" class="form-select form-select-sm" style="display:none">
+              <option value="">— Selecciona colaboración —</option>
+              {% for c in log_colabs %}<option value="{{ c.pk }}">{{ c.descripcion|default:c.company.name }}</option>{% endfor %}
+            </select>
+          </div>
+        </div>
+        {# Texto #}
+        <div class="mb-2">
+          <label class="form-label fw-semibold" style="font-size:.8rem;color:var(--dc-text-muted)">TEXTO / RESUMEN</label>
+          <textarea name="summary" id="log-summary" class="form-control" rows="4" placeholder="Escribe aquí…"></textarea>
+        </div>
+        {# Adjunto #}
+        <div id="log-attachment-section" style="border-top:1px solid var(--dc-border);padding-top:10px;margin-top:4px">
+          <label class="form-label fw-semibold" style="font-size:.8rem;color:var(--dc-text-muted)">ADJUNTO <span style="font-weight:400;opacity:.7">(opcional)</span></label>
+          <input type="file" name="attachment" id="log-file-input" class="form-control form-control-sm"
+                 accept=".msg,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.png,.jpg,.jpeg">
+          <div style="font-size:.73rem;color:var(--dc-text-muted);margin-top:3px">
+            <i class="bi bi-folder-symlink me-1"></i>Se guardará en la carpeta del inversor
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn-ghost" data-bs-dismiss="modal">Cancelar</button>
+        <button type="submit" class="btn-accent">Guardar</button>
+      </div>
     </form>
   </div>
 </div>
 {% endif %}
+
+{% if can_edit %}
+<script>
+window.EMAIL_CFG = {
+  modalId:    'logModal',
+  typesSel:   '#log-type',
+  dateSel:    '#log-date',
+  summarySel: '#log-summary',
+};
+window.DOC_DROP_CFG = {
+  uploadUrl: '{% url "crm:investor_doc_drop" investor.pk %}',
+  dropZoneId: 'cronologiaSection',
+  modalId: 'logModal',
+};
+</script>
+{% include "crm/_email_drop.html" %}
+{% include "crm/_doc_drop.html" %}
+{% endif %}
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// ── Lógica del modal unificado de cronología ─────────────────────────────────
+function invLogSetType(type) {
+  document.getElementById('log-type').value = type;
+  document.querySelectorAll('.log-type-pill').forEach(btn => {
+    const active = btn.dataset.type === type;
+    btn.style.background    = active ? 'rgba(var(--dc-accent-rgb),.12)' : 'var(--dc-surface)';
+    btn.style.borderColor   = active ? 'var(--dc-accent)' : 'var(--dc-border)';
+    btn.style.color         = active ? 'var(--dc-accent)' : 'var(--dc-text-muted)';
+    btn.style.fontWeight    = active ? '600' : '500';
+  });
+}
+
+function invLogContextChange(ctx) {
+  const procCol = document.getElementById('log-process-col');
+  const roundSel = document.getElementById('log-round-sel');
+  const maSel    = document.getElementById('log-ma-sel');
+  const colabSel = document.getElementById('log-colab-sel');
+  procCol.style.display  = ctx ? '' : 'none';
+  roundSel.style.display = ctx === 'ronda'       ? '' : 'none';
+  maSel.style.display    = ctx === 'ma'          ? '' : 'none';
+  colabSel.style.display = ctx === 'colaboracion'? '' : 'none';
+}
+
+// Ronda pre-seleccionada al venir desde round_detail (?from_round=pk)
+const _fromRoundId = new URLSearchParams(location.search).get('from_round') || '';
+
+function openLogModal(type, roundId) {
+  invLogSetType(type || 'Nota');
+  document.getElementById('log-date').value = new Date().toISOString().slice(0,10);
+  document.getElementById('log-summary').value = '';
+  const rid = roundId || _fromRoundId;
+  if (rid) {
+    document.getElementById('log-context').value = 'ronda';
+    invLogContextChange('ronda');
+    document.getElementById('log-round-sel').value = rid;
+  } else {
+    document.getElementById('log-context').value = '';
+    invLogContextChange('');
+  }
+  bootstrap.Modal.getOrCreateInstance(document.getElementById('logModal')).show();
+}
+// Alias usados por botones existentes
+function openNota()    { openLogModal('Nota'); }
+function openEmail()   { openLogModal('Email'); }
+function openLlamada() { openLogModal('Llamada'); }
+function openReunion() { openLogModal('Reunión'); }
+
+// Botones de tipo dentro del modal
+document.querySelectorAll('.log-type-pill').forEach(btn => {
+  btn.addEventListener('click', () => invLogSetType(btn.dataset.type));
+});
+
+// Activar Nota por defecto cuando el modal se muestre sin preselección
+document.getElementById('logModal').addEventListener('show.bs.modal', function () {
+  if (!document.getElementById('log-type').value) invLogSetType('Nota');
+  // Resincronizar estilos por si venía de email-drop
+  invLogSetType(document.getElementById('log-type').value);
+});
+
+(function () {
+  const toggle = document.getElementById('tipoInvToggle');
+  const dropdown = document.getElementById('tipoInvDropdown');
+  const label = document.getElementById('tipoInvLabel');
+  if (!toggle) return;
+  function updateLabel() {
+    const checked = [...document.querySelectorAll('.tipo-inv-cb:checked')].map(cb => cb.value);
+    label.textContent = checked.length ? checked.join(', ') : 'Selecciona…';
+  }
+  toggle.addEventListener('click', e => { e.stopPropagation(); dropdown.style.display = dropdown.style.display === 'none' ? 'block' : 'none'; });
+  document.addEventListener('click', () => { dropdown.style.display = 'none'; });
+  dropdown.addEventListener('click', e => e.stopPropagation());
+  document.querySelectorAll('.tipo-inv-cb').forEach(cb => cb.addEventListener('change', updateLabel));
+})();
+
+(function () {
+  const toggle = document.getElementById('invStageToggle');
+  const dropdown = document.getElementById('invStageDropdown');
+  const label = document.getElementById('invStageLabel');
+  if (!toggle) return;
+  function updateLabel() {
+    const checked = [...document.querySelectorAll('.inv-stage-cb:checked')].map(cb => cb.value);
+    label.textContent = checked.length ? checked.join(', ') : 'Selecciona etapas…';
+  }
+  toggle.addEventListener('click', e => { e.stopPropagation(); dropdown.style.display = dropdown.style.display === 'none' ? 'block' : 'none'; });
+  document.addEventListener('click', () => { dropdown.style.display = 'none'; });
+  dropdown.addEventListener('click', e => e.stopPropagation());
+  document.querySelectorAll('.inv-stage-cb').forEach(cb => cb.addEventListener('change', updateLabel));
+})();
+
+(function () {
+  const toggle = document.getElementById('sectorToggle');
+  const dropdown = document.getElementById('sectorDropdown');
+  const label = document.getElementById('sectorLabel');
+  if (!toggle) return;
+
+  function updateLabel() {
+    const checked = [...document.querySelectorAll('.sector-cb:checked')].map(cb => cb.value);
+    label.textContent = checked.length ? checked.join(', ') : '— Sin sectores —';
+  }
+  toggle.addEventListener('click', e => { e.stopPropagation(); dropdown.style.display = dropdown.style.display === 'none' ? 'block' : 'none'; });
+  document.addEventListener('click', e => { if (!toggle.contains(e.target) && !dropdown.contains(e.target)) dropdown.style.display = 'none'; });
+  document.querySelectorAll('.sector-cb').forEach(cb => cb.addEventListener('change', updateLabel));
+  updateLabel();
+})();
+
+(function () {
+  const toggle = document.getElementById('areaToggle');
+  const dropdown = document.getElementById('areaDropdown');
+  const label = document.getElementById('areaLabel');
+  if (!toggle) return;
+
+  function updateLabel() {
+    const checked = [...document.querySelectorAll('.area-cb:checked')].map(cb => cb.value);
+    label.textContent = checked.length ? checked.join(', ') : '— Sin áreas —';
+  }
+  toggle.addEventListener('click', e => { e.stopPropagation(); dropdown.style.display = dropdown.style.display === 'none' ? 'block' : 'none'; });
+  document.addEventListener('click', e => { if (!toggle.contains(e.target) && !dropdown.contains(e.target)) dropdown.style.display = 'none'; });
+  document.querySelectorAll('.area-cb').forEach(cb => cb.addEventListener('change', updateLabel));
+  updateLabel();
+})();
+
+function addContactRow() {
+  const tpl = `<div class="contact-row mb-3 p-3" style="background:var(--dc-hover);border-radius:8px;position:relative">
+    <button type="button" onclick="this.closest('.contact-row').remove()"
+            style="position:absolute;top:8px;right:8px;background:none;border:none;cursor:pointer;color:var(--dc-text-muted);font-size:1rem">
+      <i class="bi bi-x"></i>
+    </button>
+    <div class="row g-2">
+      <div class="col-md-6"><label class="form-label" style="font-size:.8rem">Nombre</label>
+        <input type="text" name="contact_name" class="form-control form-control-sm"></div>
+      <div class="col-md-6"><label class="form-label" style="font-size:.8rem">Cargo</label>
+        <input type="text" name="contact_role" class="form-control form-control-sm"></div>
+      <div class="col-md-6"><label class="form-label" style="font-size:.8rem">Email</label>
+        <input type="email" name="contact_email" class="form-control form-control-sm"></div>
+      <div class="col-md-6"><label class="form-label" style="font-size:.8rem">Teléfono</label>
+        <input type="text" name="contact_phone" class="form-control form-control-sm"></div>
+    </div>
+  </div>`;
+  document.getElementById('contactRows').insertAdjacentHTML('beforeend', tpl);
+}
+</script>
+<script>
+(function () {
+  const hash = window.location.hash;
+  if (!hash || !hash.startsWith('#log-')) return;
+  const el = document.querySelector(hash);
+  if (!el) return;
+  // Espera a que el DOM esté pintado y la pestaña correcta visible
+  setTimeout(() => {
+    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    el.style.background = 'rgba(var(--dc-accent-rgb),.15)';
+    el.style.borderRadius = '6px';
+    setTimeout(() => { el.style.background = ''; el.style.borderRadius = ''; }, 2800);
+  }, 350);
+})();
+</script>
+{% include 'crm/_country_datalist.html' %}
+<script>
+function filterInvChrono(ctx) {
+  document.querySelectorAll('.chrono-entry').forEach(el => {
+    el.style.display = (!ctx || el.dataset.context === ctx) ? '' : 'none';
+  });
+  document.querySelectorAll('.chrono-filter-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.ctx === ctx);
+    btn.style.background = btn.dataset.ctx === ctx ? 'var(--dc-accent)' : '';
+    btn.style.color = btn.dataset.ctx === ctx ? '#fff' : '';
+    btn.style.borderColor = btn.dataset.ctx === ctx ? 'var(--dc-accent)' : '';
+  });
+}
+</script>
 {% endblock %}

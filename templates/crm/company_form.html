@@ -3,9 +3,81 @@
 {% block title %}{{ title }} — CRM Gestora{% endblock %}
 {% block topbar_title %}{{ title }}{% endblock %}
 {% block content %}
-<form method="post" class="card card-body" style="max-width:640px">
-  {% csrf_token %}
-  {% bootstrap_form form %}
-  <button type="submit" class="btn btn-warning">Guardar</button>
-</form>
+<div class="dc-card dc-card__body" style="max-width:640px">
+  <form method="post" enctype="multipart/form-data" class="dc-form">
+    {% csrf_token %}
+    {% bootstrap_field form.name %}
+    {% bootstrap_field form.int_code %}
+    {% bootstrap_field form.fund %}
+    {% bootstrap_field form.country %}
+    {% bootstrap_field form.provincia %}
+
+    {# ── Sectores multiselect ── #}
+    <div class="mb-3">
+      <label class="form-label">Sectores</label>
+      <div class="multiselect-wrap" style="position:relative">
+        <button type="button" class="form-select text-start multiselect-toggle" id="coSectorToggle"
+                style="cursor:pointer;background:var(--dc-surface);color:var(--dc-text)">
+          <span id="coSectorLabel">Selecciona sectores…</span>
+        </button>
+        <div id="coSectorDropdown" style="display:none;position:absolute;z-index:1055;top:calc(100% + 2px);left:0;right:0;
+             background:var(--dc-surface);border:1px solid var(--dc-border);border-radius:var(--dc-radius-sm);
+             box-shadow:0 4px 16px rgba(0,0,0,.12);padding:8px 0;max-height:260px;overflow-y:auto">
+          {% for s in sector_opts %}
+          <label style="display:flex;align-items:center;gap:8px;padding:6px 14px;cursor:pointer;font-size:.875rem"
+                 onmouseover="this.style.background='#f1f5f9'" onmouseout="this.style.background=''">
+            <input type="checkbox" name="sectors" value="{{ s }}" class="co-sector-cb"
+                   {% if company and s in company.sectors %}checked{% endif %}
+                   style="width:15px;height:15px;flex-shrink:0;accent-color:var(--dc-accent)">
+            {{ s }}
+          </label>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+
+    {% bootstrap_field form.stage %}
+    {% bootstrap_field form.trl %}
+    {% bootstrap_field form.mrl %}
+    {% bootstrap_field form.ttm %}
+    {% bootstrap_field form.revenue %}
+    {% bootstrap_field form.valuation %}
+    {% bootstrap_field form.valuation_date %}
+    {% bootstrap_field form.logo %}
+
+    <div class="d-flex gap-2 mt-3">
+      <button type="submit" class="btn-accent">Guardar</button>
+      {% if company %}
+      <a href="{% url 'crm:company_detail' company.pk %}" class="btn-ghost">Cancelar</a>
+      {% else %}
+      <a href="{% url 'crm:companies' %}" class="btn-ghost">Cancelar</a>
+      {% endif %}
+    </div>
+  </form>
+</div>
+
+{% include 'crm/_country_datalist.html' %}
+<script>
+(function () {
+  const toggle = document.getElementById('coSectorToggle');
+  const dropdown = document.getElementById('coSectorDropdown');
+  const label = document.getElementById('coSectorLabel');
+
+  function updateLabel() {
+    const checked = [...document.querySelectorAll('.co-sector-cb:checked')].map(cb => cb.value);
+    label.textContent = checked.length ? checked.join(', ') : 'Selecciona sectores…';
+  }
+
+  toggle.addEventListener('click', e => {
+    e.stopPropagation();
+    dropdown.style.display = dropdown.style.display === 'none' ? 'block' : 'none';
+  });
+  document.addEventListener('click', e => {
+    if (!toggle.contains(e.target) && !dropdown.contains(e.target))
+      dropdown.style.display = 'none';
+  });
+  document.querySelectorAll('.co-sector-cb').forEach(cb => cb.addEventListener('change', updateLabel));
+  updateLabel();
+})();
+</script>
 {% endblock %}

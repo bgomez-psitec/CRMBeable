@@ -1,55 +1,195 @@
 {% extends "base.html" %}
 {% block title %}Colaboradores — CRM Gestora{% endblock %}
 {% block topbar_title %}Colaboradores{% endblock %}
-{% block topbar_sub %}Posibles clientes, proveedores y partners{% endblock %}
+{% block topbar_sub %}Compradores, clientes, proveedores y partners{% endblock %}
+{% block topbar_actions %}
+  <a href="{% url 'crm:colaborador_contacts' %}" class="btn-ghost">
+    <i class="bi bi-person-lines-fill"></i> Contactos
+  </a>
+  {% if can_edit %}
+    <button class="btn-accent" data-bs-toggle="modal" data-bs-target="#newColaboradorModal">
+      <i class="bi bi-plus-lg"></i> Nuevo colaborador
+    </button>
+  {% endif %}
+{% endblock %}
 {% block content %}
-<form method="get" class="d-flex gap-2 mb-3">
-  <input type="text" name="q" value="{{ q }}" class="form-control" style="max-width:280px" placeholder="Buscar colaborador…">
+
+{# ── Filtros tipo (pills) ──────────────────────────────────────────────── #}
+<div class="d-flex gap-2 mb-3 flex-wrap align-items-center justify-content-between">
+  <div class="d-flex gap-2 flex-wrap">
+    <a href="{% url 'crm:colaboradores' %}?view={{ view }}{% if q %}&q={{ q }}{% endif %}"
+       class="dc-badge {% if not tipo %}dc-badge--blue{% else %}dc-badge--grey{% endif %}"
+       style="font-size:.8rem;padding:5px 12px;text-decoration:none;cursor:pointer">Todos</a>
+    {% for slug, field, label in tipo_opts %}
+    <a href="?view={{ view }}&tipo={{ slug }}{% if q %}&q={{ q }}{% endif %}"
+       class="dc-badge {% if tipo == slug %}dc-badge--blue{% else %}dc-badge--grey{% endif %}"
+       style="font-size:.8rem;padding:5px 12px;text-decoration:none;cursor:pointer">{{ label }}</a>
+    {% endfor %}
+  </div>
+  <div class="d-flex gap-1">
+    <a href="?view=pipeline{% if tipo %}&tipo={{ tipo }}{% endif %}{% if q %}&q={{ q }}{% endif %}"
+       class="btn-ghost" style="{% if view == 'pipeline' %}background:var(--dc-accent);color:#fff;border-color:var(--dc-accent){% endif %}">
+      <i class="bi bi-kanban"></i> Pipeline
+    </a>
+    <a href="?view=list{% if tipo %}&tipo={{ tipo }}{% endif %}{% if q %}&q={{ q }}{% endif %}"
+       class="btn-ghost" style="{% if view == 'list' %}background:var(--dc-accent);color:#fff;border-color:var(--dc-accent){% endif %}">
+      <i class="bi bi-list-ul"></i> Listado
+    </a>
+  </div>
+</div>
+
+<form method="get" class="d-flex gap-2 mb-4 flex-wrap">
+  <input type="hidden" name="view" value="{{ view }}">
+  {% if tipo %}<input type="hidden" name="tipo" value="{{ tipo }}">{% endif %}
+  <input type="text" name="q" value="{{ q }}" class="form-control" style="max-width:280px" placeholder="Buscar…">
+  {% if view == 'list' %}
   <select name="group" class="form-select" style="max-width:180px" onchange="this.form.submit()">
     <option value="">Sin agrupación</option>
-    <option value="type" {% if group == 'type' %}selected{% endif %}>Por tipo</option>
     <option value="country" {% if group == 'country' %}selected{% endif %}>Por país</option>
   </select>
-  <button type="submit" class="btn btn-outline-secondary">Buscar</button>
+  {% endif %}
+  <button type="submit" class="btn-ghost" style="align-self:center">Buscar</button>
+  {% if q or tipo %}
+    <a href="{% url 'crm:colaboradores' %}?view={{ view }}" class="btn-ghost" style="color:var(--dc-danger);border-color:rgba(239,68,68,.3)">
+      <i class="bi bi-x"></i> Limpiar
+    </a>
+  {% endif %}
 </form>
 
-{% if groups %}
-  {% for key, group_cards in groups.items %}
-  <h6 class="text-muted text-uppercase small mb-2 mt-3">{{ key }}</h6>
-  <div class="row g-3 mb-2">
-    {% for card in group_cards %}
-    <div class="col-md-6">
-      <div class="card h-100" style="cursor:pointer" onclick="location.href='{% url 'crm:colaborador_detail' card.colaborador.pk %}'">
-        <div class="card-body">
-          <div class="d-flex justify-content-between">
-            <div class="fw-semibold">{{ card.colaborador.name }}</div>
-            <span class="badge text-bg-secondary">{{ card.activos }} activas</span>
-          </div>
-          <div class="text-muted small">{{ card.colaborador.country }} · {{ card.colaborador.type|default:"—" }}</div>
-          {% if card.colaborador.sectors %}<div class="text-muted small">{{ card.colaborador.sectors }}</div>{% endif %}
+{% if view == 'pipeline' %}
+{# ── Vista pipeline / kanban por etapa de relación ───────────────────────── #}
+<div class="d-flex gap-3 align-items-start overflow-auto pb-3 kanban-board">
+  {% for stage in pipe_stages %}
+  <div class="kanban-col colab-kanban-col" data-col-id="{{ stage.etapa.id|default:'none' }}">
+    <div class="kanban-col-header">
+      <span class="fw-semibold" style="font-size:.855rem">
+        {{ stage.etapa.nombre|default:"Sin estado" }}
+        <span class="dc-badge dc-badge--grey ms-1">{{ stage.items|length }}</span>
+      </span>
+    </div>
+    <div class="kanban-body colab-kanban-body" data-etapa-id="{{ stage.etapa.id|default:'' }}">
+      {% for card in stage.items %}
+      <div class="kanban-card" draggable="true" data-colab-id="{{ card.colaborador.pk }}"
+           onclick="location.href='{% url 'crm:colaborador_detail' card.colaborador.pk %}'">
+        <b style="font-size:.875rem">{{ card.colaborador.name }}</b>
+        {% if card.colaborador.country %}<div style="font-size:.75rem;color:var(--dc-text-muted)">{{ card.colaborador.country }}</div>{% endif %}
+        <div style="font-size:.74rem;color:var(--dc-text-muted);margin-top:3px">
+          {% if card.activos_colab %}<span style="color:var(--dc-accent)">{{ card.activos_colab }} colab. activa{% if card.activos_colab != 1 %}s{% endif %}</span>{% endif %}
+          {% if card.activos_ma %} · <span style="color:#f59e0b">{{ card.activos_ma }} M&A</span>{% endif %}
         </div>
       </div>
+      {% empty %}
+      <div class="kanban-empty">Sin contactos</div>
+      {% endfor %}
     </div>
-    {% endfor %}
+  </div>
+  {% endfor %}
+</div>
+<form id="colab-relation-form" method="post" style="display:none">
+  {% csrf_token %}
+  <input type="hidden" name="relation_id">
+  <input type="hidden" name="next" value="">
+</form>
+
+{% elif groups %}
+  {% for key, group_cards in groups.items %}
+  <p class="mb-2 mt-3" style="font-size:.68rem;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--dc-text-muted)">{{ key }}</p>
+  <div class="row g-3 mb-2">
+    {% for card in group_cards %}{% include "crm/_colaborador_card.html" %}{% endfor %}
   </div>
   {% endfor %}
 {% else %}
 <div class="row g-3">
-  {% for card in cards %}
-  <div class="col-md-6">
-    <div class="card h-100" style="cursor:pointer" onclick="location.href='{% url 'crm:colaborador_detail' card.colaborador.pk %}'">
-      <div class="card-body">
-        <div class="d-flex justify-content-between">
-          <div class="fw-semibold">{{ card.colaborador.name }}</div>
-          <span class="badge text-bg-secondary">{{ card.activos }} activas</span>
-        </div>
-        <div class="text-muted small">{{ card.colaborador.country }} · {{ card.colaborador.type|default:"—" }}</div>
-        {% if card.colaborador.sectors %}<div class="text-muted small">{{ card.colaborador.sectors }}</div>{% endif %}
-      </div>
-    </div>
-  </div>
-  {% endfor %}
-  {% if not cards %}<div class="col text-muted">Sin colaboradores registrados.</div>{% endif %}
+  {% for card in cards %}{% include "crm/_colaborador_card.html" %}{% endfor %}
+  {% if not cards %}<div class="col" style="color:var(--dc-text-muted)">Sin contactos registrados.</div>{% endif %}
 </div>
 {% endif %}
+
+{% if can_edit %}
+<div class="modal fade" id="newColaboradorModal" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <form method="post" action="{% url 'crm:colaborador_create' %}" class="modal-content dc-form">
+      {% csrf_token %}
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="bi bi-person-plus me-2"></i>Nuevo colaborador</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="row g-3">
+          <div class="col-md-6">
+            <label class="form-label">Nombre <span style="color:var(--dc-danger)">*</span></label>
+            <input type="text" name="name" class="form-control" required>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">País</label>
+            <input type="text" name="country" class="form-control">
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Sectores</label>
+            <input type="text" name="sectors" class="form-control">
+          </div>
+          <div class="col-12">
+            <label class="form-label">Tipo de contacto (puede ser varios)</label>
+            <div class="d-flex gap-3 flex-wrap mt-1">
+              {% for slug, field, label in tipo_opts %}
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" name="{{ field }}" value="1"
+                       id="new_{{ field }}" {% if tipo == slug %}checked{% endif %}>
+                <label class="form-check-label" for="new_{{ field }}">{{ label }}</label>
+              </div>
+              {% endfor %}
+            </div>
+          </div>
+          <div class="col-12">
+            <label class="form-label">Notas</label>
+            <textarea name="notes" class="form-control" rows="2"></textarea>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn-ghost" data-bs-dismiss="modal">Cancelar</button>
+        <button type="submit" class="btn-accent">Guardar</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  const form = document.getElementById('colab-relation-form');
+  if (!form) return;
+
+  let dragged = null;
+
+  document.querySelectorAll('.colab-kanban-body .kanban-card').forEach(card => {
+    card.addEventListener('dragstart', () => {
+      dragged = card;
+      setTimeout(() => card.classList.add('dragging'), 0);
+    });
+    card.addEventListener('dragend', () => {
+      card.classList.remove('dragging');
+      dragged = null;
+    });
+  });
+
+  document.querySelectorAll('.colab-kanban-body').forEach(col => {
+    col.addEventListener('dragover', e => { e.preventDefault(); col.classList.add('drag-over'); });
+    col.addEventListener('dragleave', () => col.classList.remove('drag-over'));
+    col.addEventListener('drop', e => {
+      e.preventDefault();
+      col.classList.remove('drag-over');
+      if (!dragged) return;
+      const colabId = dragged.dataset.colabId;
+      const etapaId = col.dataset.etapaId;
+      form.action = `/colaboradores/${colabId}/relacion/`;
+      form.querySelector('[name=relation_id]').value = etapaId;
+      col.appendChild(dragged);
+      form.submit();
+    });
+  });
+});
+</script>
 {% endblock %}

@@ -1,0 +1,245 @@
+{% extends "base.html" %}
+{% block title %}{{ carpeta_label }} — {{ company.name }}{% endblock %}
+{% block topbar_title %}{{ carpeta_label }}{% endblock %}
+{% block topbar_sub %}{{ company.name }} · Documentos{% endblock %}
+
+{% block content %}
+
+{# Breadcrumb #}
+<div class="d-flex align-items-center gap-2 mb-4 flex-wrap">
+  <a href="{% url 'crm:docs_centro' %}" style="font-size:.85rem;color:var(--dc-text-muted);text-decoration:none">
+    <i class="bi bi-grid me-1"></i>Documentación
+  </a>
+  <i class="bi bi-chevron-right" style="font-size:.7rem;color:var(--dc-text-muted)"></i>
+  <a href="{% url 'crm:docs_company' company.pk %}" style="font-size:.85rem;color:var(--dc-text-muted);text-decoration:none">
+    {{ company.name }}
+  </a>
+  <i class="bi bi-chevron-right" style="font-size:.7rem;color:var(--dc-text-muted)"></i>
+  <span style="font-size:.85rem;font-weight:600">{{ carpeta_label }}</span>
+  {% if round_obj %}
+    <a href="{% url 'crm:round_detail' round_obj.pk %}" class="dc-badge dc-badge--grey ms-2" style="font-size:.72rem;text-decoration:none">
+      <i class="bi bi-box-arrow-up-right me-1"></i>Ver ronda
+    </a>
+  {% elif proceso_obj %}
+    <a href="{% url 'crm:proceso_ma_detail' proceso_obj.pk %}" class="dc-badge dc-badge--grey ms-2" style="font-size:.72rem;text-decoration:none">
+      <i class="bi bi-box-arrow-up-right me-1"></i>Ver proceso
+    </a>
+  {% endif %}
+</div>
+
+<div class="row g-3">
+
+  {# ── Lista de documentos ─────────────────────────────────────────────── #}
+  <div class="col-lg-8">
+    <div class="dc-card">
+      <div class="dc-card__header">
+        <h2 class="dc-card__title">Archivos</h2>
+        <span class="dc-badge dc-badge--grey">{{ docs|length }}</span>
+      </div>
+      <div>
+        {% for doc in docs %}
+        <div class="d-flex align-items-center gap-3 px-4 py-3" style="border-bottom:1px solid var(--dc-border)">
+          {# Icono por extensión #}
+          {% with ext=doc.file.name|lower %}
+          <div style="width:36px;height:36px;border-radius:8px;flex-shrink:0;display:flex;align-items:center;justify-content:center;
+            {% if '.pdf' in ext %}background:rgba(239,68,68,.12){% elif '.xls' in ext or '.csv' in ext %}background:rgba(34,197,94,.12){% elif '.doc' in ext %}background:rgba(59,130,246,.12){% elif '.ppt' in ext %}background:rgba(245,158,11,.12){% else %}background:rgba(100,116,139,.12){% endif %}">
+            <i class="bi {% if '.pdf' in ext %}bi-file-earmark-pdf{% elif '.xls' in ext or '.csv' in ext %}bi-file-earmark-spreadsheet{% elif '.doc' in ext %}bi-file-earmark-word{% elif '.ppt' in ext %}bi-file-earmark-slides{% elif '.jpg' in ext or '.png' in ext or '.jpeg' in ext %}bi-file-earmark-image{% else %}bi-file-earmark{% endif %}"
+               style="font-size:1rem;{% if '.pdf' in ext %}color:#ef4444{% elif '.xls' in ext or '.csv' in ext %}color:#22c55e{% elif '.doc' in ext %}color:#3b82f6{% elif '.ppt' in ext %}color:#f59e0b{% else %}color:#64748b{% endif %}"></i>
+          </div>
+          {% endwith %}
+
+          <div style="flex:1;min-width:0">
+            <a href="{{ doc.file.url }}" target="_blank"
+               class="fw-semibold d-block" style="font-size:.875rem;color:var(--dc-text);text-decoration:none"
+               onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'">
+              {{ doc.name }}
+            </a>
+            {% if doc.description %}
+            <div style="font-size:.75rem;color:var(--dc-text-muted);margin-top:2px">{{ doc.description }}</div>
+            {% endif %}
+            <div style="font-size:.72rem;color:var(--dc-text-muted);margin-top:2px">
+              Subido {{ doc.uploaded_at|date:"d M Y H:i" }}
+              {% if doc.uploaded_by %} · {{ doc.uploaded_by.get_full_name|default:doc.uploaded_by.username }}{% endif %}
+            </div>
+          </div>
+
+          <div class="d-flex gap-2 flex-shrink-0">
+            <a href="{{ doc.file.url }}" target="_blank"
+               class="btn-ghost" style="padding:5px 10px;font-size:.78rem" title="Descargar">
+              <i class="bi bi-download"></i>
+            </a>
+            <form method="post" action="{% url 'crm:docs_delete' doc.pk %}"
+                  onsubmit="return confirm('¿Eliminar este archivo?')">
+              {% csrf_token %}
+              <button type="submit" class="btn-ghost" style="padding:5px 10px;font-size:.78rem;color:#ef4444" title="Eliminar">
+                <i class="bi bi-trash"></i>
+              </button>
+            </form>
+          </div>
+        </div>
+        {% empty %}
+        <div class="px-4 py-5 text-center" style="color:var(--dc-text-muted)">
+          <i class="bi bi-folder2-open" style="font-size:2rem;display:block;margin-bottom:8px;opacity:.4"></i>
+          Esta carpeta está vacía. Sube el primer archivo.
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+
+  {# ── Subir archivo ───────────────────────────────────────────────────── #}
+  <div class="col-lg-4">
+    <div class="dc-card">
+      <div class="dc-card__header">
+        <h2 class="dc-card__title">Subir archivo</h2>
+      </div>
+      <div class="dc-card__body">
+
+        {# Zona drag & drop #}
+        <div id="dropZone"
+             style="border:2px dashed var(--dc-border);border-radius:10px;padding:28px 16px;
+                    text-align:center;cursor:pointer;margin-bottom:16px;transition:all .2s"
+             onclick="document.getElementById('fileInput').click()">
+          <i class="bi bi-cloud-upload" style="font-size:2rem;color:var(--dc-text-muted);display:block;margin-bottom:6px"></i>
+          <div style="font-size:.85rem;font-weight:600;color:var(--dc-text)">Arrastra un archivo aquí</div>
+          <div style="font-size:.75rem;color:var(--dc-text-muted);margin-top:3px">o haz clic para elegir</div>
+        </div>
+
+        <form id="uploadForm" method="post" enctype="multipart/form-data">
+          {% csrf_token %}
+          <input type="file" id="fileInput" name="file" required style="display:none">
+          <div class="mb-3">
+            <label style="font-size:.8rem;font-weight:600;color:var(--dc-text-muted);display:block;margin-bottom:5px">Nombre (opcional)</label>
+            <input type="text" id="nameInput" name="name" placeholder="Nombre descriptivo del archivo"
+                   style="width:100%;padding:7px 10px;border:1px solid var(--dc-border);border-radius:6px;
+                          background:var(--dc-surface);color:var(--dc-text);font-size:.85rem">
+          </div>
+          <div class="mb-3">
+            <label style="font-size:.8rem;font-weight:600;color:var(--dc-text-muted);display:block;margin-bottom:5px">Descripción (opcional)</label>
+            <textarea id="descInput" name="description" rows="2" placeholder="Breve descripción…"
+                      style="width:100%;padding:7px 10px;border:1px solid var(--dc-border);border-radius:6px;
+                             background:var(--dc-surface);color:var(--dc-text);font-size:.85rem;resize:vertical"></textarea>
+          </div>
+          <button type="submit" id="submitBtn" class="btn-primary" style="width:100%">
+            <i class="bi bi-cloud-upload me-1"></i>Subir archivo
+          </button>
+        </form>
+
+      </div>
+    </div>
+  </div>
+
+</div>
+
+{# ── Modal de confirmación para drag & drop ──────────────────────────── #}
+<div id="dropModal" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.45);align-items:center;justify-content:center">
+  <div class="dc-card" style="width:420px;max-width:95vw;padding:28px">
+    <div style="font-size:1rem;font-weight:700;margin-bottom:16px">
+      <i class="bi bi-cloud-upload me-2" style="color:var(--dc-accent)"></i>Subir archivo
+    </div>
+    <div id="dropFileName" style="font-size:.85rem;font-weight:600;padding:8px 12px;
+         background:var(--dc-hover);border-radius:6px;margin-bottom:16px;word-break:break-all"></div>
+    <div class="mb-3">
+      <label style="font-size:.8rem;font-weight:600;color:var(--dc-text-muted);display:block;margin-bottom:5px">Nombre (opcional)</label>
+      <input type="text" id="dropNameInput" placeholder="Nombre descriptivo…"
+             style="width:100%;padding:7px 10px;border:1px solid var(--dc-border);border-radius:6px;
+                    background:var(--dc-surface);color:var(--dc-text);font-size:.85rem">
+    </div>
+    <div class="mb-4">
+      <label style="font-size:.8rem;font-weight:600;color:var(--dc-text-muted);display:block;margin-bottom:5px">Descripción (opcional)</label>
+      <textarea id="dropDescInput" rows="2" placeholder="Breve descripción…"
+                style="width:100%;padding:7px 10px;border:1px solid var(--dc-border);border-radius:6px;
+                       background:var(--dc-surface);color:var(--dc-text);font-size:.85rem;resize:vertical"></textarea>
+    </div>
+    <div class="d-flex gap-2 justify-content-end">
+      <button id="dropCancel" class="btn-ghost">Cancelar</button>
+      <button id="dropConfirm" class="btn-primary">
+        <i class="bi bi-cloud-upload me-1"></i>Subir
+      </button>
+    </div>
+  </div>
+</div>
+
+{% block extra_js %}
+<script>
+(function () {
+  const dropZone   = document.getElementById('dropZone');
+  const dropModal  = document.getElementById('dropModal');
+  const fileInput  = document.getElementById('fileInput');
+  const uploadForm = document.getElementById('uploadForm');
+  let pendingFile  = null;
+  let zoneHandled  = false;   // evita doble disparo zona + document
+
+  // ── Drag & drop sobre la zona ──────────────────────────────────────────
+  ['dragenter','dragover'].forEach(ev =>
+    dropZone.addEventListener(ev, e => {
+      e.preventDefault();
+      dropZone.style.borderColor = 'var(--dc-accent)';
+      dropZone.style.background  = 'rgba(var(--dc-accent-rgb),.06)';
+    })
+  );
+  ['dragleave','drop'].forEach(ev =>
+    dropZone.addEventListener(ev, e => {
+      e.preventDefault();
+      dropZone.style.borderColor = 'var(--dc-border)';
+      dropZone.style.background  = '';
+    })
+  );
+  dropZone.addEventListener('drop', e => {
+    e.preventDefault();
+    zoneHandled = true;
+    const file = e.dataTransfer.files[0];
+    if (file) openModal(file);
+  });
+
+  // ── Drag & drop sobre TODA la ventana ─────────────────────────────────
+  document.addEventListener('dragover', e => e.preventDefault());
+  document.addEventListener('drop', e => {
+    e.preventDefault();
+    if (zoneHandled) { zoneHandled = false; return; }
+    const file = e.dataTransfer.files[0];
+    if (file) openModal(file);
+  });
+
+  // ── Selección por clic ────────────────────────────────────────────────
+  fileInput.addEventListener('change', () => {
+    if (fileInput.files[0]) uploadForm.submit();
+  });
+
+  // ── Modal ─────────────────────────────────────────────────────────────
+  function openModal(file) {
+    pendingFile = file;
+    document.getElementById('dropFileName').textContent = file.name;
+    document.getElementById('dropNameInput').value = '';
+    document.getElementById('dropDescInput').value = '';
+    dropModal.style.display = 'flex';
+    document.getElementById('dropNameInput').focus();
+  }
+
+  document.getElementById('dropCancel').addEventListener('click', () => {
+    dropModal.style.display = 'none';
+    pendingFile = null;
+  });
+
+  document.getElementById('dropConfirm').addEventListener('click', () => {
+    if (!pendingFile) return;
+
+    // Inyectar el archivo en el input del formulario existente
+    const dt = new DataTransfer();
+    dt.items.add(pendingFile);
+    fileInput.files = dt.files;
+
+    // Copiar nombre y descripción del modal al formulario
+    document.getElementById('nameInput').value = document.getElementById('dropNameInput').value.trim();
+    document.getElementById('descInput').value  = document.getElementById('dropDescInput').value.trim();
+
+    dropModal.style.display = 'none';
+    pendingFile = null;
+
+    // Submit normal del formulario (un solo POST, sin fetch)
+    uploadForm.submit();
+  });
+})();
+</script>
+{% endblock %}
+{% endblock %}

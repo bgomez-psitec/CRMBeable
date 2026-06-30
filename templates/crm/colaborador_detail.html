@@ -1,34 +1,686 @@
 {% extends "base.html" %}
+{% load crm_filters %}
 {% block title %}{{ colaborador.name }} — CRM Gestora{% endblock %}
 {% block topbar_title %}{{ colaborador.name }}{% endblock %}
-{% block topbar_sub %}{{ colaborador.type }} · {{ colaborador.country }}{% endblock %}
+{% block topbar_sub %}{% if colaborador.country %}{{ colaborador.country }}{% else %}Contacto{% endif %}{% endblock %}
+{% block topbar_actions %}
+  {% if can_edit %}
+    <button class="btn-ghost" data-bs-toggle="modal" data-bs-target="#editColaboradorModal">
+      <i class="bi bi-pencil"></i> Editar
+    </button>
+  {% endif %}
+{% endblock %}
 {% block content %}
-<div class="card card-body mb-4">
-  <div class="row g-2 small">
-    <div class="col-md-4">Tipo <b>{{ colaborador.type|default:"—" }}</b></div>
-    <div class="col-md-4">País <b>{{ colaborador.country|default:"—" }}</b></div>
-    <div class="col-md-4">Sectores <b>{{ colaborador.sectors|default:"—" }}</b></div>
+
+{# ── Header ──────────────────────────────────────────────────────────────── #}
+<div class="dc-card dc-card__body mb-3">
+  <div class="d-flex align-items-start gap-3">
+    <div style="width:38px;height:38px;border-radius:50%;background:#3b82f6;color:#fff;
+                display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.9rem;flex-shrink:0">
+      {{ colaborador.name|slice:":2"|upper }}
+    </div>
+
+    <div class="flex-grow-1 min-w-0">
+      <div class="d-flex align-items-center gap-2 mb-1 flex-wrap">
+        <span class="fw-bold" style="font-size:1rem">{{ colaborador.name }}</span>
+        {% if colaborador.relation %}<span class="dc-badge dc-badge--green" style="font-size:.7rem">{{ colaborador.relation.nombre }}</span>{% endif %}
+        {% if colaborador.es_comprador %}<span class="dc-badge dc-badge--amber" style="font-size:.7rem">Comprador</span>{% endif %}
+        {% if colaborador.es_colaborador %}<span class="dc-badge dc-badge--blue" style="font-size:.7rem">Colaborador</span>{% endif %}
+        {% if colaborador.es_cliente %}<span class="dc-badge dc-badge--green" style="font-size:.7rem">Cliente</span>{% endif %}
+        {% if colaborador.es_proveedor %}<span class="dc-badge dc-badge--grey" style="font-size:.7rem">Proveedor</span>{% endif %}
+        {% if colaborador.es_inversor_esporadico %}<span class="dc-badge dc-badge--amber" style="font-size:.7rem">Inv. esporádico</span>{% endif %}
+      </div>
+      <div class="d-flex gap-3 flex-wrap" style="font-size:.78rem;color:var(--dc-text-muted)">
+        {% if colaborador.country %}<span>País <b style="color:var(--dc-text)">{{ colaborador.country }}</b></span>{% endif %}
+        {% if colaborador.sectors %}<span>Sectores <b style="color:var(--dc-text)">{{ colaborador.sectors }}</b></span>{% endif %}
+      </div>
+    </div>
+
+    {# Tipos badge summary on right #}
+    <div style="flex-shrink:0;text-align:right">
+      <div style="font-size:.72rem;color:var(--dc-text-muted)">
+        {{ intros|length }} ronda{{ intros|length|pluralize:"s" }} ·
+        {{ contactos_ma|length }} M&amp;A ·
+        {{ colabs|length }} colab.
+      </div>
+    </div>
   </div>
-  {% if colaborador.notes %}<div class="mt-2 text-muted small">{{ colaborador.notes }}</div>{% endif %}
+  {# Contactos de la firma #}
+  {% if colaborador.contacts.all %}
+  <div class="d-flex gap-3 flex-wrap mt-2" style="border-top:1px solid var(--dc-border);padding-top:12px">
+    {% for c in colaborador.contacts.all %}
+    <div style="background:var(--dc-hover);border:1px solid var(--dc-border);border-radius:8px;padding:8px 14px;min-width:180px">
+      <div style="font-size:.82rem"><b>{{ c.name }}</b>{% if c.role %} <span style="color:var(--dc-text-muted)">· {{ c.role }}</span>{% endif %}</div>
+      {% if c.email %}<div style="font-size:.75rem;color:var(--dc-accent)">{{ c.email }}</div>{% endif %}
+      {% if c.phone %}<div style="font-size:.75rem;color:var(--dc-text-muted)">{{ c.phone }}</div>{% endif %}
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
 </div>
 
-<div class="card">
-  <div class="card-header fw-semibold"><i class="bi bi-diagram-3"></i> Colaboraciones ({{ colabs|length }})</div>
-  <table class="table mb-0">
-    <thead><tr><th>Participada</th><th>Tipo</th><th>Estado</th><th>Descripción</th><th>Próximo paso</th></tr></thead>
-    <tbody>
-      {% for col in colabs %}
-      <tr style="cursor:pointer" onclick="location.href='{% url 'crm:colaboracion_detail' col.pk %}'">
-        <td><b>{{ col.company.name }}</b></td>
-        <td class="text-muted small">{{ col.tipo_relacion|default:"—" }}</td>
-        <td><span class="badge text-bg-info">{{ col.status.nombre|default:"—" }}</span></td>
-        <td class="text-muted small">{{ col.descripcion|default:"—" }}</td>
-        <td class="small">{{ col.next_action|default:"—" }}{% if col.next_date %} · <span class="text-warning">{{ col.next_date|date:"d M Y" }}</span>{% endif %}</td>
-      </tr>
-      {% empty %}
-      <tr><td colspan="5" class="text-muted text-center py-4">Sin colaboraciones registradas.</td></tr>
-      {% endfor %}
-    </tbody>
-  </table>
+{# ── Tabs ──────────────────────────────────────────────────────────────── #}
+<ul class="nav nav-tabs mb-3" id="colabTabs">
+  <li class="nav-item"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#pane-rondas">
+    <i class="bi bi-graph-up-arrow me-1"></i>Rondas de Inversión
+    <span class="dc-badge dc-badge--grey ms-1">{{ intros|length }}</span>
+  </button></li>
+  <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#pane-ma">
+    <i class="bi bi-briefcase me-1"></i>M&amp;A
+    <span class="dc-badge dc-badge--grey ms-1">{{ contactos_ma|length }}</span>
+  </button></li>
+  <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#pane-colab">
+    <i class="bi bi-diagram-3 me-1"></i>Colaboraciones
+    <span class="dc-badge dc-badge--grey ms-1">{{ colabs|length }}</span>
+  </button></li>
+</ul>
+
+<div class="tab-content">
+
+  {# ── Tab 1: Rondas de Inversión ──────────────────────────────────────── #}
+  <div class="tab-pane fade show active" id="pane-rondas">
+    <div class="row g-0" style="border:1px solid var(--dc-border);border-top:none;border-bottom:1px solid var(--dc-border)">
+      <div class="col border-end" style="padding:16px 20px;text-align:center">
+        <div style="font-size:.72rem;color:var(--dc-text-muted);text-transform:uppercase;letter-spacing:.05em">Presentaciones</div>
+        <div style="font-size:1.5rem;font-weight:700;color:var(--dc-accent)">{{ intros|length }}</div>
+        <div style="font-size:.75rem;color:var(--dc-text-muted)">{{ intros_activas|length }} activas</div>
+      </div>
+      <div class="col border-end" style="padding:16px 20px;text-align:center">
+        <div style="font-size:.72rem;color:var(--dc-text-muted);text-transform:uppercase;letter-spacing:.05em">Invertidas</div>
+        <div style="font-size:1.5rem;font-weight:700;color:#065f46">{{ intros_invertidas|length }}</div>
+        <div style="font-size:.75rem;color:var(--dc-text-muted)">rondas cerradas</div>
+      </div>
+      <div class="col" style="padding:16px 20px;text-align:center">
+        <div style="font-size:.72rem;color:var(--dc-text-muted);text-transform:uppercase;letter-spacing:.05em">Descartadas</div>
+        <div style="font-size:1.5rem;font-weight:700;color:var(--dc-danger)">{{ intros_descartadas|length }}</div>
+        <div style="font-size:.75rem;color:var(--dc-text-muted)">presentaciones</div>
+      </div>
+    </div>
+    <div class="dc-card">
+      <div class="dc-table-wrap">
+        <table class="dc-table">
+          <thead><tr><th>Participada</th><th>Ronda</th><th>Estado</th><th>Ticket</th><th>Próximo paso</th></tr></thead>
+          <tbody>
+            {% for i in intros %}
+            <tr style="cursor:pointer" onclick="location.href='{% url 'crm:round_detail' i.round.pk %}'">
+              <td><b>{{ i.company.name }}</b></td>
+              <td style="color:var(--dc-text-muted)">{{ i.round.type }}</td>
+              <td>{% if i.status %}<span class="dc-badge dc-badge--blue">{{ i.status.nombre }}</span>{% else %}<span style="color:var(--dc-text-muted)">—</span>{% endif %}</td>
+              <td class="fw-semibold">{% if i.ticket %}{{ i.ticket|floatformat:0 }} €{% else %}—{% endif %}</td>
+              <td style="font-size:.855rem">{{ i.next_action|default:"—" }}{% if i.next_date %} · <span class="text-accent fw-semibold">{{ i.next_date|date:"d M Y" }}</span>{% endif %}</td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="5" style="text-align:center;padding:32px;color:var(--dc-text-muted)">Sin rondas registradas.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  {# ── Tab 2: M&A ──────────────────────────────────────────────────────── #}
+  <div class="tab-pane fade" id="pane-ma">
+    <div class="row g-0" style="border:1px solid var(--dc-border);border-top:none;border-bottom:1px solid var(--dc-border)">
+      <div class="col border-end" style="padding:16px 20px;text-align:center">
+        <div style="font-size:.72rem;color:var(--dc-text-muted);text-transform:uppercase;letter-spacing:.05em">Procesos M&amp;A</div>
+        <div style="font-size:1.5rem;font-weight:700;color:var(--dc-accent)">{{ contactos_ma|length }}</div>
+        <div style="font-size:.75rem;color:var(--dc-text-muted)">{{ ma_activos|length }} activos</div>
+      </div>
+      <div class="col border-end" style="padding:16px 20px;text-align:center">
+        <div style="font-size:.72rem;color:var(--dc-text-muted);text-transform:uppercase;letter-spacing:.05em">Mejor oferta</div>
+        <div style="font-size:1.5rem;font-weight:700;color:#065f46">{% if ma_mejor_oferta %}{{ ma_mejor_oferta|floatformat:0 }} €{% else %}—{% endif %}</div>
+        <div style="font-size:.75rem;color:var(--dc-text-muted)">{{ ma_vendidos|length }} vendidos</div>
+      </div>
+      <div class="col" style="padding:16px 20px;text-align:center">
+        <div style="font-size:.72rem;color:var(--dc-text-muted);text-transform:uppercase;letter-spacing:.05em">Descartados</div>
+        <div style="font-size:1.5rem;font-weight:700;color:var(--dc-danger)">{{ ma_descartados|length }}</div>
+        <div style="font-size:.75rem;color:var(--dc-text-muted)">procesos</div>
+      </div>
+    </div>
+    <div class="dc-card">
+      <div class="dc-table-wrap">
+        <table class="dc-table">
+          <thead><tr><th>Participada</th><th>Proceso</th><th>Estado</th><th>Oferta</th><th>Próximo paso</th></tr></thead>
+          <tbody>
+            {% for c in contactos_ma %}
+            <tr style="cursor:pointer" onclick="location.href='{% url 'crm:proceso_ma_detail' c.proceso_id %}'">
+              <td><b>{{ c.proceso.company.name }}</b></td>
+              <td style="color:var(--dc-text-muted)">{{ c.proceso.nombre }}</td>
+              <td>{% if c.status %}<span class="dc-badge dc-badge--amber">{{ c.status.nombre }}</span>{% else %}<span style="color:var(--dc-text-muted)">—</span>{% endif %}</td>
+              <td class="fw-semibold">{% if c.oferta_precio %}{{ c.oferta_precio|floatformat:0 }} €{% else %}—{% endif %}</td>
+              <td style="font-size:.855rem">{{ c.next_action|default:"—" }}{% if c.next_date %} · <span class="text-accent fw-semibold">{{ c.next_date|date:"d M Y" }}</span>{% endif %}</td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="7" style="text-align:center;padding:32px;color:var(--dc-text-muted)">Sin procesos M&A registrados.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  {# ── Tab 3: Colaboraciones ────────────────────────────────────────────── #}
+  <div class="tab-pane fade" id="pane-colab">
+    <div class="row g-0" style="border:1px solid var(--dc-border);border-top:none;border-bottom:1px solid var(--dc-border)">
+      <div class="col border-end" style="padding:16px 20px;text-align:center">
+        <div style="font-size:.72rem;color:var(--dc-text-muted);text-transform:uppercase;letter-spacing:.05em">Colaboraciones</div>
+        <div style="font-size:1.5rem;font-weight:700;color:var(--dc-accent)">{{ colabs|length }}</div>
+        <div style="font-size:.75rem;color:var(--dc-text-muted)">{{ colab_activas|length }} activas</div>
+      </div>
+      <div class="col border-end" style="padding:16px 20px;text-align:center">
+        <div style="font-size:.72rem;color:var(--dc-text-muted);text-transform:uppercase;letter-spacing:.05em">Firmadas</div>
+        <div style="font-size:1.5rem;font-weight:700;color:#065f46">{{ colab_firmadas|length }}</div>
+        <div style="font-size:.75rem;color:var(--dc-text-muted)">acuerdos activos</div>
+      </div>
+      <div class="col" style="padding:16px 20px;text-align:center">
+        <div style="font-size:.72rem;color:var(--dc-text-muted);text-transform:uppercase;letter-spacing:.05em">Descartadas</div>
+        <div style="font-size:1.5rem;font-weight:700;color:var(--dc-danger)">{{ colab_descartadas|length }}</div>
+        <div style="font-size:.75rem;color:var(--dc-text-muted)">colaboraciones</div>
+      </div>
+    </div>
+    <div class="dc-card">
+      <div class="dc-table-wrap">
+        <table class="dc-table">
+          <thead><tr><th>Participada</th><th>Tipo</th><th>Estado</th><th>Descripción</th><th>Próximo paso</th></tr></thead>
+          <tbody>
+            {% for col in colabs %}
+            <tr style="cursor:pointer" onclick="location.href='{% url 'crm:colaboracion_detail' col.pk %}'">
+              <td><b>{{ col.company.name }}</b></td>
+              <td style="font-size:.8rem;color:var(--dc-text-muted)">{{ col.tipo_relacion|default:"—" }}</td>
+              <td>{% if col.status %}<span class="dc-badge dc-badge--blue">{{ col.status.nombre }}</span>{% else %}<span style="color:var(--dc-text-muted)">—</span>{% endif %}</td>
+              <td style="font-size:.8rem;color:var(--dc-text-muted)">{{ col.descripcion|default:"—" }}</td>
+              <td style="font-size:.855rem">{{ col.next_action|default:"—" }}{% if col.next_date %} · <span class="text-accent fw-semibold">{{ col.next_date|date:"d M Y" }}</span>{% endif %}</td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="5" style="text-align:center;padding:32px;color:var(--dc-text-muted)">Sin colaboraciones registradas.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+</div>{# /tab-content #}
+
+{# ── Relación histórica ───────────────────────────────────────────────── #}
+{% if colaborador.notes %}
+<div class="dc-card dc-card__body mt-3">
+  <div class="fw-semibold mb-2" style="font-size:.875rem"><i class="bi bi-journal-text me-1" style="color:var(--dc-accent)"></i> Relación histórica</div>
+  <div style="font-size:.855rem;white-space:pre-line">{{ colaborador.notes }}</div>
 </div>
+{% endif %}
+
+{# ── Cronología de contactos ──────────────────────────────────────────── #}
+<div class="dc-card dc-card__body mt-3" id="cronologiaSection">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <div class="fw-semibold"><i class="bi bi-clock-history" style="color:var(--dc-accent)"></i> Cronología de contactos</div>
+    {% if can_edit %}
+    <div class="d-flex gap-2">
+      <button class="btn-ghost" onclick="openColabModal('Email')"><i class="bi bi-envelope"></i> Email</button>
+      <button class="btn-ghost" onclick="openColabModal('Llamada')"><i class="bi bi-telephone"></i> Llamada</button>
+      <button class="btn-ghost" onclick="openColabModal('Reunión')"><i class="bi bi-people"></i> Reunión</button>
+      <button class="btn-ghost" onclick="openColabModal('Nota')"><i class="bi bi-sticky"></i> Nota</button>
+    </div>
+    {% endif %}
+  </div>
+  <div class="d-flex gap-1 mb-3 flex-wrap" id="colab-chrono-filters">
+    <button class="btn-ghost colab-chrono-filter-btn active" data-ctx="" style="font-size:.78rem;padding:3px 10px;border-radius:20px" onclick="filterColabChrono('')">Todos</button>
+    <button class="btn-ghost colab-chrono-filter-btn" data-ctx="ronda" style="font-size:.78rem;padding:3px 10px;border-radius:20px" onclick="filterColabChrono('ronda')">Ronda de Inversión</button>
+    <button class="btn-ghost colab-chrono-filter-btn" data-ctx="ma" style="font-size:.78rem;padding:3px 10px;border-radius:20px" onclick="filterColabChrono('ma')">Proceso M&amp;A</button>
+    <button class="btn-ghost colab-chrono-filter-btn" data-ctx="colaboracion" style="font-size:.78rem;padding:3px 10px;border-radius:20px" onclick="filterColabChrono('colaboracion')">Colaboraciones</button>
+  </div>
+  {% for x in chrono %}
+  <div class="d-flex align-items-center gap-2 py-2 border-bottom chrono-entry" id="log-{{ x.pk }}" data-context="{{ x.context }}" style="font-size:.835rem;min-width:0;transition:background .4s">
+    {% if x.type == 'Email' %}<i class="bi bi-envelope flex-shrink-0" style="color:var(--dc-accent);width:16px;text-align:center" title="Email"></i>
+    {% elif x.type == 'Llamada' %}<i class="bi bi-telephone flex-shrink-0" style="color:#3b82f6;width:16px;text-align:center" title="Llamada"></i>
+    {% elif x.type == 'Reunión' %}<i class="bi bi-people flex-shrink-0" style="color:#f59e0b;width:16px;text-align:center" title="Reunión"></i>
+    {% else %}<i class="bi bi-sticky flex-shrink-0" style="color:var(--dc-text-muted);width:16px;text-align:center" title="Nota"></i>{% endif %}
+    <span class="fw-semibold flex-shrink-0" style="color:var(--dc-accent);min-width:74px">{{ x.date|date:"d M Y"|default:"—" }}</span>
+    {% if x.context == 'ronda' %}<span class="flex-shrink-0 dc-badge" style="font-size:.68rem;background:rgba(16,185,129,.12);color:#059669;border:1px solid rgba(16,185,129,.25)"><i class="bi bi-graph-up-arrow me-1"></i>Ronda</span>
+    {% elif x.context == 'ma' %}<span class="flex-shrink-0 dc-badge" style="font-size:.68rem;background:rgba(245,158,11,.12);color:#d97706;border:1px solid rgba(245,158,11,.25)"><i class="bi bi-briefcase me-1"></i>M&amp;A</span>
+    {% elif x.context == 'colaboracion' %}<span class="flex-shrink-0 dc-badge" style="font-size:.68rem;background:rgba(139,92,246,.12);color:#7c3aed;border:1px solid rgba(139,92,246,.25)"><i class="bi bi-handshake me-1"></i>Colab.</span>
+    {% endif %}
+    {% with lbl=x.process_label %}{% if lbl %}<span class="dc-badge dc-badge--grey flex-shrink-0" style="font-size:.68rem;max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="{{ lbl }}">{{ lbl }}</span>{% endif %}{% endwith %}
+    <span class="flex-shrink-0" style="font-size:.73rem;color:var(--dc-text-muted)"><i class="bi bi-person"></i> {{ x.created_by|default:"—" }}</span>
+    <span style="color:var(--dc-text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;flex:1">{{ x.summary|format_log }}</span>
+    {% if x.attachment_url %}
+    <a href="{{ x.attachment_url }}" target="_blank" title="Abrir documento adjunto"
+       class="flex-shrink-0"
+       style="color:var(--dc-accent);opacity:.75;line-height:1;padding:2px 4px"
+       onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=.75">
+      <i class="bi bi-file-earmark-arrow-down" style="font-size:.95rem"></i>
+    </a>
+    {% endif %}
+    {% if can_edit %}
+    <button type="button" title="Editar"
+            data-log-action="edit"
+            data-modal="colab-log-edit-modal"
+            data-url="{% url 'crm:colaborador_log_edit' x.id %}"
+            data-date="{{ x.date|date:'Y-m-d'|default:'' }}"
+            data-summary="{{ x.summary|escapejs }}"
+            style="background:none;border:none;cursor:pointer;padding:2px 4px;color:var(--dc-text-muted);opacity:.5;line-height:1;flex-shrink:0"
+            onmouseover="this.style.opacity=1;this.style.color='var(--dc-accent)'" onmouseout="this.style.opacity=.5;this.style.color='var(--dc-text-muted)'">
+      <i class="bi bi-pencil" style="font-size:.8rem"></i>
+    </button>
+    <form method="post" action="{% url 'crm:colaborador_log_delete' x.id %}" class="flex-shrink-0"
+          onsubmit="return confirm('¿Eliminar esta entrada de la cronología?')">
+      {% csrf_token %}
+      <button type="submit" title="Eliminar" style="background:none;border:none;cursor:pointer;padding:2px 4px;color:var(--dc-text-muted);opacity:.5;line-height:1" onmouseover="this.style.opacity=1;this.style.color='#ef4444'" onmouseout="this.style.opacity=.5;this.style.color='var(--dc-text-muted)'">
+        <i class="bi bi-x-lg" style="font-size:.8rem"></i>
+      </button>
+    </form>
+    {% endif %}
+  </div>
+  {% empty %}
+  <div style="text-align:center;padding:32px;color:var(--dc-text-muted)">Sin contactos registrados todavía.</div>
+  {% endfor %}
+</div>
+
+{# ── Modal edición de entrada de cronología ──────────────────────────────── #}
+<div id="colab-log-edit-modal" style="display:none;position:fixed;inset:0;z-index:10001;background:rgba(0,0,0,.5);align-items:center;justify-content:center">
+  <div class="dc-card" style="width:540px;max-width:96vw;padding:28px">
+    <div class="d-flex align-items-center gap-2 mb-4">
+      <i class="bi bi-pencil-square" style="color:var(--dc-accent);font-size:1.1rem"></i>
+      <h5 style="margin:0;font-size:1rem;font-weight:700">Editar entrada de cronología</h5>
+      <button type="button" onclick="document.getElementById('colab-log-edit-modal').style.display='none'"
+              style="margin-left:auto;background:none;border:none;font-size:1.2rem;cursor:pointer;color:var(--dc-text-muted)">
+        <i class="bi bi-x-lg"></i>
+      </button>
+    </div>
+    <form id="colab-log-edit-form" method="post">
+      {% csrf_token %}
+      <div class="mb-3">
+        <label style="font-size:.78rem;font-weight:600;color:var(--dc-text-muted);display:block;margin-bottom:4px">Fecha</label>
+        <input type="date" name="date" id="colab-log-edit-date"
+               style="width:180px;padding:7px 10px;border:1px solid var(--dc-border);border-radius:6px;
+                      background:var(--dc-surface);color:var(--dc-text);font-size:.85rem">
+      </div>
+      <div class="mb-4">
+        <label style="font-size:.78rem;font-weight:600;color:var(--dc-text-muted);display:block;margin-bottom:4px">Texto / resumen</label>
+        <textarea name="summary" id="colab-log-edit-summary" rows="5" spellcheck="false"
+                  style="width:100%;padding:9px 11px;border:1px solid var(--dc-border);border-radius:6px;
+                         background:var(--dc-surface);color:var(--dc-text);font-size:.855rem;
+                         line-height:1.6;resize:vertical"></textarea>
+      </div>
+      <div class="d-flex gap-2 justify-content-end">
+        <button type="button" class="btn-ghost"
+                onclick="document.getElementById('colab-log-edit-modal').style.display='none'">Cancelar</button>
+        <button type="submit" class="btn-primary">
+          <i class="bi bi-check2 me-1"></i>Guardar cambios
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+<script>
+document.querySelectorAll('[data-log-action="edit"][data-modal="colab-log-edit-modal"]').forEach(btn => {
+  btn.addEventListener('click', function() {
+    document.getElementById('colab-log-edit-form').action = this.dataset.url;
+    document.getElementById('colab-log-edit-date').value   = this.dataset.date || '';
+    document.getElementById('colab-log-edit-summary').value = this.dataset.summary || '';
+    document.getElementById('colab-log-edit-modal').style.display = 'flex';
+  });
+});
+</script>
+
+{# ── Modal log ────────────────────────────────────────────────────────── #}
+{% if can_edit %}
+<div class="modal fade" id="colabLogModal" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <form method="post" action="{% url 'crm:colaborador_log_create' colaborador.pk %}" class="modal-content" enctype="multipart/form-data" id="colabLogForm">
+      {% csrf_token %}
+      <div class="modal-header">
+        <h5 class="modal-title">Registrar en cronología</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        {# Tipo — botones #}
+        <input type="hidden" name="type" id="colab-log-type" value="Nota">
+        <div class="mb-3">
+          <label class="form-label fw-semibold" style="font-size:.8rem;color:var(--dc-text-muted)">TIPO</label>
+          <div class="d-flex gap-2 flex-wrap">
+            <button type="button" class="colab-type-pill" data-type="Nota"    style="display:inline-flex;align-items:center;gap:5px;padding:5px 14px;border-radius:20px;border:1.5px solid var(--dc-border);background:var(--dc-surface);cursor:pointer;font-size:.82rem;font-weight:500;color:var(--dc-text-muted);transition:all .15s"><i class="bi bi-sticky" style="color:var(--dc-text-muted)"></i> Nota</button>
+            <button type="button" class="colab-type-pill" data-type="Llamada" style="display:inline-flex;align-items:center;gap:5px;padding:5px 14px;border-radius:20px;border:1.5px solid var(--dc-border);background:var(--dc-surface);cursor:pointer;font-size:.82rem;font-weight:500;color:var(--dc-text-muted);transition:all .15s"><i class="bi bi-telephone" style="color:#3b82f6"></i> Llamada</button>
+            <button type="button" class="colab-type-pill" data-type="Reunión" style="display:inline-flex;align-items:center;gap:5px;padding:5px 14px;border-radius:20px;border:1.5px solid var(--dc-border);background:var(--dc-surface);cursor:pointer;font-size:.82rem;font-weight:500;color:var(--dc-text-muted);transition:all .15s"><i class="bi bi-people" style="color:#f59e0b"></i> Reunión</button>
+            <button type="button" class="colab-type-pill" data-type="Email"   style="display:inline-flex;align-items:center;gap:5px;padding:5px 14px;border-radius:20px;border:1.5px solid var(--dc-border);background:var(--dc-surface);cursor:pointer;font-size:.82rem;font-weight:500;color:var(--dc-text-muted);transition:all .15s"><i class="bi bi-envelope" style="color:var(--dc-accent)"></i> Email</button>
+          </div>
+        </div>
+        {# Fecha + Contexto + Proceso #}
+        <div class="row g-2 mb-2">
+          <div class="col-sm-4">
+            <label class="form-label fw-semibold" style="font-size:.8rem;color:var(--dc-text-muted)">FECHA</label>
+            <input type="date" name="date" id="colab-log-date" class="form-control form-control-sm">
+          </div>
+          <div class="col-sm-4">
+            <label class="form-label fw-semibold" style="font-size:.8rem;color:var(--dc-text-muted)">CONTEXTO</label>
+            <select name="context" id="colab-log-context" class="form-select form-select-sm" onchange="colabLogContextChange(this.value)">
+              <option value="">— General —</option>
+              <option value="ronda">📈 Ronda de Inversión</option>
+              <option value="ma">💼 Proceso M&amp;A</option>
+              <option value="colaboracion">🤝 Colaboración</option>
+            </select>
+          </div>
+          <div class="col-sm-4" id="colab-log-process-col" style="display:none">
+            <label class="form-label fw-semibold" style="font-size:.8rem;color:var(--dc-text-muted)">PROCESO</label>
+            <select name="round_id" id="colab-log-round-sel" class="form-select form-select-sm" style="display:none">
+              <option value="">— Selecciona ronda —</option>
+              {% for r in log_rounds %}<option value="{{ r.pk }}">{{ r.company.name }} · {{ r.type }}</option>{% endfor %}
+            </select>
+            <select name="proceso_ma_id" id="colab-log-ma-sel" class="form-select form-select-sm" style="display:none">
+              <option value="">— Selecciona proceso —</option>
+              {% for m in log_ma %}<option value="{{ m.pk }}">{{ m.nombre }} ({{ m.company.name }})</option>{% endfor %}
+            </select>
+            <select name="colaboracion_id" id="colab-log-colab-sel" class="form-select form-select-sm" style="display:none">
+              <option value="">— Selecciona colaboración —</option>
+              {% for c in log_colabs %}<option value="{{ c.pk }}">{{ c.descripcion|default:c.company.name }}</option>{% endfor %}
+            </select>
+          </div>
+        </div>
+        {# Texto #}
+        <div class="mb-2">
+          <label class="form-label fw-semibold" style="font-size:.8rem;color:var(--dc-text-muted)">TEXTO / RESUMEN</label>
+          <textarea name="summary" id="colab-log-summary" class="form-control" rows="4" placeholder="Escribe aquí…"></textarea>
+        </div>
+        {# Adjunto #}
+        <div style="border-top:1px solid var(--dc-border);padding-top:10px;margin-top:4px">
+          <label class="form-label fw-semibold" style="font-size:.8rem;color:var(--dc-text-muted)">ADJUNTO <span style="font-weight:400;opacity:.7">(opcional)</span></label>
+          <input type="file" name="attachment" id="colab-log-file-input" class="form-control form-control-sm"
+                 accept=".msg,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.png,.jpg,.jpeg">
+          <div style="font-size:.73rem;color:var(--dc-text-muted);margin-top:3px">
+            <i class="bi bi-folder-symlink me-1"></i>Se guardará en la carpeta del colaborador
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn-ghost" data-bs-dismiss="modal">Cancelar</button>
+        <button type="submit" class="btn-accent">Guardar</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endif %}
+
+<script>
+window.EMAIL_CFG = {
+  modalId:    'colabLogModal',
+  typesSel:   '#colab-log-type',
+  dateSel:    '#colab-log-date',
+  summarySel: '#colab-log-summary',
+};
+window.DOC_DROP_CFG = {
+  uploadUrl:  '{% url "crm:colaborador_doc_drop" colaborador.pk %}',
+  dropZoneId: 'cronologiaSection',
+  modalId:    'colabLogModal',
+};
+</script>
+{% include "crm/_email_drop.html" %}
+{% include "crm/_doc_drop.html" %}
+
+{# ── Modal editar ─────────────────────────────────────────────────────── #}
+{% if can_edit %}
+<div class="modal fade" id="editColaboradorModal" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <form method="post" action="{% url 'crm:colaborador_edit' colaborador.pk %}" class="modal-content dc-form">
+      {% csrf_token %}
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="bi bi-pencil me-2"></i>Editar contacto</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="row g-3">
+          <div class="col-md-6">
+            <label class="form-label">Nombre <span style="color:var(--dc-danger)">*</span></label>
+            <input type="text" name="name" class="form-control" value="{{ colaborador.name }}" required>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">País</label>
+            <input type="text" name="country" class="form-control" value="{{ colaborador.country }}" list="country-list" autocomplete="off">
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Sectores</label>
+            <div class="multiselect-wrap" style="position:relative">
+              <button type="button" class="form-select text-start multiselect-toggle" id="colabSectorToggle"
+                      style="cursor:pointer;background:var(--dc-surface);color:var(--dc-text)">
+                <span id="colabSectorLabel">{% if colaborador.sectors %}{{ colaborador.sectors }}{% else %}Selecciona sectores…{% endif %}</span>
+              </button>
+              <div id="colabSectorDropdown" style="display:none;position:absolute;z-index:1055;top:calc(100% + 2px);left:0;right:0;
+                   background:var(--dc-surface);border:1px solid var(--dc-border);border-radius:var(--dc-radius-sm);
+                   box-shadow:0 4px 16px rgba(0,0,0,.12);padding:8px 0;max-height:260px;overflow-y:auto">
+                {% for s in sector_opts %}
+                <label style="display:flex;align-items:center;gap:8px;padding:6px 14px;cursor:pointer;font-size:.875rem;transition:background .1s"
+                       onmouseover="this.style.background='var(--dc-hover)'" onmouseout="this.style.background=''">
+                  <input type="checkbox" name="sectors" value="{{ s }}" class="colab-sector-cb"
+                         {% if s in colaborador.sectors %}checked{% endif %}
+                         style="width:15px;height:15px;flex-shrink:0;accent-color:var(--dc-accent)">
+                  {{ s }}
+                </label>
+                {% endfor %}
+              </div>
+            </div>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Relación</label>
+            <select name="relation" class="form-select">
+              <option value="">— Sin relación —</option>
+              {% for r in etapas_relacion %}
+                <option value="{{ r.pk }}" {% if colaborador.relation_id == r.pk %}selected{% endif %}>{{ r.nombre }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Tipo de contacto</label>
+            <div class="multiselect-wrap" style="position:relative">
+              <button type="button" class="form-select text-start" id="colabTipoToggle"
+                      style="cursor:pointer;background:var(--dc-surface);color:var(--dc-text)">
+                <span id="colabTipoLabel">
+                  {% with selected='' %}
+                    {% for slug, field, label in tipo_opts %}{% if colaborador|attr:field %}{{ label }}{% if not forloop.last %}, {% endif %}{% endif %}{% endfor %}
+                  {% endwith %}
+                  {% comment %}fallback if nothing selected{% endcomment %}
+                </span>
+              </button>
+              <div id="colabTipoDropdown" style="display:none;position:absolute;z-index:1055;top:calc(100% + 2px);left:0;right:0;
+                   background:var(--dc-surface);border:1px solid var(--dc-border);border-radius:var(--dc-radius-sm);
+                   box-shadow:0 4px 16px rgba(0,0,0,.12);padding:8px 0">
+                {% for slug, field, label in tipo_opts %}
+                <label style="display:flex;align-items:center;gap:8px;padding:6px 14px;cursor:pointer;font-size:.875rem;transition:background .1s"
+                       onmouseover="this.style.background='var(--dc-hover)'" onmouseout="this.style.background=''">
+                  <input type="checkbox" name="{{ field }}" value="1" class="colab-tipo-cb"
+                         {% if colaborador|attr:field %}checked{% endif %}
+                         data-label="{{ label }}"
+                         style="width:15px;height:15px;flex-shrink:0;accent-color:var(--dc-accent)">
+                  {{ label }}
+                </label>
+                {% endfor %}
+              </div>
+            </div>
+          </div>
+          <div class="col-12">
+            <label class="form-label">Relación histórica</label>
+            <textarea name="notes" class="form-control" rows="3" placeholder="Descripción de la relación, contexto, historia…">{{ colaborador.notes }}</textarea>
+          </div>
+        </div>
+      </div>
+
+      <div style="border-top:1px solid var(--dc-border);padding:16px 24px">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <div class="fw-semibold" style="font-size:.875rem">
+            <i class="bi bi-people me-1" style="color:var(--dc-accent)"></i> Contactos
+          </div>
+          <button type="button" class="btn-ghost" style="font-size:.8rem;padding:4px 10px" onclick="addColabContactRow()">
+            <i class="bi bi-plus"></i> Añadir contacto
+          </button>
+        </div>
+        <div id="colabContactRows">
+          {% for c in colaborador.contacts.all %}
+          <div class="colab-contact-row mb-3 p-3" style="background:var(--dc-hover);border-radius:8px;position:relative">
+            <input type="hidden" name="contact_id" value="{{ c.pk }}">
+            {% if is_admin %}
+            <button type="button" onclick="this.closest('.colab-contact-row').remove()"
+                    style="position:absolute;top:8px;right:8px;background:none;border:none;cursor:pointer;color:var(--dc-text-muted);font-size:1rem">
+              <i class="bi bi-x"></i>
+            </button>
+            {% endif %}
+            <div class="row g-2">
+              <div class="col-md-6">
+                <label class="form-label" style="font-size:.8rem">Nombre</label>
+                <input type="text" name="contact_name" class="form-control form-control-sm" value="{{ c.name }}">
+              </div>
+              <div class="col-md-6">
+                <label class="form-label" style="font-size:.8rem">Cargo</label>
+                <input type="text" name="contact_role" class="form-control form-control-sm" value="{{ c.role }}">
+              </div>
+              <div class="col-md-6">
+                <label class="form-label" style="font-size:.8rem">Email</label>
+                <input type="email" name="contact_email" class="form-control form-control-sm" value="{{ c.email }}">
+              </div>
+              <div class="col-md-6">
+                <label class="form-label" style="font-size:.8rem">Teléfono</label>
+                <input type="text" name="contact_phone" class="form-control form-control-sm" value="{{ c.phone }}">
+              </div>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn-ghost" data-bs-dismiss="modal">Cancelar</button>
+        <button type="submit" class="btn-accent">Guardar cambios</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endif %}
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function () {
+  const toggle   = document.getElementById('colabTipoToggle');
+  const dropdown = document.getElementById('colabTipoDropdown');
+  const label    = document.getElementById('colabTipoLabel');
+  if (!toggle) return;
+  function updateLabel() {
+    const checked = [...document.querySelectorAll('.colab-tipo-cb:checked')].map(cb => cb.dataset.label);
+    label.textContent = checked.length ? checked.join(', ') : 'Selecciona tipos…';
+  }
+  updateLabel();
+  toggle.addEventListener('click', e => { e.stopPropagation(); dropdown.style.display = dropdown.style.display === 'none' ? 'block' : 'none'; });
+  document.addEventListener('click', () => { dropdown.style.display = 'none'; });
+  dropdown.addEventListener('click', e => e.stopPropagation());
+  document.querySelectorAll('.colab-tipo-cb').forEach(cb => cb.addEventListener('change', updateLabel));
+})();
+
+function addColabContactRow() {
+  const html = `<div class="colab-contact-row mb-3 p-3" style="background:var(--dc-hover);border-radius:8px;position:relative">
+    <button type="button" onclick="this.closest('.colab-contact-row').remove()"
+            style="position:absolute;top:8px;right:8px;background:none;border:none;cursor:pointer;color:var(--dc-text-muted);font-size:1rem">
+      <i class="bi bi-x"></i>
+    </button>
+    <div class="row g-2">
+      <div class="col-md-6"><label style="font-size:.8rem" class="form-label">Nombre</label><input type="text" name="contact_name" class="form-control form-control-sm"></div>
+      <div class="col-md-6"><label style="font-size:.8rem" class="form-label">Cargo</label><input type="text" name="contact_role" class="form-control form-control-sm"></div>
+      <div class="col-md-6"><label style="font-size:.8rem" class="form-label">Email</label><input type="email" name="contact_email" class="form-control form-control-sm"></div>
+      <div class="col-md-6"><label style="font-size:.8rem" class="form-label">Teléfono</label><input type="text" name="contact_phone" class="form-control form-control-sm"></div>
+    </div>
+  </div>`;
+  document.getElementById('colabContactRows').insertAdjacentHTML('beforeend', html);
+}
+
+// ── Modal unificado cronología colaborador ────────────────────────────────
+function colabLogSetType(type) {
+  document.getElementById('colab-log-type').value = type;
+  document.querySelectorAll('.colab-type-pill').forEach(btn => {
+    const active = btn.dataset.type === type;
+    btn.style.background  = active ? 'rgba(var(--dc-accent-rgb),.12)' : 'var(--dc-surface)';
+    btn.style.borderColor = active ? 'var(--dc-accent)' : 'var(--dc-border)';
+    btn.style.color       = active ? 'var(--dc-accent)' : 'var(--dc-text-muted)';
+    btn.style.fontWeight  = active ? '600' : '500';
+  });
+}
+
+function colabLogContextChange(ctx) {
+  const procCol  = document.getElementById('colab-log-process-col');
+  const roundSel = document.getElementById('colab-log-round-sel');
+  const maSel    = document.getElementById('colab-log-ma-sel');
+  const colabSel = document.getElementById('colab-log-colab-sel');
+  procCol.style.display  = ctx ? '' : 'none';
+  roundSel.style.display = ctx === 'ronda'        ? '' : 'none';
+  maSel.style.display    = ctx === 'ma'           ? '' : 'none';
+  colabSel.style.display = ctx === 'colaboracion' ? '' : 'none';
+}
+
+function openColabModal(type) {
+  colabLogSetType(type || 'Nota');
+  document.getElementById('colab-log-date').value    = new Date().toISOString().slice(0,10);
+  document.getElementById('colab-log-context').value = '';
+  colabLogContextChange('');
+  document.getElementById('colab-log-summary').value = '';
+  bootstrap.Modal.getOrCreateInstance(document.getElementById('colabLogModal')).show();
+}
+function openColabNota()    { openColabModal('Nota'); }
+function openColabEmail()   { openColabModal('Email'); }
+function openColabLlamada() { openColabModal('Llamada'); }
+function openColabReunion() { openColabModal('Reunión'); }
+
+document.querySelectorAll('.colab-type-pill').forEach(btn => {
+  btn.addEventListener('click', () => colabLogSetType(btn.dataset.type));
+});
+
+document.getElementById('colabLogModal')?.addEventListener('show.bs.modal', function () {
+  const type = document.getElementById('colab-log-type').value || 'Nota';
+  colabLogSetType(type);
+});
+
+(function () {
+  const toggle = document.getElementById('colabSectorToggle');
+  const dropdown = document.getElementById('colabSectorDropdown');
+  const label = document.getElementById('colabSectorLabel');
+  if (!toggle) return;
+
+  function updateLabel() {
+    const checked = [...document.querySelectorAll('.colab-sector-cb:checked')].map(cb => cb.value);
+    label.textContent = checked.length ? checked.join(', ') : 'Selecciona sectores…';
+  }
+
+  toggle.addEventListener('click', e => {
+    e.stopPropagation();
+    dropdown.style.display = dropdown.style.display === 'none' ? 'block' : 'none';
+  });
+
+  document.addEventListener('click', () => { dropdown.style.display = 'none'; });
+  dropdown.addEventListener('click', e => e.stopPropagation());
+  document.querySelectorAll('.colab-sector-cb').forEach(cb => cb.addEventListener('change', updateLabel));
+})();
+</script>
+<script>
+(function () {
+  const hash = window.location.hash;
+  if (!hash || !hash.startsWith('#log-')) return;
+  const el = document.querySelector(hash);
+  if (!el) return;
+  setTimeout(() => {
+    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    el.style.background = 'rgba(var(--dc-accent-rgb),.15)';
+    el.style.borderRadius = '6px';
+    setTimeout(() => { el.style.background = ''; el.style.borderRadius = ''; }, 2800);
+  }, 350);
+})();
+</script>
+{% include 'crm/_country_datalist.html' %}
+<script>
+function filterColabChrono(ctx) {
+  document.querySelectorAll('.chrono-entry').forEach(el => {
+    el.style.display = (!ctx || el.dataset.context === ctx) ? '' : 'none';
+  });
+  document.querySelectorAll('.colab-chrono-filter-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.ctx === ctx);
+    btn.style.background = btn.dataset.ctx === ctx ? 'var(--dc-accent)' : '';
+    btn.style.color = btn.dataset.ctx === ctx ? '#fff' : '';
+    btn.style.borderColor = btn.dataset.ctx === ctx ? 'var(--dc-accent)' : '';
+  });
+}
+</script>
 {% endblock %}

@@ -132,6 +132,13 @@ STATIC_URL = 'static/'
 STATICFILES_DIRS = [BASE_DIR / 'static']
 STATIC_ROOT = env('STATIC_ROOT', default=str(BASE_DIR / 'staticfiles'))
 
+MEDIA_URL = '/media/'
+MEDIA_ROOT = env('MEDIA_ROOT', default=str(BASE_DIR / 'media'))
+
+# Carpeta raíz para documentos adjuntos a la cronología de inversores/colaboradores
+CONTACT_DOCS_ROOT = env('CONTACT_DOCS_ROOT', default='C:/Inversores_Colaboradores')
+
+
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 

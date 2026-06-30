@@ -1,0 +1,34 @@
+{% load crm_filters %}
+{% comment %}
+Params: label, value, fmt (money|num), color (green|blue|red|text), sub_label, sub_value
+{% endcomment %}
+<div class="col-6 col-md-4 col-lg-2">
+  <div class="dc-card" style="padding:14px 16px;text-align:center">
+    <div style="font-size:.7rem;color:var(--dc-text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
+      {{ label }}
+    </div>
+    {% if fmt == "money" %}
+      <div style="font-size:1.25rem;font-weight:700;
+        {% if color == 'green' %}color:#22c55e
+        {% elif color == 'blue' %}color:var(--dc-accent)
+        {% elif color == 'red' %}color:#ef4444
+        {% else %}color:var(--dc-text){% endif %}">
+        €{{ value|euros }}
+      </div>
+    {% else %}
+      <div style="font-size:1.6rem;font-weight:700;
+        {% if color == 'green' %}color:#22c55e
+        {% elif color == 'blue' %}color:var(--dc-accent)
+        {% elif color == 'red' %}color:#ef4444
+        {% else %}color:var(--dc-text){% endif %}">
+        {{ value }}
+      </div>
+    {% endif %}
+    {% if sub_label %}
+    <div style="font-size:.72rem;color:var(--dc-text-muted);margin-top:4px">
+      {{ sub_label }}<br>
+      <span style="font-weight:600;color:var(--dc-text)">{{ sub_value }}</span>
+    </div>
+    {% endif %}
+  </div>
+</div>

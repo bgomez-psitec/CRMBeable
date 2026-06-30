@@ -1,0 +1,209 @@
+{# Partial: drag & drop de email .msg — extrae metadatos sin IA.           #}
+{# Cada página define window.EMAIL_CFG antes de incluir este partial.       #}
+
+{# ── Overlay de arrastre ────────────────────────────────────────────────── #}
+<div id="emailDropOverlay" style="
+  display:none;position:fixed;inset:0;z-index:10000;
+  background:rgba(var(--dc-accent-rgb),.18);
+  backdrop-filter:blur(2px);
+  align-items:center;justify-content:center;
+  border:3px dashed var(--dc-accent);pointer-events:none">
+  <div style="text-align:center;color:var(--dc-accent)">
+    <i class="bi bi-envelope-arrow-down" style="font-size:3rem;display:block;margin-bottom:8px"></i>
+    <div style="font-size:1.1rem;font-weight:700">Suelta el email para analizarlo</div>
+    <div style="font-size:.85rem;opacity:.7">Archivos .msg de Outlook</div>
+  </div>
+</div>
+
+{# ── Modal de revisión ──────────────────────────────────────────────────── #}
+<div id="emailReviewModal" style="
+  display:none;position:fixed;inset:0;z-index:10001;
+  background:rgba(0,0,0,.5);align-items:center;justify-content:center">
+  <div class="dc-card" style="width:580px;max-width:96vw;max-height:90vh;overflow-y:auto;padding:28px">
+
+    <div class="d-flex align-items-center gap-2 mb-4">
+      <i class="bi bi-envelope-check" style="color:var(--dc-accent);font-size:1.2rem"></i>
+      <h5 style="margin:0;font-size:1rem;font-weight:700">Revisión del email extraído</h5>
+      <button id="emailReviewClose"
+              style="margin-left:auto;background:none;border:none;font-size:1.2rem;cursor:pointer;color:var(--dc-text-muted)">
+        <i class="bi bi-x-lg"></i>
+      </button>
+    </div>
+
+    {# Fecha editable #}
+    <div class="mb-3">
+      <label style="font-size:.78rem;font-weight:600;color:var(--dc-text-muted);display:block;margin-bottom:4px">
+        Fecha <span style="opacity:.6">(editable)</span>
+      </label>
+      <input type="date" id="erDate"
+             style="width:180px;padding:7px 10px;border:1px solid var(--dc-border);border-radius:6px;
+                    background:var(--dc-surface);color:var(--dc-text);font-size:.85rem">
+    </div>
+
+    {# Texto — contenteditable para mostrar negritas; innerText da el plano al guardar #}
+    <div class="mb-3">
+      <label style="font-size:.78rem;font-weight:600;color:var(--dc-text-muted);display:block;margin-bottom:4px">
+        Texto <span style="opacity:.6">(editable)</span>
+      </label>
+      <div id="erSummary" contenteditable="true" spellcheck="false"
+           style="min-height:90px;padding:9px 11px;border:1px solid var(--dc-border);border-radius:6px;
+                  background:var(--dc-surface);color:var(--dc-text);font-size:.855rem;
+                  line-height:1.6;outline:none;white-space:pre-wrap;word-break:break-word;cursor:text">
+      </div>
+    </div>
+
+    <div class="d-flex gap-2 justify-content-end mt-2">
+      <button id="emailReviewCancel" class="btn-ghost">Cancelar</button>
+      <button id="emailReviewConfirm" class="btn-primary">
+        <i class="bi bi-check2 me-1"></i>Usar estos datos
+      </button>
+    </div>
+  </div>
+</div>
+
+{# ── Spinner de carga ───────────────────────────────────────────────────── #}
+<div id="emailParsingSpinner" style="
+  display:none;position:fixed;inset:0;z-index:10002;
+  background:rgba(0,0,0,.45);align-items:center;justify-content:center">
+  <div class="dc-card" style="padding:28px 40px;text-align:center">
+    <div class="spinner-border text-primary mb-3" role="status"></div>
+    <div style="font-size:.9rem;font-weight:600">Extrayendo datos del email…</div>
+    <div style="font-size:.78rem;color:var(--dc-text-muted);margin-top:4px">El archivo se eliminará del servidor al terminar</div>
+  </div>
+</div>
+
+<script>
+(function () {
+  const cfg = window.EMAIL_CFG;
+  if (!cfg) return;
+
+  const overlay = document.getElementById('emailDropOverlay');
+  const review  = document.getElementById('emailReviewModal');
+  const spinner = document.getElementById('emailParsingSpinner');
+  let dragCount   = 0;
+  let _pendingMsgFile = null;
+  let _processing = false;   // Guard: evita procesar el mismo .msg dos veces
+
+  // ── Detectar .msg en drag ──────────────────────────────────────────────
+  function hasMsgFile(dt) {
+    if (!dt) return false;
+    for (const item of (dt.items || [])) {
+      if (item.kind === 'file') {
+        const f = item.getAsFile();
+        if (f && f.name.toLowerCase().endsWith('.msg')) return true;
+      }
+    }
+    return false;
+  }
+
+  document.addEventListener('dragenter', e => {
+    if (!hasMsgFile(e.dataTransfer)) return;
+    dragCount++;
+    overlay.style.display = 'flex';
+  });
+  document.addEventListener('dragleave', () => {
+    dragCount = Math.max(0, dragCount - 1);
+    if (dragCount === 0) overlay.style.display = 'none';
+  });
+  document.addEventListener('dragover', e => e.preventDefault());
+  document.addEventListener('drop', e => {
+    e.preventDefault();
+    dragCount = 0;
+    overlay.style.display = 'none';
+    const file = [...(e.dataTransfer.files || [])].find(f => f.name.toLowerCase().endsWith('.msg'));
+    if (file) processMsg(file);
+  });
+
+  // ── Enviar .msg al servidor para extracción ────────────────────────────
+  function processMsg(file) {
+    if (_processing) return;   // Ignorar segunda llamada (bubbling desde dropZone)
+    _processing = true;
+    _pendingMsgFile = file;
+    spinner.style.display = 'flex';
+    const fd = new FormData();
+    fd.append('file', file);
+    fd.append('csrfmiddlewaretoken', '{{ csrf_token }}');
+    fetch('{% url "crm:parse_email" %}', { method: 'POST', body: fd })
+      .then(r => r.json())
+      .then(data => {
+        spinner.style.display = 'none';
+        _processing = false;
+        if (data.error) { alert('Error: ' + data.error); return; }
+        showReview(data);
+      })
+      .catch(err => {
+        spinner.style.display = 'none';
+        _processing = false;
+        alert('Error al procesar el email: ' + err);
+      });
+  }
+
+  // ── Construir HTML con negritas ────────────────────────────────────────
+  function buildHtml(data) {
+    const isOut    = (data.direction || '').includes('Out');
+    const dirTag   = isOut ? '(Out)' : '(In)';
+    const dirColor = isOut ? '#3b82f6' : '#22c55e';
+    const esc      = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+
+    let html = `<b style="color:${dirColor}">${dirTag}</b>`;
+    if (data.sender)   html += ` <b>De:</b> ${esc(data.sender)}`;
+    if (data.to_field) html += `<br><b>Para:</b> ${esc(data.to_field)}`;
+    if (data.subject)  html += `<br><b>Asunto:</b> ${esc(data.subject)}`;
+    return html;
+  }
+
+  // ── Mostrar modal de revisión ──────────────────────────────────────────
+  function showReview(data) {
+    document.getElementById('erDate').value      = data.date || '';
+    document.getElementById('erSummary').innerHTML = buildHtml(data);
+    review.style.display = 'flex';
+  }
+
+  // ── Cerrar ─────────────────────────────────────────────────────────────
+  ['emailReviewClose', 'emailReviewCancel'].forEach(id =>
+    document.getElementById(id).addEventListener('click', () => {
+      review.style.display = 'none';
+    })
+  );
+
+  // ── Confirmar → rellenar modal de log ─────────────────────────────────
+  document.getElementById('emailReviewConfirm').addEventListener('click', () => {
+    const dateVal    = document.getElementById('erDate').value;
+    const summaryVal = document.getElementById('erSummary').innerText.trim();
+
+    review.style.display = 'none';
+
+    const modalEl = document.getElementById(cfg.modalId);
+    if (!modalEl || !window.bootstrap) return;
+
+    function fillFields() {
+      const dateEl    = document.querySelector(cfg.dateSel);
+      const summaryEl = document.querySelector(cfg.summarySel);
+      if (dateEl)    dateEl.value    = dateVal;
+      if (summaryEl) summaryEl.value = summaryVal;
+      // Actualiza tipo + estilos de píldoras
+      if (typeof invLogSetType    === 'function') invLogSetType('Email');
+      else if (typeof colabLogSetType === 'function') colabLogSetType('Email');
+      // Pasar el .msg al interceptor de _doc_drop.html para que lo guarde en la carpeta
+      if (_pendingMsgFile) {
+        window._docDropFile = _pendingMsgFile;
+        _pendingMsgFile = null;
+      }
+    }
+
+    const alreadyShown = modalEl.classList.contains('show');
+    if (alreadyShown) {
+      fillFields();
+    } else {
+      modalEl.addEventListener('shown.bs.modal', function once() {
+        modalEl.removeEventListener('shown.bs.modal', once);
+        fillFields();
+      });
+      bootstrap.Modal.getOrCreateInstance(modalEl).show();
+    }
+  });
+
+  // Exponer para que _doc_drop.html pueda delegar .msg
+  window._emailDropHandler = processMsg;
+})();
+</script>

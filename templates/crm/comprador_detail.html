@@ -4,51 +4,56 @@
 {% block topbar_title %}{{ comprador.name }}{% endblock %}
 {% block topbar_sub %}{{ comprador.type }} · {{ comprador.country }}{% endblock %}
 {% block content %}
-<div class="card card-body mb-4">
-  <div class="row g-2 small">
+<div class="dc-card dc-card__body mb-4">
+  <div class="row g-2" style="font-size:.855rem">
     <div class="col-md-4">Tipo <b>{{ comprador.type|default:"—" }}</b></div>
     <div class="col-md-4">País <b>{{ comprador.country|default:"—" }}</b></div>
-    <div class="col-md-4">Último contacto <b class="text-dark">{{ last_contact|date:"d M Y"|default:"—" }}</b></div>
+    <div class="col-md-4">Último contacto <b>{{ last_contact|date:"d M Y"|default:"—" }}</b></div>
   </div>
-  {% if comprador.sectors %}<div class="mt-2 text-muted small">Sectores: {{ comprador.sectors }}</div>{% endif %}
-  {% if comprador.notes %}<div class="mt-2 small text-muted">{{ comprador.notes }}</div>{% endif %}
+  {% if comprador.sectors %}<div style="margin-top:6px;font-size:.8rem;color:var(--dc-text-muted)">Sectores: {{ comprador.sectors }}</div>{% endif %}
+  {% if comprador.notes %}<div style="margin-top:6px;font-size:.8rem;color:var(--dc-text-muted)">{{ comprador.notes }}</div>{% endif %}
 </div>
 
 <div class="row g-3 mb-4">
   <div class="col-md-12">
-    <div class="card card-body">
-      <div class="fw-semibold mb-2"><i class="bi bi-building-fill-up"></i> Procesos M&amp;A ({{ contactos_ma|length }})</div>
-      <table class="table table-sm mb-0">
-        {% for c in contactos_ma %}
-        <tr style="cursor:pointer" onclick="location.href='{% url 'crm:proceso_ma_detail' c.proceso_id %}'">
-          <td><b>{{ c.proceso.company.name }}</b><div class="text-muted small">{{ c.proceso.nombre }}</div></td>
-          <td><span class="badge text-bg-info">{{ c.status.nombre|default:"—" }}</span></td>
-          <td>{% if c.nda_firmado %}<span class="badge text-bg-secondary">NDA</span>{% endif %} {% if c.dd_iniciado %}<span class="badge text-bg-info">DD</span>{% endif %}</td>
-          <td class="text-end fw-semibold">{{ c.oferta_precio|euros|default:"—" }} €</td>
-        </tr>
-        {% empty %}<tr><td class="text-muted">Sin procesos M&A.</td></tr>{% endfor %}
+    <div class="dc-card dc-card__body">
+      <div class="fw-semibold mb-3"><i class="bi bi-building-fill-up" style="color:var(--dc-accent)"></i> Procesos M&amp;A ({{ contactos_ma|length }})</div>
+      <table class="dc-table">
+        <tbody>
+          {% for c in contactos_ma %}
+          <tr style="cursor:pointer" onclick="location.href='{% url 'crm:proceso_ma_detail' c.proceso_id %}'">
+            <td><b>{{ c.proceso.company.name }}</b><div style="font-size:.78rem;color:var(--dc-text-muted)">{{ c.proceso.nombre }}</div></td>
+            <td><span class="dc-badge dc-badge--blue">{{ c.status.nombre|default:"—" }}</span></td>
+<td></td>
+            <td style="text-align:right;font-weight:600">{{ c.oferta_precio|euros|default:"—" }} €</td>
+          </tr>
+          {% empty %}<tr><td style="color:var(--dc-text-muted);font-size:.875rem">Sin procesos M&A.</td></tr>{% endfor %}
+        </tbody>
       </table>
     </div>
   </div>
 </div>
 
-<div class="card card-body">
+<div class="dc-card dc-card__body">
   <div class="d-flex justify-content-between align-items-center mb-3">
-    <div class="fw-semibold"><i class="bi bi-clock-history"></i> Cronología de contactos</div>
+    <div class="fw-semibold"><i class="bi bi-clock-history" style="color:var(--dc-accent)"></i> Cronología de contactos</div>
     {% if can_edit and contactos_ma %}
-    <button class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#logModal"><i class="bi bi-plus"></i> Registrar contacto</button>
+    <button class="btn-ghost" data-bs-toggle="modal" data-bs-target="#logModal"><i class="bi bi-plus"></i> Registrar contacto</button>
     {% endif %}
   </div>
   {% for x in chrono %}
   <div class="d-flex gap-3 py-2 border-bottom">
-    <div style="width:90px;flex-shrink:0" class="small text-warning">{{ x.date|date:"d M Y"|default:"—" }}<div class="text-muted">{{ x.type }}</div></div>
+    <div style="width:90px;flex-shrink:0;font-size:.8rem">
+      <span class="text-accent fw-semibold">{{ x.date|date:"d M Y"|default:"—" }}</span>
+      <div style="color:var(--dc-text-muted)">{{ x.type }}</div>
+    </div>
     <div class="flex-grow-1">
-      {% if x.company %}<span class="badge text-bg-light text-dark mb-1">{{ x.company.name }} · {{ x.proceso.nombre }}</span>{% endif %}
-      <div class="small" style="white-space:pre-line">{{ x.summary }}</div>
+      {% if x.company %}<span class="dc-badge dc-badge--grey mb-1">{{ x.company.name }} · {{ x.proceso.nombre }}</span>{% endif %}
+      <div style="font-size:.855rem">{{ x.summary|format_log }}</div>
     </div>
   </div>
   {% empty %}
-  <div class="text-muted text-center py-4">Sin contactos registrados.</div>
+  <div style="text-align:center;padding:32px;color:var(--dc-text-muted)">Sin contactos registrados.</div>
   {% endfor %}
 </div>
 
@@ -71,9 +76,22 @@
         <div class="mb-2"><label class="form-label">Fecha</label><input type="date" name="date" class="form-control"></div>
         <div class="mb-2"><label class="form-label">Resumen</label><textarea name="summary" class="form-control" rows="3"></textarea></div>
       </div>
-      <div class="modal-footer"><button type="submit" class="btn btn-warning">Guardar</button></div>
+      <div class="modal-footer"><button type="submit" class="btn-accent">Guardar</button></div>
     </form>
   </div>
 </div>
 {% endif %}
+
+{% if can_edit %}
+<script>
+window.EMAIL_CFG = {
+  modalId:    'logModal',
+  typesSel:   '#logModal select[name="type"]',
+  dateSel:    '#logModal input[name="date"]',
+  summarySel: '#logModal textarea[name="summary"]',
+};
+</script>
+{% include "crm/_email_drop.html" %}
+{% endif %}
+
 {% endblock %}

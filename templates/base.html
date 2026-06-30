@@ -1,106 +1,396 @@
-{% load django_bootstrap5 %}
+{% load static django_bootstrap5 %}
 <!doctype html>
 <html lang="es">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{% block title %}CRM Gestora de Fondos{% endblock %}</title>
-  {% bootstrap_css %}
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
-  <style>
-    body { background: #f4f5f7; }
-    .sidebar { width: 230px; background: #1b1d24; color: #cfd2da; min-height: 100vh; flex-shrink: 0; }
-    .sidebar .logo { padding: 18px 16px; border-bottom: 1px solid rgba(255,255,255,.08); }
-    .sidebar .logo-t { font-weight: 700; color: #fff; }
-    .sidebar .logo-s { font-size: 11px; color: #8c8f99; }
-    .sidebar .ns { font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: #696c77; padding: 14px 16px 4px; }
-    .sidebar .ni { display: flex; align-items: center; gap: 9px; padding: 9px 16px; color: #cfd2da; text-decoration: none; font-size: 14px; }
-    .sidebar .ni:hover { background: rgba(255,255,255,.06); color: #fff; }
-    .sidebar .ni.active { background: rgba(255,193,7,.12); color: #ffc107; font-weight: 600; }
-    .sidebar .ni .badge { margin-left: auto; }
-    .sidebar-footer { margin-top: auto; padding: 14px 16px; border-top: 1px solid rgba(255,255,255,.08); display: flex; align-items: center; gap: 9px; }
-    .layout { display: flex; min-height: 100vh; }
-    .main { flex: 1; min-width: 0; }
-    .topbar { background: #fff; border-bottom: 1px solid #e3e5e9; padding: 14px 24px; }
-    .view-inner { padding: 20px 24px; }
-  </style>
+  <link rel="stylesheet" href="{% static 'css/styles.css' %}">
   {% block extra_head %}{% endblock %}
 </head>
 <body>
-  <div class="layout">
-    <nav class="sidebar d-flex flex-column">
-      <div class="logo">
-        <div class="logo-t">⬡ {{ request.user.agency|default:"VentureOS" }}</div>
-        <div class="logo-s">CRM de Gestora · Fundraising</div>
+  <div class="dc-layout">
+
+    <nav class="dc-sidebar">
+      <a class="dc-sidebar__brand" href="{% url 'crm:home' %}">
+        <span class="dc-sidebar__brand-text">⬡ <span>{{ request.user.agency|default:"CRM BeAble Capital" }}</span></span>
+      </a>
+
+      <div class="dc-sidebar__nav">
+        <div class="dc-sidebar__section-label">Panel</div>
+        <a class="dc-sidebar__link {% if active_nav == 'home' %}active{% endif %}" href="{% url 'crm:home' %}">
+          <i class="bi bi-house"></i> Inicio
+        </a>
+        {% if user.role == 'ceo' %}
+          <a class="dc-sidebar__link {% if active_nav == 'myco' %}active{% endif %}" href="{% url 'crm:company_detail' user.company_id %}">
+            <i class="bi bi-building"></i> Mi empresa
+          </a>
+        {% endif %}
+        {% if user.role != 'ceo' %}
+          <a class="dc-sidebar__link {% if active_nav == 'inbox' %}active{% endif %}" href="{% url 'crm:inbox' %}">
+            <i class="bi bi-inbox"></i> Bandeja de entrada
+            {% if inbox_unread_count %}
+              <span style="margin-left:auto;background:var(--dc-accent);color:#fff;border-radius:999px;padding:1px 7px;font-size:.65rem;font-weight:700">{{ inbox_unread_count }}</span>
+            {% endif %}
+          </a>
+          <a class="dc-sidebar__link {% if active_nav == 'tareas' %}active{% endif %}" href="{% url 'crm:tareas' %}">
+            <i class="bi bi-check2-square"></i> Tareas
+          </a>
+          <a class="dc-sidebar__link {% if active_nav == 'comunicaciones' %}active{% endif %}" href="{% url 'crm:comunicaciones' %}">
+            <i class="bi bi-chat-text"></i> Comunicaciones
+          </a>
+          <a class="dc-sidebar__link {% if active_nav == 'docs_centro' %}active{% endif %}" href="{% url 'crm:docs_centro' %}">
+            <i class="bi bi-folder2"></i> Documentación
+          </a>
+        {% endif %}
+
+        <div class="dc-sidebar__section-label">CRM</div>
+        {% if user.role != 'ceo' %}
+          <a class="dc-sidebar__link {% if active_nav == 'companies' %}active{% endif %}" href="{% url 'crm:companies' %}">
+            <i class="bi bi-building"></i> Participadas
+          </a>
+          <a class="dc-sidebar__link {% if active_nav == 'investors' %}active{% endif %}" href="{% url 'crm:investors' %}">
+            <i class="bi bi-briefcase"></i> Inversores
+          </a>
+          <a class="dc-sidebar__link {% if active_nav == 'colaboradores' %}active{% endif %}" href="{% url 'crm:colaboradores' %}">
+            <i class="bi bi-people"></i> Colaboradores
+          </a>
+          <a id="sidebarContactosLink" class="dc-sidebar__link {% if active_nav == 'contacts' %}active{% endif %}" href="{% url 'crm:all_contacts' %}">
+            <i class="bi bi-person-lines-fill"></i> Contactos
+          </a>
+          <div class="dc-sidebar__section-label">Análisis</div>
+          <a class="dc-sidebar__link {% if active_nav == 'reports' %}active{% endif %}" href="{% url 'crm:reports' %}">
+            <i class="bi bi-bar-chart"></i> Informes
+          </a>
+        {% endif %}
+
+        <div class="dc-sidebar__section-label">Ronda de Inversión</div>
+        <a class="dc-sidebar__link {% if active_nav == 'kpis_inversion' %}active{% endif %}" href="{% url 'crm:kpis_inversion' %}">
+          <i class="bi bi-bar-chart-line"></i> KPIs Inversión
+        </a>
+        <a class="dc-sidebar__link {% if active_nav == 'pres_pipeline' %}active{% endif %}" href="{% url 'crm:presentaciones_pipeline' %}">
+          <i class="bi bi-funnel"></i> Pipeline Inversión
+        </a>
+
+        <div class="dc-sidebar__section-label">M&amp;A</div>
+        <a class="dc-sidebar__link {% if active_nav == 'kpis_ma' %}active{% endif %}" href="{% url 'crm:kpis_ma' %}">
+          <i class="bi bi-bar-chart-line"></i> KPIs M&amp;A
+        </a>
+        <a class="dc-sidebar__link {% if active_nav == 'ma_pipeline' %}active{% endif %}" href="{% url 'crm:procesos_ma_global' %}">
+          <i class="bi bi-funnel"></i> Pipeline M&amp;A
+        </a>
+
+        <div class="dc-sidebar__section-label">Colaboraciones</div>
+        <a class="dc-sidebar__link {% if active_nav == 'kpis_colaboraciones' %}active{% endif %}" href="{% url 'crm:kpis_colaboraciones' %}">
+          <i class="bi bi-bar-chart-line"></i> KPIs Colaboración
+        </a>
+        <a class="dc-sidebar__link {% if active_nav == 'colaboraciones' %}active{% endif %}" href="{% url 'crm:colaboraciones_pipeline' %}">
+          <i class="bi bi-diagram-3"></i> Pipeline Colaboraciones
+        </a>
+        {% if user.role == 'admin' %}
+          <div class="dc-sidebar__section-label">Administración</div>
+          <a class="dc-sidebar__link {% if active_nav == 'users' %}active{% endif %}" href="{% url 'crm:users' %}">
+            <i class="bi bi-people"></i> Usuarios
+          </a>
+          <a class="dc-sidebar__link {% if active_nav == 'settings' %}active{% endif %}" href="{% url 'crm:settings' %}">
+            <i class="bi bi-gear"></i> Ajustes
+          </a>
+        {% endif %}
       </div>
 
-      <div class="ns">Panel</div>
-      <a class="ni {% if active_nav == 'home' %}active{% endif %}" href="{% url 'crm:home' %}"><i class="bi bi-house"></i> Inicio</a>
-      {% if user.role == 'ceo' %}
-        <a class="ni {% if active_nav == 'myco' %}active{% endif %}" href="{% url 'crm:company_detail' user.company_id %}"><i class="bi bi-building"></i> Mi empresa</a>
-      {% endif %}
-
-      <div class="ns">CRM</div>
-      {% if user.role != 'ceo' %}
-        <a class="ni {% if active_nav == 'companies' %}active{% endif %}" href="{% url 'crm:companies' %}"><i class="bi bi-building"></i> Participadas</a>
-      {% endif %}
-      <a class="ni {% if active_nav == 'investors' %}active{% endif %}" href="{% url 'crm:investors' %}"><i class="bi bi-briefcase"></i> Inversores</a>
-      <a class="ni {% if active_nav == 'presentaciones' %}active{% endif %}" href="{% url 'crm:presentaciones' %}"><i class="bi bi-arrow-left-right"></i> Presentaciones</a>
-      <div class="ns">M&amp;A</div>
-      <a class="ni {% if active_nav == 'compradores' %}active{% endif %}" href="{% url 'crm:compradores' %}"><i class="bi bi-building-fill-up"></i> Compradores</a>
-      <div class="ns">Colaboraciones</div>
-      <a class="ni {% if active_nav == 'colaboraciones' %}active{% endif %}" href="{% url 'crm:colaboraciones' %}"><i class="bi bi-diagram-3"></i> Pipeline</a>
-      <a class="ni {% if active_nav == 'colaboradores' %}active{% endif %}" href="{% url 'crm:colaboradores' %}"><i class="bi bi-people"></i> Colaboradores</a>
-      {% if user.role != 'ceo' %}
-        <a class="ni {% if active_nav == 'inbox' %}active{% endif %}" href="{% url 'crm:inbox' %}">
-          <i class="bi bi-inbox"></i> Bandeja
-          {% if inbox_unread_count %}<span class="badge text-bg-warning rounded-pill">{{ inbox_unread_count }}</span>{% endif %}
-        </a>
-        <div class="ns">Análisis</div>
-        <a class="ni {% if active_nav == 'reports' %}active{% endif %}" href="{% url 'crm:reports' %}"><i class="bi bi-bar-chart"></i> Informes</a>
-      {% endif %}
-
-      {% if user.role == 'admin' %}
-        <div class="ns">Administración</div>
-        <a class="ni {% if active_nav == 'users' %}active{% endif %}" href="{% url 'crm:users' %}"><i class="bi bi-people"></i> Usuarios</a>
-        <a class="ni {% if active_nav == 'settings' %}active{% endif %}" href="{% url 'crm:settings' %}"><i class="bi bi-gear"></i> Ajustes</a>
-      {% endif %}
-
-      <div class="sidebar-footer">
-        <div class="rounded-circle bg-secondary d-flex align-items-center justify-content-center text-white" style="width:32px;height:32px;font-size:11px">
-          {{ user.first_name|slice:":1" }}{{ user.last_name|slice:":1" }}
+      <div class="dc-sidebar__footer">
+        <div style="display:flex;align-items:center;gap:10px;padding:8px 20px">
+          <div class="dc-topbar__avatar">{{ user.first_name|slice:":1" }}{{ user.last_name|slice:":1" }}</div>
+          <div style="flex:1;min-width:0">
+            <div style="font-size:.8rem;font-weight:600;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ user.get_full_name }}</div>
+            <div style="font-size:.72rem;color:var(--dc-sidebar-text)">{{ user.get_role_display }}</div>
+          </div>
+          <form method="post" action="{% url 'accounts:logout' %}">
+            {% csrf_token %}
+            <button class="btn-icon" type="submit" title="Cerrar sesión"
+              style="border-color:rgba(255,255,255,.15);color:var(--dc-sidebar-text)">
+              <i class="bi bi-box-arrow-right"></i>
+            </button>
+          </form>
         </div>
-        <div class="flex-grow-1 small">
-          <div class="fw-semibold text-white">{{ user.get_full_name }}</div>
-          <div class="text-secondary">{{ user.get_role_display }}</div>
-        </div>
-        <form method="post" action="{% url 'accounts:logout' %}">
-          {% csrf_token %}
-          <button class="btn btn-sm btn-outline-light" type="submit" title="Cerrar sesión"><i class="bi bi-box-arrow-right"></i></button>
-        </form>
       </div>
     </nav>
 
-    <div class="main">
-      <div class="topbar d-flex justify-content-between align-items-center">
-        <div>
-          <div class="h5 mb-0">{% block topbar_title %}{% endblock %}</div>
-          <div class="text-muted small">{% block topbar_sub %}{% endblock %}</div>
+    <div class="dc-main">
+      <header class="dc-topbar">
+        <button class="dc-topbar__toggle" id="sidebarToggle" aria-label="Menú">
+          <i class="bi bi-list" style="font-size:1.15rem"></i>
+        </button>
+        <div class="dc-topbar__spacer"></div>
+        <div class="dc-topbar__user">
+          <div class="dc-topbar__avatar">{{ user.first_name|slice:":1" }}{{ user.last_name|slice:":1" }}</div>
+          {{ user.get_full_name }}
         </div>
-        <div>{% block topbar_actions %}{% endblock %}</div>
-      </div>
-      <div class="view-inner">
+      </header>
+
+      <div class="dc-content">
+        <div class="dc-page-header">
+          <div>
+            <h1 class="dc-page-title">{% block topbar_title %}{% endblock %}</h1>
+            <p class="dc-page-subtitle">{% block topbar_sub %}{% endblock %}</p>
+          </div>
+          <div class="dc-page-actions">{% block topbar_actions %}{% endblock %}</div>
+        </div>
+
         {% if messages %}
           {% for message in messages %}
-            <div class="alert alert-{{ message.tags|default:'info' }}">{{ message }}</div>
+            <div class="dc-alert {% if 'success' in message.tags %}dc-alert--success{% elif 'error' in message.tags %}dc-alert--danger{% elif 'warning' in message.tags %}dc-alert--warning{% else %}dc-alert--success{% endif %} mb-3">
+              <i class="bi {% if 'success' in message.tags %}bi-check-circle{% elif 'error' in message.tags %}bi-x-circle{% else %}bi-exclamation-triangle{% endif %}"></i>
+              {{ message }}
+            </div>
           {% endfor %}
         {% endif %}
+
         {% block content %}{% endblock %}
       </div>
+
+      <footer class="dc-footer">
+        <span>CRM Gestora de Fondos</span>
+        <span>© 2025 Beable Capital</span>
+      </footer>
     </div>
   </div>
 
-  {% bootstrap_javascript %}
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script>
+    const sidebarToggle = document.getElementById('sidebarToggle');
+    if (sidebarToggle) {
+      sidebarToggle.addEventListener('click', () => {
+        if (window.innerWidth <= 991) {
+          document.body.classList.toggle('sidebar-open');
+        } else {
+          document.body.classList.toggle('sidebar-collapsed');
+        }
+      });
+      document.addEventListener('click', e => {
+        if (window.innerWidth <= 991 && document.body.classList.contains('sidebar-open')) {
+          if (!e.target.closest('.dc-sidebar') && !e.target.closest('#sidebarToggle')) {
+            document.body.classList.remove('sidebar-open');
+          }
+        }
+      });
+    }
+  </script>
   {% block extra_js %}{% endblock %}
+
+{# ══════════════════════════════════════════════════════════════════════════ #}
+{# Drag .msg → sidebar Contactos → nuevo inversor / colaborador             #}
+{# ══════════════════════════════════════════════════════════════════════════ #}
+
+{# ── Modal paso 1: ¿Inversor o Colaborador? ─────────────────────────────── #}
+<div id="newContactTypeModal" style="
+  display:none;position:fixed;inset:0;z-index:11000;
+  background:rgba(0,0,0,.5);align-items:center;justify-content:center">
+  <div class="dc-card" style="width:420px;max-width:94vw;padding:28px;text-align:center">
+    <div class="mb-3">
+      <i class="bi bi-person-plus" style="font-size:2rem;color:var(--dc-accent)"></i>
+    </div>
+    <h5 style="font-size:1rem;font-weight:700;margin-bottom:6px">Nuevo contacto desde email</h5>
+    <p style="font-size:.85rem;color:var(--dc-text-muted);margin-bottom:20px">¿Qué tipo de contacto quieres crear?</p>
+    <div class="d-flex gap-3 justify-content-center">
+      <button id="ncChooseInversor" class="btn-primary" style="min-width:130px">
+        <i class="bi bi-graph-up me-1"></i> Inversor
+      </button>
+      <button id="ncChooseColaborador" class="btn-ghost" style="min-width:130px">
+        <i class="bi bi-people me-1"></i> Colaborador
+      </button>
+    </div>
+    <button id="ncTypeCancel" style="margin-top:14px;background:none;border:none;font-size:.8rem;color:var(--dc-text-muted);cursor:pointer">Cancelar</button>
+  </div>
+</div>
+
+{# ── Modal paso 2: formulario de creación ───────────────────────────────── #}
+<div id="newContactFormModal" style="
+  display:none;position:fixed;inset:0;z-index:11001;
+  background:rgba(0,0,0,.5);align-items:center;justify-content:center">
+  <div class="dc-card" style="width:520px;max-width:96vw;max-height:90vh;overflow-y:auto;padding:28px">
+
+    <div class="d-flex align-items-center gap-2 mb-4">
+      <i id="ncFormIcon" class="bi bi-person-plus" style="color:var(--dc-accent);font-size:1.1rem"></i>
+      <h5 id="ncFormTitle" style="margin:0;font-size:1rem;font-weight:700"></h5>
+      <button id="ncFormClose" style="margin-left:auto;background:none;border:none;font-size:1.2rem;cursor:pointer;color:var(--dc-text-muted)">
+        <i class="bi bi-x-lg"></i>
+      </button>
+    </div>
+
+    <form id="ncForm" method="post" action="">
+      {% csrf_token %}
+      {# Empresa / entidad #}
+      <div class="mb-3">
+        <label style="font-size:.78rem;font-weight:600;color:var(--dc-text-muted);display:block;margin-bottom:4px">
+          Nombre <span id="ncEntityLabel" style="opacity:.6"></span>
+        </label>
+        <input type="text" name="name" id="ncEntityName" class="form-control" required
+               placeholder="Nombre de la entidad…">
+      </div>
+      {# Separador persona #}
+      <div style="font-size:.75rem;font-weight:700;color:var(--dc-text-muted);text-transform:uppercase;
+                  letter-spacing:.05em;margin-bottom:10px;padding-bottom:4px;border-bottom:1px solid var(--dc-border)">
+        Persona de contacto
+      </div>
+      <div class="mb-3">
+        <label style="font-size:.78rem;font-weight:600;color:var(--dc-text-muted);display:block;margin-bottom:4px">Nombre</label>
+        <input type="text" name="contact_name" id="ncContactName" class="form-control" placeholder="Nombre completo…">
+      </div>
+      <div class="mb-3">
+        <label style="font-size:.78rem;font-weight:600;color:var(--dc-text-muted);display:block;margin-bottom:4px">Cargo</label>
+        <input type="text" name="contact_role" id="ncContactRole" class="form-control" placeholder="Director General, Partner…">
+      </div>
+      <div class="row g-2 mb-3">
+        <div class="col-7">
+          <label style="font-size:.78rem;font-weight:600;color:var(--dc-text-muted);display:block;margin-bottom:4px">Email</label>
+          <input type="email" name="contact_email" id="ncContactEmail" class="form-control" placeholder="email@empresa.com">
+        </div>
+        <div class="col-5">
+          <label style="font-size:.78rem;font-weight:600;color:var(--dc-text-muted);display:block;margin-bottom:4px">Teléfono</label>
+          <input type="text" name="contact_phone" id="ncContactPhone" class="form-control" placeholder="+34 …">
+        </div>
+      </div>
+      <div class="d-flex gap-2 justify-content-end mt-2">
+        <button type="button" id="ncFormCancel" class="btn-ghost">Cancelar</button>
+        <button type="submit" class="btn-primary"><i class="bi bi-check2 me-1"></i>Crear contacto</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+{# ── Spinner ─────────────────────────────────────────────────────────────── #}
+<div id="ncSpinner" style="
+  display:none;position:fixed;inset:0;z-index:11002;
+  background:rgba(0,0,0,.45);align-items:center;justify-content:center">
+  <div class="dc-card" style="padding:24px 36px;text-align:center">
+    <div class="spinner-border text-primary mb-2" role="status"></div>
+    <div style="font-size:.9rem;font-weight:600">Extrayendo datos del email…</div>
+  </div>
+</div>
+
+<script>
+(function () {
+  const sidebarLink  = document.getElementById('sidebarContactosLink');
+  const typeModal    = document.getElementById('newContactTypeModal');
+  const formModal    = document.getElementById('newContactFormModal');
+  const spinner      = document.getElementById('ncSpinner');
+  let dragCount      = 0;
+  let pendingData    = null;
+
+  // ── Detectar .msg ──────────────────────────────────────────────────────
+  function hasMsgFile(dt) {
+    if (!dt) return false;
+    for (const item of (dt.items || [])) {
+      if (item.kind === 'file') {
+        const f = item.getAsFile();
+        if (f && f.name.toLowerCase().endsWith('.msg')) return true;
+      }
+    }
+    return false;
+  }
+
+  // ── Resaltar sidebar al arrastrar un .msg ──────────────────────────────
+  document.addEventListener('dragenter', e => {
+    if (!hasMsgFile(e.dataTransfer)) return;
+    dragCount++;
+    sidebarLink.style.outline = '2px dashed var(--dc-accent)';
+    sidebarLink.style.outlineOffset = '2px';
+  });
+  document.addEventListener('dragleave', () => {
+    dragCount = Math.max(0, dragCount - 1);
+    if (dragCount === 0) clearHighlight();
+  });
+  document.addEventListener('dragover', e => e.preventDefault());
+  document.addEventListener('drop', e => {
+    dragCount = 0;
+    clearHighlight();
+  });
+
+  function clearHighlight() {
+    sidebarLink.style.outline = '';
+    sidebarLink.style.outlineOffset = '';
+  }
+
+  // ── Drop sobre el enlace Contactos ────────────────────────────────────
+  sidebarLink.addEventListener('dragover', e => { e.preventDefault(); e.stopPropagation(); });
+  sidebarLink.addEventListener('drop', e => {
+    e.preventDefault();
+    e.stopPropagation();
+    dragCount = 0;
+    clearHighlight();
+    const file = [...(e.dataTransfer.files || [])].find(f => f.name.toLowerCase().endsWith('.msg'));
+    if (file) parseContactEmail(file);
+  });
+
+  // ── Parsear el .msg ────────────────────────────────────────────────────
+  function parseContactEmail(file) {
+    spinner.style.display = 'flex';
+    const fd = new FormData();
+    fd.append('file', file);
+    fd.append('csrfmiddlewaretoken', '{{ csrf_token }}');
+    fetch('{% url "crm:parse_contact_email" %}', { method: 'POST', body: fd })
+      .then(r => r.json())
+      .then(data => {
+        spinner.style.display = 'none';
+        if (data.error) { alert('Error: ' + data.error); return; }
+        pendingData = data;
+        typeModal.style.display = 'flex';
+      })
+      .catch(err => {
+        spinner.style.display = 'none';
+        alert('Error al procesar el email: ' + err);
+      });
+  }
+
+  // ── Elección de tipo ───────────────────────────────────────────────────
+  document.getElementById('ncChooseInversor').addEventListener('click', () => {
+    typeModal.style.display = 'none';
+    openForm('inversor');
+  });
+  document.getElementById('ncChooseColaborador').addEventListener('click', () => {
+    typeModal.style.display = 'none';
+    openForm('colaborador');
+  });
+  document.getElementById('ncTypeCancel').addEventListener('click', () => {
+    typeModal.style.display = 'none';
+    pendingData = null;
+  });
+
+  // ── Abrir formulario pre-rellenado ────────────────────────────────────
+  function openForm(tipo) {
+    const d = pendingData || {};
+    document.getElementById('ncFormTitle').textContent =
+      tipo === 'inversor' ? 'Nuevo Inversor' : 'Nuevo Colaborador';
+    document.getElementById('ncFormIcon').className =
+      tipo === 'inversor' ? 'bi bi-graph-up' : 'bi bi-people';
+    document.getElementById('ncEntityLabel').textContent =
+      tipo === 'inversor' ? '(entidad / fondo)' : '(empresa / entidad)';
+    document.getElementById('ncForm').action =
+      tipo === 'inversor' ? '{% url "crm:investor_create" %}' : '{% url "crm:colaborador_create" %}';
+
+    document.getElementById('ncEntityName').value    = d.company_name   || '';
+    document.getElementById('ncContactName').value   = d.contact_name   || '';
+    document.getElementById('ncContactRole').value   = d.contact_role   || '';
+    document.getElementById('ncContactEmail').value  = d.contact_email  || '';
+    document.getElementById('ncContactPhone').value  = d.contact_phone  || '';
+
+    formModal.style.display = 'flex';
+  }
+
+  // ── Cerrar formulario ──────────────────────────────────────────────────
+  ['ncFormClose', 'ncFormCancel'].forEach(id =>
+    document.getElementById(id).addEventListener('click', () => {
+      formModal.style.display = 'none';
+      pendingData = null;
+    })
+  );
+})();
+</script>
 </body>
 </html>

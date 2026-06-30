@@ -4,17 +4,70 @@
 {% block topbar_title %}{{ company.name }} — {{ proceso.nombre }}{% endblock %}
 {% block topbar_sub %}M&amp;A · {% if proceso.cerrado %}Cerrado{% else %}Activo{% endif %}{% if proceso.start %} · {{ proceso.start|date:"d M Y" }} → {{ proceso.close|date:"d M Y" }}{% endif %}{% endblock %}
 {% block topbar_actions %}
-  <a class="btn btn-outline-secondary btn-sm" href="{% url 'crm:company_detail' company.pk %}"><i class="bi bi-arrow-left"></i> Participada</a>
+  <a class="btn-ghost" href="{% url 'crm:company_detail' company.pk %}"><i class="bi bi-arrow-left"></i> Participada</a>
+  <a class="btn-ghost" href="{% url 'crm:docs_carpeta' company.pk 'ma' proceso.pk %}"><i class="bi bi-folder2"></i> Documentos</a>
+  {% if can_edit %}
+  <a class="btn-ghost" href="{% url 'crm:proceso_ma_edit' proceso.pk %}"><i class="bi bi-pencil"></i> Editar</a>
+  <button class="btn-accent" data-bs-toggle="modal" data-bs-target="#addMAContactModal">
+    <i class="bi bi-plus-lg"></i> Añadir contacto
+  </button>
+  {% endif %}
 {% endblock %}
 {% block content %}
 
-<div class="row g-3 mb-4">
-  <div class="col"><div class="card card-body"><div class="text-muted small">Precio pedido</div><div class="h5 mb-0">{{ kpis.precio_pedido|euros }} €</div><div class="small text-muted">{{ kpis.total_count }} comprador{{ kpis.total_count|pluralize:"es" }}</div></div></div>
-  <div class="col"><div class="card card-body"><div class="text-muted small">Mejor oferta</div><div class="h5 mb-0 text-success">{{ kpis.mejor_oferta|euros }} €</div><div class="small text-muted">{{ kpis.pipe_count }} en proceso</div></div></div>
-  <div class="col"><div class="card card-body"><div class="text-muted small">Pipeline ponderado</div><div class="h5 mb-0">{{ kpis.weighted|euros }} €</div></div></div>
-  <div class="col"><div class="card card-body"><div class="text-muted small">Vendido</div><div class="h5 mb-0 text-warning">{{ kpis.vendido|euros }} €</div><div class="small text-muted">{{ kpis.vendido_count }} comprador{{ kpis.vendido_count|pluralize:"es" }}</div></div></div>
-  <div class="col"><div class="card card-body"><div class="text-muted small">Descartado</div><div class="h5 mb-0 text-danger">{{ kpis.desc_count }} comprador{{ kpis.desc_count|pluralize:"es" }}</div></div></div>
+<div class="row g-2 mb-4">
+  <div class="col"><div class="dc-card" style="padding:10px 14px"><div style="font-size:.72rem;color:var(--dc-text-muted)">Precio pedido <span style="color:var(--dc-text)">· {{ kpis.total_count }} comprad.</span></div><div class="fw-bold" style="font-size:1.1rem;margin-top:2px">{{ kpis.precio_pedido|euros }} €</div></div></div>
+  <div class="col"><div class="dc-card" style="padding:10px 14px"><div style="font-size:.72rem;color:var(--dc-text-muted)">Mejor oferta <span style="color:var(--dc-text)">· {{ kpis.pipe_count }} en proc.</span></div><div class="fw-bold" style="font-size:1.1rem;color:#065f46;margin-top:2px">{{ kpis.mejor_oferta|euros }} €</div></div></div>
+  <div class="col"><div class="dc-card" style="padding:10px 14px"><div style="font-size:.72rem;color:var(--dc-text-muted)">Pipeline ponderado</div><div class="fw-bold" style="font-size:1.1rem;margin-top:2px">{{ kpis.weighted|euros }} €</div></div></div>
+  <div class="col"><div class="dc-card" style="padding:10px 14px"><div style="font-size:.72rem;color:var(--dc-text-muted)">Vendido <span style="color:var(--dc-text)">· {{ kpis.vendido_count }} comprad.</span></div><div class="fw-bold" style="font-size:1.1rem;color:var(--dc-accent);margin-top:2px">{{ kpis.vendido|euros }} €</div></div></div>
+  <div class="col"><div class="dc-card" style="padding:10px 14px"><div style="font-size:.72rem;color:var(--dc-text-muted)">Descartado</div><div class="fw-bold" style="font-size:1.1rem;color:var(--dc-danger);margin-top:2px">{{ kpis.desc_count }} comprad.</div></div></div>
 </div>
+
+{% if fases_ma %}
+<style>
+.dc-stepper{display:flex;margin-bottom:0}
+.dc-stepper-cell{
+  flex:1;min-width:0;position:relative;text-align:center;
+  padding:9px 22px;font-size:.72rem;font-weight:500;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  cursor:default;user-select:none;color:#fff;background:#94a3b8;
+  margin-right:-14px;z-index:1;
+  clip-path:polygon(0 0,calc(100% - 14px) 0,100% 50%,calc(100% - 14px) 100%,0 100%,14px 50%);
+}
+.dc-stepper-cell:first-child{
+  clip-path:polygon(0 0,calc(100% - 14px) 0,100% 50%,calc(100% - 14px) 100%,0 100%);
+}
+.dc-stepper-cell:last-child{
+  margin-right:0;
+  clip-path:polygon(0 0,100% 0,100% 100%,0 100%,14px 50%);
+}
+.dc-stepper-cell:first-child:last-child{clip-path:none;margin-right:0}
+.dc-stepper-cell.active{background:#10b981;font-weight:700}
+.dc-stepper-dates{display:flex;margin-bottom:1.25rem}
+.dc-stepper-date{flex:1;text-align:center;font-size:.64rem;color:#94a3b8;padding-top:4px;line-height:1.7}
+</style>
+<div class="dc-stepper">
+  {% for fase in fases_ma %}
+  <div class="dc-stepper-cell {% if proceso.fase_id == fase.pk %}active{% endif %}"
+       style="z-index:{{ forloop.revcounter }}">{{ fase.nombre }}</div>
+  {% endfor %}
+</div>
+<div class="dc-stepper-dates">
+  {% for fase in fases_ma %}
+  <div class="dc-stepper-date">
+    {% with f_dates=fase_dates|get_item:fase.pk %}
+    {% for fecha in f_dates %}{{ fecha|date:"d/m/y" }}<br>{% endfor %}
+    {% endwith %}
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+{% if proceso.notes %}
+<div class="dc-card mb-3" style="padding:12px 18px;font-size:.85rem;color:var(--dc-text);white-space:pre-wrap;word-break:break-word">
+  <span style="font-size:.72rem;color:var(--dc-text-muted);display:block;margin-bottom:4px">Descripción</span>{{ proceso.notes }}
+</div>
+{% endif %}
 
 <ul class="nav nav-tabs mb-3">
   <li class="nav-item"><a class="nav-link {% if tab == 'matriz' %}active{% endif %}" href="?tab=matriz">Matriz</a></li>
@@ -22,48 +75,79 @@
 </ul>
 
 {% if tab == 'matriz' %}
-<div class="card mb-4">
-  <table class="table mb-0">
-    <thead><tr><th>Comprador</th><th>Tipo</th><th>Estado</th><th>Oferta</th><th>NDA</th><th>DD</th><th>Intro por</th><th>Próximo paso</th></tr></thead>
-    <tbody>
-      {% for c in contactos %}
-      <tr>
-        <td><b>{{ c.comprador.name }}</b><div class="text-muted small">{{ c.comprador.country }}</div></td>
-        <td class="text-muted small">{{ c.comprador.type|default:"—" }}</td>
-        <td><span class="badge text-bg-info">{{ c.status.nombre|default:"—" }}</span></td>
-        <td class="fw-semibold">{{ c.oferta_precio|euros|default:"—" }} €</td>
-        <td>{% if c.nda_firmado %}<i class="bi bi-check-circle-fill text-success"></i>{% else %}<i class="bi bi-circle text-muted"></i>{% endif %}</td>
-        <td>{% if c.dd_iniciado %}<i class="bi bi-check-circle-fill text-success"></i>{% else %}<i class="bi bi-circle text-muted"></i>{% endif %}</td>
-        <td class="text-muted small">{{ c.intro_by|default:"—" }}</td>
-        <td class="small">{{ c.next_action|default:"—" }}{% if c.next_date %} · <span class="text-warning">{{ c.next_date|date:"d M Y" }}</span>{% endif %}</td>
-      </tr>
-      {% empty %}
-      <tr><td colspan="8" class="text-muted text-center py-4">Sin compradores en este proceso.</td></tr>
-      {% endfor %}
-    </tbody>
-  </table>
+<div class="dc-card mb-4">
+  <div class="dc-table-wrap">
+    <table class="dc-table">
+      <thead><tr><th>Comprador</th><th>Tipo</th><th>Estado</th><th>Oferta</th><th>Intro por</th><th>Próximo paso</th><th></th></tr></thead>
+      <tbody>
+        {% for c in contactos %}
+        <tr>
+          <td>
+            {% if c.investor %}
+              <a href="{% url 'crm:investor_detail' c.investor.pk %}?from_proceso={{ proceso.pk }}" class="text-decoration-none fw-semibold" style="color:var(--dc-text)">{{ c.contact.name }}</a>
+            {% elif c.comprador %}
+              <a href="{% url 'crm:colaborador_detail' c.comprador.pk %}" class="text-decoration-none fw-semibold" style="color:var(--dc-text)">{{ c.contact.name }}</a>
+            {% else %}
+              <b>{{ c.contact.name }}</b>
+            {% endif %}
+            <div style="font-size:.78rem;color:var(--dc-text-muted)">{{ c.contact.country|default:"" }}</div>
+          </td>
+          <td style="font-size:.8rem">{% if c.investor %}<span class="dc-badge dc-badge--blue" style="font-size:.72rem">Inversor</span>{% else %}Colaborador{% endif %}</td>
+          <td><span class="dc-badge dc-badge--blue">{{ c.status.nombre|default:"—" }}</span></td>
+          <td class="fw-semibold">{{ c.oferta_precio|euros|default:"—" }} €</td>
+          <td style="font-size:.8rem;color:var(--dc-text-muted)">{{ c.intro_by|default:"—" }}</td>
+          <td style="font-size:.855rem">{{ c.next_action|default:"—" }}{% if c.next_date %} · <span style="color:var(--dc-accent);font-weight:600">{{ c.next_date|date:"d M Y" }}</span>{% endif %}</td>
+          <td>
+            {% if can_edit %}
+            <button class="btn-ghost" style="padding:2px 8px;font-size:.78rem"
+              onclick="openMAEdit({{ c.id }},'{{ c.contact.name|escapejs }}','{{ c.status_id|default:'' }}','{{ c.oferta_precio|default:'' }}','{{ c.date|date:"Y-m-d"|default:'' }}','{{ c.intro_by|escapejs }}','{{ c.next_action|escapejs }}','{{ c.next_date|date:"Y-m-d"|default:'' }}','matriz')">
+              <i class="bi bi-pencil"></i>
+            </button>
+            {% endif %}
+          </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="9" style="text-align:center;padding:32px;color:var(--dc-text-muted)">Sin compradores en este proceso.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
 </div>
 
 {% else %}
-<div class="text-muted small mb-3"><i class="bi bi-hand-index"></i> Arrastra las tarjetas entre columnas para cambiar el estado.</div>
+<div style="font-size:.8rem;color:var(--dc-text-muted);margin-bottom:12px"><i class="bi bi-hand-index"></i> Arrastra las tarjetas entre columnas para cambiar el estado. Haz clic en la tarjeta para editar.</div>
 <div class="d-flex gap-3 align-items-start overflow-auto pb-3 kanban-board">
   {% for stage in pipe_stages %}
     <div class="kanban-col" data-estado-id="{{ stage.estado.id }}">
       <div class="kanban-col-header">
         <div class="d-flex justify-content-between align-items-center">
-          <span class="fw-semibold">{{ stage.estado.nombre }} <span class="badge text-bg-secondary">{{ stage.items|length }}</span></span>
-          <span class="text-muted small">Peso {{ stage.peso }}%</span>
+          <span class="fw-semibold" style="font-size:.855rem">{{ stage.estado.nombre }} <span class="dc-badge dc-badge--grey ms-1">{{ stage.items|length }}</span></span>
+          <span style="font-size:.75rem;color:var(--dc-text-muted)">{{ stage.peso }}%</span>
         </div>
-        <div class="text-muted small">{{ stage.total|euros }} €</div>
+        <div style="font-size:.78rem;color:var(--dc-text-muted)">{{ stage.total|euros }} €</div>
       </div>
       <div class="kanban-body" data-estado-id="{{ stage.estado.id }}">
         {% for c in stage.items %}
-          <div class="kanban-card" draggable="true" data-contacto-id="{{ c.id }}">
-            <b>{{ c.comprador.name }}</b>
-            <div>{{ c.oferta_precio|euros|default:"Sin oferta" }} €</div>
-            {% if c.nda_firmado %}<span class="badge text-bg-secondary" style="font-size:10px">NDA</span>{% endif %}
-            {% if c.dd_iniciado %}<span class="badge text-bg-info" style="font-size:10px">DD</span>{% endif %}
-            <div class="text-muted small">{{ c.next_date|date:"d M"|default:"—" }}</div>
+          <div class="kanban-card" draggable="true"
+               data-contacto-id="{{ c.id }}"
+               data-ma-id="{{ c.id }}"
+               data-ma-name="{{ c.contact.name|escapejs }}"
+               data-ma-status="{{ c.status_id|default:'' }}"
+               data-ma-oferta="{{ c.oferta_precio|default:'' }}"
+               data-ma-date="{{ c.date|date:"Y-m-d"|default:'' }}"
+               data-ma-intro-by="{{ c.intro_by|escapejs }}"
+               data-ma-next-action="{{ c.next_action|escapejs }}"
+               data-ma-next-date="{{ c.next_date|date:"Y-m-d"|default:'' }}"
+               data-contact-url="{% if c.investor %}{% url 'crm:investor_detail' c.investor.pk %}?from_proceso={{ proceso.pk }}{% elif c.comprador %}{% url 'crm:colaborador_detail' c.comprador.pk %}{% endif %}">
+            <a class="kanban-contact-link fw-semibold"
+               style="display:block;font-size:.855rem;color:var(--dc-text);text-decoration:none;padding:2px 4px;border-radius:4px;margin:-2px -4px 2px;transition:background .15s,color .15s"
+               onmouseover="this.style.background='var(--dc-accent)';this.style.color='#fff'"
+               onmouseout="this.style.background='';this.style.color='var(--dc-text)'"
+               href="{% if c.investor %}{% url 'crm:investor_detail' c.investor.pk %}?from_proceso={{ proceso.pk }}{% elif c.comprador %}{% url 'crm:colaborador_detail' c.comprador.pk %}{% endif %}">
+              {{ c.contact.name }}
+            </a>
+            <div style="font-size:.8rem;color:var(--dc-text-muted)">{{ c.oferta_precio|euros|default:"Sin oferta" }} €</div>
+            <div style="font-size:.75rem;color:var(--dc-text-muted)">{{ c.next_date|date:"d M"|default:"—" }}</div>
           </div>
         {% empty %}
           <div class="kanban-empty">Sin compradores</div>
@@ -75,14 +159,30 @@
   {% for stage in end_stages %}
     <div class="kanban-col" data-estado-id="{{ stage.estado.id }}">
       <div class="kanban-col-header">
-        <span class="fw-semibold">{{ stage.estado.nombre }} <span class="badge text-bg-secondary">{{ stage.items|length }}</span></span>
-        <div class="text-muted small">{{ stage.total|euros }} €</div>
+        <span class="fw-semibold" style="font-size:.855rem">{{ stage.estado.nombre }} <span class="dc-badge dc-badge--grey ms-1">{{ stage.items|length }}</span></span>
+        <div style="font-size:.78rem;color:var(--dc-text-muted)">{{ stage.total|euros }} €</div>
       </div>
       <div class="kanban-body" data-estado-id="{{ stage.estado.id }}">
         {% for c in stage.items %}
-          <div class="kanban-card" draggable="true" data-contacto-id="{{ c.id }}">
-            <b>{{ c.comprador.name }}</b>
-            <div>{{ c.oferta_precio|euros|default:"—" }} €</div>
+          <div class="kanban-card" draggable="true"
+               data-contacto-id="{{ c.id }}"
+               data-ma-id="{{ c.id }}"
+               data-ma-name="{{ c.contact.name|escapejs }}"
+               data-ma-status="{{ c.status_id|default:'' }}"
+               data-ma-oferta="{{ c.oferta_precio|default:'' }}"
+               data-ma-date="{{ c.date|date:"Y-m-d"|default:'' }}"
+               data-ma-intro-by="{{ c.intro_by|escapejs }}"
+               data-ma-next-action="{{ c.next_action|escapejs }}"
+               data-ma-next-date="{{ c.next_date|date:"Y-m-d"|default:'' }}"
+               data-contact-url="{% if c.investor %}{% url 'crm:investor_detail' c.investor.pk %}?from_proceso={{ proceso.pk }}{% elif c.comprador %}{% url 'crm:colaborador_detail' c.comprador.pk %}{% endif %}">
+            <a class="kanban-contact-link fw-semibold"
+               style="display:block;font-size:.855rem;color:var(--dc-text);text-decoration:none;padding:2px 4px;border-radius:4px;margin:-2px -4px 2px;transition:background .15s,color .15s"
+               onmouseover="this.style.background='var(--dc-accent)';this.style.color='#fff'"
+               onmouseout="this.style.background='';this.style.color='var(--dc-text)'"
+               href="{% if c.investor %}{% url 'crm:investor_detail' c.investor.pk %}?from_proceso={{ proceso.pk }}{% elif c.comprador %}{% url 'crm:colaborador_detail' c.comprador.pk %}{% endif %}">
+              {{ c.contact.name }}
+            </a>
+            <div style="font-size:.8rem;color:var(--dc-text-muted)">{{ c.oferta_precio|euros|default:"—" }} €</div>
           </div>
         {% empty %}
           <div class="kanban-empty">Sin compradores</div>
@@ -95,40 +195,337 @@
 {% endif %}
 
 {% if can_edit %}
-<div class="card card-body mt-4">
-  <div class="fw-semibold mb-3"><i class="bi bi-plus-circle"></i> Añadir comprador al proceso</div>
-  <form method="post">
-    {% csrf_token %}
-    {% load django_bootstrap5 %}
-    {% bootstrap_form form layout="inline" %}
-    <button type="submit" class="btn btn-warning mt-2">Añadir</button>
-  </form>
+{# ── Modal edición ContactoMA ─────────────────────────────────────────── #}
+<div class="modal fade" id="editMAModal" tabindex="-1">
+  <div class="modal-dialog modal-xl">
+    <div class="modal-content dc-form">
+      <div class="modal-header" style="padding:14px 20px">
+        <h5 class="modal-title" style="font-size:.95rem"><i class="bi bi-pencil me-2" style="color:var(--dc-accent)"></i><span id="editMAName"></span></h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body" style="padding:0">
+        <div class="row g-0" style="min-height:420px">
+          {# ── Columna izquierda: campos ── #}
+          <div class="col-md-5" style="padding:20px 24px;border-right:1px solid var(--dc-border)">
+            <form id="editMAForm" method="post">
+              {% csrf_token %}
+              <input type="hidden" name="tab" id="editMATab" value="pipeline">
+              <div class="mb-3">
+                <label class="form-label">Estado</label>
+                <select name="status" id="editMAStatus" class="form-select">
+                  <option value="">— Sin estado —</option>
+                  {% for e in pipe_stages %}<option value="{{ e.estado.id }}">{{ e.estado.nombre }}</option>{% endfor %}
+                  {% for e in end_stages %}<option value="{{ e.estado.id }}">{{ e.estado.nombre }}</option>{% endfor %}
+                </select>
+              </div>
+              <div class="mb-3">
+                <label class="form-label">Oferta (€)</label>
+                <input type="text" name="oferta_precio" id="editMAOferta" class="form-control" inputmode="decimal" placeholder="0">
+              </div>
+              <div class="row g-2 mb-3">
+                <div class="col-6">
+                  <label class="form-label">Fecha_Introduccion</label>
+                  <input type="date" name="date" id="editMADate" class="form-control">
+                </div>
+                <div class="col-6">
+                  <label class="form-label">Presentado_por</label>
+                  <input type="text" name="intro_by" id="editMAIntroBy" class="form-control">
+                </div>
+              </div>
+              <div class="mb-3">
+                <label class="form-label">Próximo paso</label>
+                <input type="text" name="next_action" id="editMANextAction" class="form-control">
+              </div>
+              <div class="mb-4">
+                <label class="form-label">Fecha próximo paso</label>
+                <input type="date" name="next_date" id="editMANextDate" class="form-control">
+              </div>
+              <button type="submit" class="btn-accent w-100">Guardar</button>
+            </form>
+          </div>
+          {# ── Columna derecha: cronología ── #}
+          <div class="col-md-7" style="padding:20px 24px;display:flex;flex-direction:column">
+            <div style="font-size:.78rem;color:var(--dc-text-muted);margin-bottom:10px">
+              Cronología · <span id="maChrono-label" style="color:var(--dc-accent);font-weight:600"></span>
+            </div>
+            <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px">
+              <button type="button" id="maLogPill-Nota" onclick="setMALogType('Nota')"
+                class="dc-badge dc-badge--grey" style="cursor:pointer;border:1px solid var(--dc-border);font-size:.75rem;padding:3px 10px">Nota</button>
+              <button type="button" id="maLogPill-Email" onclick="setMALogType('Email')"
+                class="dc-badge dc-badge--grey" style="cursor:pointer;border:1px solid var(--dc-border);font-size:.75rem;padding:3px 10px">Email</button>
+              <button type="button" id="maLogPill-Llamada" onclick="setMALogType('Llamada')"
+                class="dc-badge dc-badge--grey" style="cursor:pointer;border:1px solid var(--dc-border);font-size:.75rem;padding:3px 10px">Llamada</button>
+              <button type="button" id="maLogPill-Reunión" onclick="setMALogType('Reunión')"
+                class="dc-badge dc-badge--grey" style="cursor:pointer;border:1px solid var(--dc-border);font-size:.75rem;padding:3px 10px">Reunión</button>
+            </div>
+            <div style="display:flex;gap:6px;align-items:flex-start;margin-bottom:8px">
+              <input type="date" id="maLogDate" class="form-control form-control-sm" style="width:140px;flex-shrink:0">
+              <textarea id="maLogSummary" class="form-control form-control-sm" rows="2"
+                style="resize:none;flex:1" placeholder="Descripción de la interacción…"></textarea>
+              <button type="button" id="maLogSave" onclick="saveMALog()" class="btn-accent" style="padding:6px 12px;font-size:.8rem;white-space:nowrap;align-self:flex-end">Añadir</button>
+            </div>
+            <div id="maChronoList" style="flex:1;overflow-y:auto;max-height:300px">
+              <div style="color:var(--dc-text-muted);font-size:.8rem;text-align:center;padding:20px">Cargando…</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+{# ── Overlay y elementos para drag & drop en modal ── #}
+<div id="maDragOverlay" style="display:none;position:absolute;inset:0;background:rgba(99,102,241,.08);
+  border:2px dashed var(--dc-accent);border-radius:8px;z-index:9999;pointer-events:none;
+  align-items:center;justify-content:center;flex-direction:column;gap:8px">
+  <i class="bi bi-cloud-upload" style="font-size:2rem;color:var(--dc-accent)"></i>
+  <div style="font-size:.85rem;color:var(--dc-accent);font-weight:600">Soltar para adjuntar</div>
+</div>
+<div id="maParseSpinner" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.3);z-index:99999;align-items:center;justify-content:center">
+  <div class="spinner-border" style="color:var(--dc-accent)"></div>
+</div>
+<div class="modal fade" id="maEmailReview" tabindex="-1" style="z-index:100000">
+  <div class="modal-dialog">
+    <div class="modal-content dc-form">
+      <div class="modal-header"><h6 class="modal-title">Revisar email parseado</h6><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+      <div class="modal-body">
+        <div class="mb-2">
+          <label class="form-label" style="font-size:.8rem">Fecha</label>
+          <input type="date" id="maReviewDate" class="form-control form-control-sm">
+        </div>
+        <div>
+          <label class="form-label" style="font-size:.8rem">Resumen</label>
+          <div id="maReviewSummary" contenteditable="true" class="form-control" style="min-height:80px;font-size:.85rem"></div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn-ghost" data-bs-dismiss="modal">Cancelar</button>
+        <button type="button" class="btn-accent" onclick="confirmMAEmailReview()">Confirmar y añadir</button>
+      </div>
+    </div>
+  </div>
 </div>
 {% endif %}
 
-{% endblock %}
+{# ── Modal añadir contacto ──────────────────────────────────────────────── #}
+{% if can_edit %}
+<div class="modal fade" id="addMAContactModal" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <form id="addMAContactForm" method="post" class="modal-content dc-form">
+      {% csrf_token %}
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="bi bi-person-plus me-2" style="color:var(--dc-accent)"></i>Añadir contacto al proceso</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="row g-3">
+          <div class="col-12">
+            <div class="d-flex gap-3">
+              <label style="cursor:pointer"><input type="radio" name="contact_type" value="colaborador" id="ma_ct_col" checked onchange="toggleMAContact()"> Colaborador</label>
+              <label style="cursor:pointer"><input type="radio" name="contact_type" value="investor" id="ma_ct_inv" onchange="toggleMAContact()"> Inversor</label>
+            </div>
+          </div>
+          <div class="col-md-6" id="ma_col_sel">
+            <label class="form-label">Colaborador</label>
+            <select name="comprador" class="form-select">
+              <option value="">— Seleccionar —</option>
+              {% for c in all_colaboradores %}<option value="{{ c.pk }}">{{ c.name }}</option>{% endfor %}
+            </select>
+          </div>
+          <div class="col-md-6" id="ma_inv_sel" style="display:none">
+            <label class="form-label">Inversor</label>
+            <select name="investor" class="form-select">
+              <option value="">— Seleccionar —</option>
+              {% for inv in all_investors %}<option value="{{ inv.pk }}">{{ inv.name }}</option>{% endfor %}
+            </select>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Estado inicial</label>
+            <select name="status" id="ma-det-status" class="form-select">
+              <option value="">— Sin estado —</option>
+              {% for e in pipe_stages %}<option value="{{ e.estado.id }}">{{ e.estado.nombre }}</option>{% endfor %}
+              {% for e in end_stages %}<option value="{{ e.estado.id }}">{{ e.estado.nombre }}</option>{% endfor %}
+            </select>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Oferta (€)</label>
+            <input type="text" name="oferta_precio" id="addMAOferta" class="form-control" inputmode="decimal" autocomplete="off" placeholder="0">
+          </div>
+          <div class="col-md-4">
+            <label class="form-label">Fecha contacto</label>
+            <input type="date" name="date" class="form-control">
+          </div>
+          <div class="col-md-4">
+            <label class="form-label">Presentado por</label>
+            <input type="text" name="intro_by" class="form-control">
+          </div>
+          <div class="col-md-4">
+            <label class="form-label">Fecha próximo paso</label>
+            <input type="date" name="next_date" class="form-control">
+          </div>
+          <div class="col-12">
+            <label class="form-label">Próximo paso</label>
+            <input type="text" name="next_action" class="form-control">
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn-ghost" data-bs-dismiss="modal">Cancelar</button>
+        <button type="submit" class="btn-accent">Añadir contacto</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endif %}
 
-{% block extra_head %}
-<style>
-  .kanban-board { align-items: stretch; }
-  .kanban-col { background:#eef0f3; border-radius:8px; padding:12px; min-width:220px; max-width:220px; flex-shrink:0; display:flex; flex-direction:column; }
-  .kanban-col-header { padding-bottom:8px; margin-bottom:8px; border-bottom:2px solid #d7dae0; }
-  .kanban-body { display:flex; flex-direction:column; gap:8px; min-height:70px; flex:1; }
-  .kanban-body.drag-over { background:rgba(255,193,7,.12); border-radius:6px; }
-  .kanban-card { background:#fff; border:1px solid #e3e5e9; border-radius:6px; box-shadow:0 1px 2px rgba(16,24,40,.06); padding:8px 10px; font-size:13px; cursor:grab; }
-  .kanban-card:active { cursor:grabbing; }
-  .kanban-card.dragging { opacity:.4; }
-  .kanban-empty { border:1px dashed #c8cbd2; border-radius:6px; padding:10px; text-align:center; font-size:12px; color:#9094a0; }
-  .kanban-divider { width:1px; align-self:stretch; background:#d7dae0; flex-shrink:0; }
-</style>
+{# Menú contextual kanban M&A #}
+<div id="ctx-ma-det" style="display:none;position:fixed;z-index:9999;background:var(--dc-surface);border:1px solid var(--dc-border);border-radius:8px;box-shadow:0 4px 16px rgba(0,0,0,.2);padding:6px 0;min-width:190px">
+  <button id="ctx-ma-det-nueva" style="padding:8px 16px;font-size:.875rem;background:none;border:none;cursor:pointer;width:100%;text-align:left;color:var(--dc-text)">
+    <i class="bi bi-person-plus me-2" style="color:var(--dc-accent)"></i> Añadir contacto
+  </button>
+</div>
 {% endblock %}
 
 {% block extra_js %}
 <script>
+// ── Helpers globales ───────────────────────────────────────────────────────
+let _currentMAId      = null;
+let _currentMALogType = 'Nota';
+let _maDropFile       = null;
+
+function fmtOferta(val) {
+  if (val === null || val === undefined || val === '') return '';
+  const n = parseFloat(String(val).replace(/\./g, '').replace(',', '.'));
+  if (isNaN(n)) return '';
+  return n.toLocaleString('es-ES', {minimumFractionDigits: 0, maximumFractionDigits: 2});
+}
+
+// ── Abrir modal de edición ─────────────────────────────────────────────────
+function openMAEdit(id, name, statusId, oferta, date, introBy, nextAction, nextDate, tab) {
+  _currentMAId = id;
+  document.getElementById('editMAForm').action = `/ma/contacto/${id}/editar/`;
+  document.getElementById('editMATab').value = tab || 'pipeline';
+  document.getElementById('editMAName').textContent = name;
+  document.getElementById('editMAStatus').value = statusId || '';
+  document.getElementById('editMAOferta').value = fmtOferta(oferta);
+  document.getElementById('editMADate').value = date || '';
+  document.getElementById('editMAIntroBy').value = introBy || '';
+  document.getElementById('editMANextAction').value = nextAction || '';
+  document.getElementById('editMANextDate').value = nextDate || '';
+  document.getElementById('maLogDate').value = new Date().toISOString().slice(0, 10);
+  setMALogType('Nota');
+  loadMAChrono(id);
+  new bootstrap.Modal(document.getElementById('editMAModal')).show();
+}
+
+// ── Tipo de log ────────────────────────────────────────────────────────────
+function setMALogType(t) {
+  _currentMALogType = t;
+  ['Nota','Email','Llamada','Reunión'].forEach(x => {
+    const el = document.getElementById('maLogPill-' + x);
+    if (!el) return;
+    el.style.background  = x === t ? 'var(--dc-accent)' : '';
+    el.style.color       = x === t ? '#fff' : '';
+    el.style.borderColor = x === t ? 'var(--dc-accent)' : 'var(--dc-border)';
+  });
+}
+
+// ── Cargar cronología ──────────────────────────────────────────────────────
+function loadMAChrono(id) {
+  const list = document.getElementById('maChronoList');
+  list.innerHTML = '<div style="color:var(--dc-text-muted);font-size:.8rem;text-align:center;padding:20px">Cargando…</div>';
+  fetch(`/ma/contacto/${id}/cronologia/`)
+    .then(r => r.json())
+    .then(data => {
+      document.getElementById('maChrono-label').textContent = data.proceso || '';
+      renderMAChrono(data.logs || []);
+    })
+    .catch(() => { list.innerHTML = '<div style="color:var(--dc-danger);font-size:.8rem;padding:12px">Error al cargar.</div>'; });
+}
+
+function renderMAChrono(logs) {
+  const el = document.getElementById('maChronoList');
+  if (!logs.length) {
+    el.innerHTML = '<div style="color:var(--dc-text-muted);font-size:.8rem;text-align:center;padding:20px">Sin interacciones registradas.</div>';
+    return;
+  }
+  const typeIcon  = {Nota:'bi-sticky',Email:'bi-envelope',Llamada:'bi-telephone','Reunión':'bi-people',Estado:'bi-arrow-left-right'};
+  const typeColor = {Nota:'var(--dc-text-muted)',Email:'var(--dc-accent)',Llamada:'#3b82f6','Reunión':'#f59e0b',Estado:'#8b5cf6'};
+  el.innerHTML = logs.map(l => {
+    const icon  = typeIcon[l.type]  || 'bi-circle';
+    const color = typeColor[l.type] || 'var(--dc-text-muted)';
+    const isEstado = l.type === 'Estado';
+    return `<div style="display:flex;gap:10px;padding:8px 0;border-bottom:1px solid var(--dc-border);${isEstado ? 'background:rgba(139,92,246,.04);border-radius:4px;padding-left:6px' : ''}">
+      <div style="width:82px;flex-shrink:0;font-size:.75rem">
+        <div style="color:var(--dc-accent);font-weight:600">${l.date}</div>
+        <div style="display:flex;align-items:center;gap:3px;color:${color}"><i class="bi ${icon}" style="font-size:.7rem"></i>${l.type}</div>
+      </div>
+      <div style="flex:1;font-size:.82rem;color:var(--dc-text);line-height:1.4">${l.summary||'—'}</div>
+    </div>`;
+  }).join('');
+}
+
+// ── Guardar entrada de cronología ──────────────────────────────────────────
+function saveMALog() {
+  const summary = document.getElementById('maLogSummary').value.trim();
+  const date    = document.getElementById('maLogDate').value;
+  if (!summary) { document.getElementById('maLogSummary').focus(); return; }
+  const btn = document.getElementById('maLogSave');
+  btn.disabled = true;
+  const csrf = document.querySelector('[name=csrfmiddlewaretoken]');
+  const fd = new FormData();
+  fd.append('csrfmiddlewaretoken', csrf ? csrf.value : '');
+  fd.append('type', _currentMALogType);
+  fd.append('summary', summary);
+  fd.append('date', date);
+  if (_maDropFile) { fd.append('attachment', _maDropFile); _maDropFile = null; }
+  fetch(`/ma/contacto/${_currentMAId}/cronologia/`, {method: 'POST', body: fd})
+    .then(r => r.json())
+    .then(data => { if (data.ok) { document.getElementById('maLogSummary').value = ''; loadMAChrono(_currentMAId); } })
+    .finally(() => { btn.disabled = false; });
+}
+
+// ── Formateo de oferta (ES locale) ───────────────────────────────────────
+function _bindEsDecimal(inputId, formId) {
+  const inp = document.getElementById(inputId);
+  if (!inp) return;
+  inp.addEventListener('blur', () => {
+    const raw = inp.value.replace(/\./g, '').replace(',', '.');
+    const n = parseFloat(raw);
+    if (!isNaN(n)) inp.value = n.toLocaleString('es-ES', {minimumFractionDigits: 0, maximumFractionDigits: 2});
+  });
+  if (formId) {
+    const frm = document.getElementById(formId);
+    if (frm) frm.addEventListener('submit', () => {
+      inp.value = inp.value.replace(/\./g, '').replace(',', '.');
+    });
+  }
+}
+_bindEsDecimal('editMAOferta', 'editMAForm');
+_bindEsDecimal('addMAOferta', 'addMAContactForm');
+
+// ── Kanban: drag-and-drop + clic en tarjeta ───────────────────────────────
+function toggleMAContact() {
+  const isInv = document.getElementById('ma_ct_inv').checked;
+  document.getElementById('ma_col_sel').style.display = isInv ? 'none' : '';
+  document.getElementById('ma_inv_sel').style.display = isInv ? '' : 'none';
+}
+
 document.querySelectorAll('.kanban-card').forEach(card => {
-  card.addEventListener('dragstart', e => { e.dataTransfer.setData('text/plain', card.dataset.contactoId); card.classList.add('dragging'); });
+  card.addEventListener('dragstart', e => {
+    e.dataTransfer.setData('text/plain', card.dataset.contactoId);
+    card.classList.add('dragging');
+  });
   card.addEventListener('dragend', () => card.classList.remove('dragging'));
+  card.style.cursor = 'pointer';
+  card.addEventListener('click', e => {
+    if (e.target.closest('.kanban-contact-link')) return;
+    const d = card.dataset;
+    openMAEdit(d.maId, d.maName, d.maStatus, d.maOferta, d.maDate,
+               d.maIntroBy, d.maNextAction, d.maNextDate, d.maNda, d.maDd, 'pipeline');
+  });
 });
+
 document.querySelectorAll('.kanban-body').forEach(col => {
   col.addEventListener('dragover', e => { e.preventDefault(); col.classList.add('drag-over'); });
   col.addEventListener('dragleave', () => col.classList.remove('drag-over'));
@@ -142,5 +539,92 @@ document.querySelectorAll('.kanban-body').forEach(col => {
     form.submit();
   });
 });
+
+// ── Context menu clic derecho ─────────────────────────────────────────────
+(function () {
+  const ctx = document.getElementById('ctx-ma-det');
+  if (!ctx) return;
+  let targetEstadoId = null;
+  document.querySelectorAll('.kanban-body').forEach(col => {
+    col.addEventListener('contextmenu', e => {
+      e.preventDefault();
+      targetEstadoId = col.dataset.estadoId;
+      ctx.style.left = Math.min(e.clientX, window.innerWidth - 210) + 'px';
+      ctx.style.top  = Math.min(e.clientY, window.innerHeight - 60) + 'px';
+      ctx.style.display = 'block';
+    });
+  });
+  document.addEventListener('click', () => { ctx.style.display = 'none'; });
+  ctx.addEventListener('click', e => e.stopPropagation());
+  document.getElementById('ctx-ma-det-nueva').addEventListener('click', () => {
+    ctx.style.display = 'none';
+    if (targetEstadoId) document.getElementById('ma-det-status').value = targetEstadoId;
+    bootstrap.Modal.getOrCreateInstance(document.getElementById('addMAContactModal')).show();
+  });
+})();
+
+{% if can_edit %}
+// ── Drag & drop sobre el modal de edición ─────────────────────────────────
+(function () {
+  const modal = document.getElementById('editMAModal');
+  if (!modal) return;
+  const overlay = document.getElementById('maDragOverlay');
+  const spinner = document.getElementById('maParseSpinner');
+  let _dragCounter = 0;
+
+  modal.addEventListener('dragenter', e => {
+    e.preventDefault();
+    _dragCounter++;
+    if (_dragCounter === 1) {
+      const mc = modal.querySelector('.modal-content');
+      if (mc) { mc.style.position = 'relative'; mc.appendChild(overlay); }
+      overlay.style.display = 'flex';
+    }
+  });
+  modal.addEventListener('dragleave', () => {
+    _dragCounter--;
+    if (_dragCounter <= 0) { _dragCounter = 0; overlay.style.display = 'none'; }
+  });
+  modal.addEventListener('dragover', e => e.preventDefault());
+  modal.addEventListener('drop', e => {
+    e.preventDefault();
+    _dragCounter = 0;
+    overlay.style.display = 'none';
+    const file = e.dataTransfer.files[0];
+    if (!file) return;
+    if (file.name.toLowerCase().endsWith('.msg')) {
+      spinner.style.display = 'flex';
+      const fd = new FormData();
+      const csrf = document.querySelector('[name=csrfmiddlewaretoken]');
+      fd.append('csrfmiddlewaretoken', csrf ? csrf.value : '');
+      fd.append('file', file);
+      fetch('/parse-email/', {method: 'POST', body: fd})
+        .then(r => r.json())
+        .then(data => {
+          spinner.style.display = 'none';
+          _maDropFile = file;
+          document.getElementById('maReviewDate').value = data.date || new Date().toISOString().slice(0, 10);
+          document.getElementById('maReviewSummary').textContent = data.summary || data.subject || '';
+          bootstrap.Modal.getOrCreateInstance(document.getElementById('maEmailReview')).show();
+        })
+        .catch(() => { spinner.style.display = 'none'; });
+    } else {
+      _maDropFile = file;
+      document.getElementById('maLogDate').value = new Date().toISOString().slice(0, 10);
+      document.getElementById('maLogSummary').value = file.name;
+      setMALogType('Nota');
+    }
+  });
+})();
+
+function confirmMAEmailReview() {
+  const date    = document.getElementById('maReviewDate').value;
+  const summary = document.getElementById('maReviewSummary').textContent.trim();
+  bootstrap.Modal.getInstance(document.getElementById('maEmailReview')).hide();
+  document.getElementById('maLogDate').value    = date;
+  document.getElementById('maLogSummary').value = summary;
+  setMALogType('Email');
+}
+{% endif %}
 </script>
 {% endblock %}

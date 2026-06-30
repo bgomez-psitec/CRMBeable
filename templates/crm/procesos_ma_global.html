@@ -1,0 +1,453 @@
+{% extends "base.html" %}
+{% load crm_filters %}
+{% block title %}Pipeline M&A — CRM Gestora{% endblock %}
+{% block topbar_title %}Pipeline M&A{% endblock %}
+{% block topbar_sub %}Todos los procesos de venta activos{% endblock %}
+{% block topbar_actions %}
+  {% if can_edit %}
+    <button class="btn-accent" data-bs-toggle="modal" data-bs-target="#newContactoMAModal">
+      <i class="bi bi-plus-lg"></i> Nueva presentación M&amp;A
+    </button>
+  {% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function toggleNMAContact() {
+  const isInv = document.getElementById('nma_ct_inv').checked;
+  document.getElementById('nma_col_sel').style.display = isInv ? 'none' : '';
+  document.getElementById('nma_inv_sel').style.display = isInv ? '' : 'none';
+}
+document.querySelectorAll('.kanban-card[data-contacto-id]').forEach(card => {
+  card.addEventListener('dragstart', e => {
+    e.dataTransfer.setData('text/plain', card.dataset.contactoId);
+    card.classList.add('dragging');
+    e.stopPropagation();
+  });
+  card.addEventListener('dragend', () => card.classList.remove('dragging'));
+});
+document.querySelectorAll('.ma-kanban-body').forEach(col => {
+  col.addEventListener('dragover', e => { e.preventDefault(); col.classList.add('drag-over'); });
+  col.addEventListener('dragleave', () => col.classList.remove('drag-over'));
+  col.addEventListener('drop', e => {
+    e.preventDefault();
+    col.classList.remove('drag-over');
+    const contactoId = e.dataTransfer.getData('text/plain');
+    const estadoId = col.dataset.estadoId;
+    const form = document.getElementById('ma-status-form');
+    form.action = `/ma/contacto/${contactoId}/estado/`;
+    form.querySelector('[name=estado_id]').value = estadoId;
+    form.submit();
+  });
+});
+
+// ── Menú contextual kanban M&A ────────────────────────────────────────────
+{% if can_edit %}
+const ctxMenuMA = document.getElementById('kanban-ctx-ma');
+let ctxEstadoIdMA = '';
+
+document.querySelectorAll('.kanban-col').forEach(col => {
+  col.addEventListener('contextmenu', e => {
+    e.preventDefault();
+    const body = col.querySelector('.ma-kanban-body');
+    ctxEstadoIdMA = body ? body.dataset.estadoId : '';
+    ctxMenuMA.style.display = 'block';
+    ctxMenuMA.style.left = Math.min(e.pageX, window.innerWidth - 200) + 'px';
+    ctxMenuMA.style.top = e.pageY + 'px';
+  });
+});
+
+document.addEventListener('click', () => { ctxMenuMA.style.display = 'none'; });
+document.addEventListener('contextmenu', e => {
+  if (!e.target.closest('.kanban-col')) ctxMenuMA.style.display = 'none';
+});
+
+document.getElementById('ctx-ma-nueva').addEventListener('click', () => {
+  ctxMenuMA.style.display = 'none';
+
+  // Pre-seleccionar estado
+  const statusSel = document.querySelector('#newContactoMAModal select[name=status]');
+  if (statusSel) statusSel.value = ctxEstadoIdMA || '';
+
+  // Pre-seleccionar proceso si hay filtro de participada
+  const companyFilter = '{{ company_filter }}';
+  if (companyFilter) {
+    const procesoSel = document.querySelector('#newContactoMAModal select[name=proceso]');
+    for (const opt of procesoSel.options) {
+      if (opt.dataset.companyId === companyFilter) {
+        procesoSel.value = opt.value;
+        break;
+      }
+    }
+  }
+
+  new bootstrap.Modal(document.getElementById('newContactoMAModal')).show();
+});
+{% endif %}
+</script>
+{% endblock %}
+
+{% block content %}
+
+{# ── Barra filtros + toggle vista ─────────────────────────────────────────── #}
+<div class="d-flex gap-2 mb-4 flex-wrap align-items-center justify-content-between">
+  <form method="get">
+    <input type="hidden" name="view" value="{{ view }}">
+    <div class="d-flex gap-2 align-items-center flex-wrap">
+      <input type="text" name="q" value="{{ q }}" class="form-control" style="width:180px;flex-shrink:0" placeholder="Participada, proceso…">
+      {% if view == 'list' %}
+        <select name="company" class="form-select" style="width:170px;flex-shrink:0" onchange="this.form.submit()">
+          <option value="">Todas las participadas</option>
+          {% for c in ma_companies %}
+            <option value="{{ c.pk }}" {% if company_filter == c.pk|stringformat:"s" %}selected{% endif %}>{{ c.name }}</option>
+          {% endfor %}
+        </select>
+        <select name="estado" class="form-select" style="width:165px;flex-shrink:0" onchange="this.form.submit()">
+          <option value="">Todos los estados</option>
+          {% for e in estados_ma %}
+            <option value="{{ e.id }}" {% if estado_id == e.id|stringformat:"s" %}selected{% endif %}>{{ e.nombre }}</option>
+          {% endfor %}
+        </select>
+        <select name="group1" class="form-select" style="width:155px;flex-shrink:0" onchange="this.form.submit()">
+          <option value="">Sin agrupar</option>
+          {% for val, lbl in group_labels %}
+            <option value="{{ val }}" {% if group1 == val %}selected{% endif %}>Agrupar: {{ lbl }}</option>
+          {% endfor %}
+        </select>
+        {% if group1 %}
+        <select name="group2" class="form-select" style="width:155px;flex-shrink:0" onchange="this.form.submit()">
+          <option value="">— 2ª agrupación —</option>
+          {% for val, lbl in group_labels %}{% if val != group1 %}
+            <option value="{{ val }}" {% if group2 == val %}selected{% endif %}>{{ lbl }}</option>
+          {% endif %}{% endfor %}
+        </select>
+        {% endif %}
+        {% if group1 and group2 %}
+        <select name="group3" class="form-select" style="width:155px;flex-shrink:0" onchange="this.form.submit()">
+          <option value="">— 3ª agrupación —</option>
+          {% for val, lbl in group_labels %}{% if val != group1 and val != group2 %}
+            <option value="{{ val }}" {% if group3 == val %}selected{% endif %}>{{ lbl }}</option>
+          {% endif %}{% endfor %}
+        </select>
+        {% endif %}
+      {% else %}
+        <select name="cerrado" class="form-select" style="width:155px;flex-shrink:0" onchange="this.form.submit()">
+          <option value=""  {% if cerrado == '' %}selected{% endif %}>Todos</option>
+          <option value="0" {% if cerrado == '0' %}selected{% endif %}>Solo activos</option>
+          <option value="1" {% if cerrado == '1' %}selected{% endif %}>Solo cerrados</option>
+        </select>
+      {% endif %}
+      <button type="submit" class="btn-ghost" style="height:38px;flex-shrink:0">Buscar</button>
+      {% if q or cerrado or estado_id or group1 %}
+        <a href="{% url 'crm:procesos_ma_global' %}?view={{ view }}" class="btn-ghost" style="color:var(--dc-danger);border-color:rgba(239,68,68,.3)">
+          <i class="bi bi-x"></i> Limpiar
+        </a>
+      {% endif %}
+    </div>
+  </form>
+  <div class="d-flex gap-1">
+    <a href="?view=list{% if q %}&q={{ q }}{% endif %}{% if cerrado %}&cerrado={{ cerrado }}{% endif %}"
+       class="btn-ghost" style="{% if view == 'list' %}background:var(--dc-accent);color:#fff;border-color:var(--dc-accent){% endif %}">
+      <i class="bi bi-list-ul"></i> Listado
+    </a>
+    <a href="?view=kanban{% if q %}&q={{ q }}{% endif %}{% if cerrado %}&cerrado={{ cerrado }}{% endif %}"
+       class="btn-ghost" style="{% if view == 'kanban' %}background:var(--dc-accent);color:#fff;border-color:var(--dc-accent){% endif %}">
+      <i class="bi bi-kanban"></i> Kanban
+    </a>
+  </div>
+</div>
+
+{% if view == 'list' %}
+{# ── Vista listado (ContactoMA) ───────────────────────────────────────────── #}
+{% load crm_filters %}
+
+{# Columnas: Contacto, Participada, Proceso, Estado, Oferta, NDA, DD, Próximo paso #}
+
+{% if groups %}
+
+  {% for k1, v1 in groups.items %}
+  <div class="dc-card mb-2">
+    <button class="dc-card__header w-100 text-start" style="background:none;border:none;cursor:pointer"
+            type="button" data-bs-toggle="collapse" data-bs-target="#mag1-{{ forloop.counter }}" aria-expanded="true">
+      <h2 class="dc-card__title d-flex align-items-center gap-2 mb-0">
+        {{ k1 }}<span class="dc-badge dc-badge--grey ms-1">{{ v1|length }}</span>
+      </h2>
+      <i class="bi bi-chevron-right grp-chevron"></i>
+    </button>
+    <div class="collapse show" id="mag1-{{ forloop.counter }}">
+      {% if group2 %}
+        {% for k2, v2 in v1.items %}
+        <div class="grp-l2-wrap">
+          <button class="grp-l2-header" type="button"
+                  data-bs-toggle="collapse" data-bs-target="#mag2-{{ forloop.parentloop.counter }}-{{ forloop.counter }}" aria-expanded="true">
+            <span class="d-flex align-items-center gap-2">{{ k2 }}<span class="dc-badge dc-badge--grey">{{ v2|length }}</span></span>
+            <i class="bi bi-chevron-right grp-chevron"></i>
+          </button>
+          <div class="collapse show" id="mag2-{{ forloop.parentloop.counter }}-{{ forloop.counter }}">
+            {% if group3 %}
+              {% for k3, v3 in v2.items %}
+              <div class="grp-l3-wrap">
+                <button class="grp-l3-header" type="button"
+                        data-bs-toggle="collapse" data-bs-target="#mag3-{{ forloop.parentloop.parentloop.counter }}-{{ forloop.parentloop.counter }}-{{ forloop.counter }}" aria-expanded="true">
+                  <span class="d-flex align-items-center gap-2">{{ k3 }}<span class="dc-badge dc-badge--grey">{{ v3|length }}</span></span>
+                  <i class="bi bi-chevron-right grp-chevron"></i>
+                </button>
+                <div class="collapse show dc-table-wrap" id="mag3-{{ forloop.parentloop.parentloop.counter }}-{{ forloop.parentloop.counter }}-{{ forloop.counter }}">
+                  <table class="dc-table">
+                    <thead><tr><th>Contacto</th><th>Participada</th><th>Proceso</th><th>Estado</th><th>Oferta</th><th>Próximo paso</th></tr></thead>
+                    <tbody>
+                      {% for c in v3 %}
+                      <tr style="cursor:pointer" onclick="location.href='{% url 'crm:proceso_ma_detail' c.proceso_id %}'">
+                        <td><b>{% if c.comprador %}<a href="{% url 'crm:comprador_detail' c.comprador.pk %}" onclick="event.stopPropagation()" style="color:inherit;text-decoration:none" onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'">{{ c.comprador.name }}</a>{% elif c.investor %}<a href="{% url 'crm:investor_detail' c.investor.pk %}" onclick="event.stopPropagation()" style="color:inherit;text-decoration:none" onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'">{{ c.investor.name }}</a>{% else %}—{% endif %}</b></td>
+                        <td><a href="{% url 'crm:company_detail' c.proceso.company.pk %}" onclick="event.stopPropagation()" style="color:inherit;text-decoration:none;font-weight:inherit" onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'">{{ c.proceso.company.name }}</a></td>
+                        <td style="color:var(--dc-text-muted)">{{ c.proceso.nombre }}</td>
+                        <td><span class="dc-badge dc-badge--amber">{{ c.status.nombre|default:"—" }}</span></td>
+                        <td class="fw-semibold">{% if c.oferta_precio %}{{ c.oferta_precio|euros }} €{% else %}—{% endif %}</td>
+                        <td style="font-size:.855rem">{{ c.next_action|default:"—" }}{% if c.next_date %} · <span class="text-accent fw-semibold">{{ c.next_date|date:"d M Y" }}</span>{% endif %}</td>
+                      </tr>
+                      {% empty %}<tr><td colspan="8" style="text-align:center;padding:16px;color:var(--dc-text-muted)">Sin contactos.</td></tr>{% endfor %}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+              {% endfor %}
+            {% else %}
+              <div class="dc-table-wrap">
+                <table class="dc-table">
+                  <thead><tr><th>Contacto</th><th>Participada</th><th>Proceso</th><th>Estado</th><th>Oferta</th><th>Próximo paso</th></tr></thead>
+                  <tbody>
+                    {% for c in v2 %}
+                    <tr style="cursor:pointer" onclick="location.href='{% url 'crm:proceso_ma_detail' c.proceso_id %}'">
+                      <td><b>{% if c.comprador %}<a href="{% url 'crm:comprador_detail' c.comprador.pk %}" onclick="event.stopPropagation()" style="color:inherit;text-decoration:none" onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'">{{ c.comprador.name }}</a>{% elif c.investor %}<a href="{% url 'crm:investor_detail' c.investor.pk %}" onclick="event.stopPropagation()" style="color:inherit;text-decoration:none" onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'">{{ c.investor.name }}</a>{% else %}—{% endif %}</b></td>
+                      <td><a href="{% url 'crm:company_detail' c.proceso.company.pk %}" onclick="event.stopPropagation()" style="color:inherit;text-decoration:none;font-weight:inherit" onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'">{{ c.proceso.company.name }}</a></td>
+                      <td style="color:var(--dc-text-muted)">{{ c.proceso.nombre }}</td>
+                      <td><span class="dc-badge dc-badge--amber">{{ c.status.nombre|default:"—" }}</span></td>
+                      <td class="fw-semibold">{% if c.oferta_precio %}{{ c.oferta_precio|euros }} €{% else %}—{% endif %}</td>
+                      <td>{% if c.dd_iniciado %}<span class="dc-badge dc-badge--blue">Sí</span>{% else %}<span style="color:var(--dc-text-muted)">No</span>{% endif %}</td>
+                      <td style="font-size:.855rem">{{ c.next_action|default:"—" }}{% if c.next_date %} · <span class="text-accent fw-semibold">{{ c.next_date|date:"d M Y" }}</span>{% endif %}</td>
+                    </tr>
+                    {% empty %}<tr><td colspan="8" style="text-align:center;padding:16px;color:var(--dc-text-muted)">Sin contactos.</td></tr>{% endfor %}
+                  </tbody>
+                </table>
+              </div>
+            {% endif %}
+          </div>
+        </div>
+        {% endfor %}
+      {% else %}
+        <div class="dc-table-wrap">
+          <table class="dc-table">
+            <thead><tr><th>Contacto</th><th>Participada</th><th>Proceso</th><th>Estado</th><th>Oferta</th><th>Próximo paso</th></tr></thead>
+            <tbody>
+              {% for c in v1 %}
+              <tr style="cursor:pointer" onclick="location.href='{% url 'crm:proceso_ma_detail' c.proceso_id %}'">
+                <td><b>{% if c.comprador %}<a href="{% url 'crm:comprador_detail' c.comprador.pk %}" onclick="event.stopPropagation()" style="color:inherit;text-decoration:none" onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'">{{ c.comprador.name }}</a>{% elif c.investor %}<a href="{% url 'crm:investor_detail' c.investor.pk %}" onclick="event.stopPropagation()" style="color:inherit;text-decoration:none" onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'">{{ c.investor.name }}</a>{% else %}—{% endif %}</b></td>
+                <td><a href="{% url 'crm:company_detail' c.proceso.company.pk %}" onclick="event.stopPropagation()" style="color:inherit;text-decoration:none;font-weight:inherit" onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'">{{ c.proceso.company.name }}</a></td>
+                <td style="color:var(--dc-text-muted)">{{ c.proceso.nombre }}</td>
+                <td><span class="dc-badge dc-badge--amber">{{ c.status.nombre|default:"—" }}</span></td>
+                <td class="fw-semibold">{% if c.oferta_precio %}{{ c.oferta_precio|euros }} €{% else %}—{% endif %}</td>
+                <td>{% if c.dd_iniciado %}<span class="dc-badge dc-badge--blue">Sí</span>{% else %}<span style="color:var(--dc-text-muted)">No</span>{% endif %}</td>
+                <td style="font-size:.855rem">{{ c.next_action|default:"—" }}{% if c.next_date %} · <span class="text-accent fw-semibold">{{ c.next_date|date:"d M Y" }}</span>{% endif %}</td>
+              </tr>
+              {% empty %}<tr><td colspan="8" style="text-align:center;padding:16px;color:var(--dc-text-muted)">Sin contactos.</td></tr>{% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% endif %}
+    </div>
+  </div>
+  {% empty %}
+  <div style="text-align:center;padding:48px;color:var(--dc-text-muted)">Sin presentaciones M&amp;A que coincidan.</div>
+  {% endfor %}
+
+{% else %}
+  {# Vista plana #}
+  <div class="dc-card">
+    <div class="dc-table-wrap">
+      <table class="dc-table">
+        <thead>
+          <tr><th>Contacto</th><th>Participada</th><th>Proceso</th><th>Estado</th><th>Oferta</th><th>Próximo paso</th></tr>
+        </thead>
+        <tbody>
+          {% for c in contactos_list %}
+          <tr style="cursor:pointer" onclick="location.href='{% url 'crm:proceso_ma_detail' c.proceso_id %}'">
+            <td><b>{% if c.comprador %}<a href="{% url 'crm:comprador_detail' c.comprador.pk %}" onclick="event.stopPropagation()" style="color:inherit;text-decoration:none" onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'">{{ c.comprador.name }}</a>{% elif c.investor %}<a href="{% url 'crm:investor_detail' c.investor.pk %}" onclick="event.stopPropagation()" style="color:inherit;text-decoration:none" onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'">{{ c.investor.name }}</a>{% else %}—{% endif %}</b></td>
+            <td><a href="{% url 'crm:company_detail' c.proceso.company.pk %}" onclick="event.stopPropagation()" style="color:inherit;text-decoration:none;font-weight:inherit" onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'">{{ c.proceso.company.name }}</a></td>
+            <td style="color:var(--dc-text-muted)">{{ c.proceso.nombre }}</td>
+            <td><span class="dc-badge dc-badge--amber">{{ c.status.nombre|default:"—" }}</span></td>
+            <td class="fw-semibold">{% if c.oferta_precio %}{{ c.oferta_precio|euros }} €{% else %}—{% endif %}</td>
+            <td>{% if c.dd_iniciado %}<span class="dc-badge dc-badge--blue">Sí</span>{% else %}<span style="color:var(--dc-text-muted)">No</span>{% endif %}</td>
+            <td style="font-size:.855rem">{{ c.next_action|default:"—" }}{% if c.next_date %} · <span class="text-accent fw-semibold">{{ c.next_date|date:"d M Y" }}</span>{% endif %}</td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="8" style="text-align:center;padding:32px;color:var(--dc-text-muted)">Sin presentaciones M&amp;A que coincidan.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+{% endif %}
+
+{% else %}
+{# ── Vista kanban (contactos M&A por estado) ──────────────────────────────── #}
+<div class="d-flex gap-3 align-items-start overflow-auto pb-3 kanban-board">
+
+  {% for stage in pipe_stages_k %}
+  <div class="kanban-col">
+    <div class="kanban-col-header">
+      <span class="fw-semibold" style="font-size:.855rem">
+        {{ stage.estado.nombre|default:"Sin estado" }}
+        <span class="dc-badge dc-badge--grey ms-1">{{ stage.items|length }}</span>
+      </span>
+      {% if stage.total %}<span style="font-size:.75rem;color:var(--dc-text-muted)">{{ stage.total|euros }} €</span>{% endif %}
+    </div>
+    <div class="kanban-body ma-kanban-body" data-estado-id="{{ stage.estado.id|default:'' }}">
+      {% for c in stage.items %}
+      <div class="kanban-card" draggable="true" data-contacto-id="{{ c.pk }}"
+           onclick="location.href='{% url 'crm:proceso_ma_detail' c.proceso_id %}'">
+        <div style="font-size:.72rem;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--dc-accent);margin-bottom:2px">
+          {{ c.proceso.company.name }}
+        </div>
+        <b style="font-size:.855rem">{% if c.comprador %}<a href="{% url 'crm:comprador_detail' c.comprador.pk %}" onclick="event.stopPropagation()" style="color:inherit;text-decoration:none" onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'">{{ c.comprador.name }}</a>{% elif c.investor %}<a href="{% url 'crm:investor_detail' c.investor.pk %}" onclick="event.stopPropagation()" style="color:inherit;text-decoration:none" onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'">{{ c.investor.name }}</a>{% else %}—{% endif %}</b>
+        <div style="font-size:.75rem;color:var(--dc-text-muted)">{{ c.proceso.nombre }}</div>
+        {% if c.oferta_precio %}<div style="font-size:.74rem;font-weight:600;margin-top:2px">{{ c.oferta_precio|euros }} €</div>{% endif %}
+        <div class="d-flex gap-1 mt-1 flex-wrap">
+          {% if c.dd_iniciado %}<span class="dc-badge dc-badge--blue" style="font-size:.65rem">DD</span>{% endif %}
+        </div>
+        {% if c.next_date %}<div style="font-size:.74rem;color:var(--dc-accent);font-weight:600;margin-top:2px">{{ c.next_date|date:"d M Y" }}</div>{% endif %}
+      </div>
+      {% empty %}
+      <div class="kanban-empty">Sin contactos</div>
+      {% endfor %}
+    </div>
+  </div>
+  {% endfor %}
+
+  {% if end_stages_k %}
+  <div class="kanban-divider"></div>
+  {% for stage in end_stages_k %}
+  <div class="kanban-col">
+    <div class="kanban-col-header">
+      <span class="fw-semibold" style="font-size:.855rem">
+        {{ stage.estado.nombre }}
+        <span class="dc-badge dc-badge--grey ms-1">{{ stage.items|length }}</span>
+      </span>
+      {% if stage.total %}<span style="font-size:.75rem;color:var(--dc-text-muted)">{{ stage.total|euros }} €</span>{% endif %}
+    </div>
+    <div class="kanban-body ma-kanban-body" data-estado-id="{{ stage.estado.id }}">
+      {% for c in stage.items %}
+      <div class="kanban-card" draggable="true" data-contacto-id="{{ c.pk }}"
+           onclick="location.href='{% url 'crm:proceso_ma_detail' c.proceso_id %}'">
+        <div style="font-size:.72rem;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--dc-accent);margin-bottom:2px">{{ c.proceso.company.name }}</div>
+        <b style="font-size:.855rem">{% if c.comprador %}<a href="{% url 'crm:comprador_detail' c.comprador.pk %}" onclick="event.stopPropagation()" style="color:inherit;text-decoration:none" onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'">{{ c.comprador.name }}</a>{% elif c.investor %}<a href="{% url 'crm:investor_detail' c.investor.pk %}" onclick="event.stopPropagation()" style="color:inherit;text-decoration:none" onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'">{{ c.investor.name }}</a>{% else %}—{% endif %}</b>
+        <div style="font-size:.75rem;color:var(--dc-text-muted)">{{ c.proceso.nombre }}</div>
+        {% if c.oferta_precio %}<div style="font-size:.74rem;font-weight:600;margin-top:2px">{{ c.oferta_precio|euros }} €</div>{% endif %}
+      </div>
+      {% empty %}
+      <div class="kanban-empty">Sin contactos</div>
+      {% endfor %}
+    </div>
+  </div>
+  {% endfor %}
+  {% endif %}
+
+</div>
+
+<form id="ma-status-form" method="post" style="display:none">
+  {% csrf_token %}
+  <input type="hidden" name="estado_id">
+</form>
+{% endif %}
+
+{% if can_edit %}
+<div class="modal fade" id="newContactoMAModal" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <form method="post" class="modal-content dc-form">
+      {% csrf_token %}
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="bi bi-briefcase me-2" style="color:var(--dc-accent)"></i>Nueva presentación M&amp;A</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="row g-3">
+          <div class="col-md-6">
+            <label class="form-label">Proceso M&amp;A <span style="color:var(--dc-danger)">*</span></label>
+            <select name="proceso" class="form-select" required>
+              <option value="">— Seleccionar proceso —</option>
+              {% for p in all_procesos %}
+                <option value="{{ p.pk }}" data-company-id="{{ p.company_id }}">{{ p.company.name }} · {{ p.nombre }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Tipo de contacto</label>
+            <div class="d-flex gap-3 mb-2">
+              <label style="cursor:pointer"><input type="radio" name="contact_type" value="colaborador" id="nma_ct_col" checked onchange="toggleNMAContact()"> Colaborador</label>
+              <label style="cursor:pointer"><input type="radio" name="contact_type" value="investor" id="nma_ct_inv" onchange="toggleNMAContact()"> Inversor</label>
+            </div>
+            <div id="nma_col_sel">
+              <select name="comprador" class="form-select">
+                <option value="">— Seleccionar colaborador —</option>
+                {% for c in all_colaboradores %}<option value="{{ c.pk }}">{{ c.name }}</option>{% endfor %}
+              </select>
+            </div>
+            <div id="nma_inv_sel" style="display:none">
+              <select name="investor" class="form-select">
+                <option value="">— Seleccionar inversor —</option>
+                {% for inv in all_investors %}<option value="{{ inv.pk }}">{{ inv.name }}</option>{% endfor %}
+              </select>
+            </div>
+          </div>
+          <div class="col-md-4">
+            <label class="form-label">Estado inicial</label>
+            <select name="status" class="form-select">
+              <option value="">— Sin estado —</option>
+              {% for e in estados_ma %}<option value="{{ e.id }}">{{ e.nombre }}</option>{% endfor %}
+            </select>
+          </div>
+          <div class="col-md-4">
+            <label class="form-label">Oferta (€)</label>
+            <input type="number" name="oferta_precio" class="form-control" min="0" step="1000">
+          </div>
+          <div class="col-md-4">
+            <label class="form-label">Fecha contacto</label>
+            <input type="date" name="date" class="form-control">
+          </div>
+          <div class="col-md-4">
+            <label class="form-label">Presentado por</label>
+            <input type="text" name="intro_by" class="form-control">
+          </div>
+          <div class="col-md-4">
+            <label class="form-label">Próximo paso</label>
+            <input type="text" name="next_action" class="form-control">
+          </div>
+          <div class="col-md-4">
+            <label class="form-label">Fecha próximo paso</label>
+            <input type="date" name="next_date" class="form-control">
+          </div>
+          <div class="col-12">
+            <label class="form-label">Notas</label>
+            <textarea name="notes" class="form-control" rows="2"></textarea>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn-ghost" data-bs-dismiss="modal">Cancelar</button>
+        <button type="submit" class="btn-accent">Añadir presentación</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endif %}
+
+{% if can_edit %}
+<div id="kanban-ctx-ma" style="display:none;position:fixed;z-index:9999;background:var(--dc-surface);border:1px solid var(--dc-border);border-radius:8px;box-shadow:0 4px 16px rgba(0,0,0,.18);padding:4px;min-width:180px">
+  <button id="ctx-ma-nueva" class="d-flex align-items-center gap-2 w-100 px-3 py-2 text-start"
+          style="background:none;border:none;cursor:pointer;border-radius:6px;font-size:.875rem;color:var(--dc-text)"
+          onmouseover="this.style.background='var(--dc-hover)'" onmouseout="this.style.background='none'">
+    <i class="bi bi-plus-circle" style="color:var(--dc-accent)"></i> Nueva presentación aquí
+  </button>
+</div>
+{% endif %}
+
+{% endblock %}

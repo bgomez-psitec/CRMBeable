@@ -6,21 +6,27 @@ Construida como port fiel y productivo del prototipo funcional `CRM_Gestora_ES_V
 
 ## Características
 
-- **Participadas**: listado/grid con búsqueda, agrupación (fondo/etapa/país) y filtro "con ronda abierta"; ficha de detalle con KPIs y tres módulos integrados: Rondas, M&A y Colaboraciones.
-- **Rondas de Inversión**: ficha con KPIs (objetivo, invertido, pipeline ponderado/no ponderado, descartado), vista de matriz (tabla) y vista de pipeline tipo kanban con **drag & drop** (JS nativo) para cambiar el estado de cada presentación.
+- **Participadas**: listado/grid con búsqueda, agrupación (fondo/etapa/país) y filtro "con ronda abierta"; ficha de detalle con KPIs y tres módulos integrados: Rondas, M&A y Colaboraciones. El formulario incluye selección múltiple de sectores, autocompletado de país con listado predefinido y todos los campos en español.
+- **Rondas de Inversión**: ficha con KPIs (objetivo, invertido, pipeline ponderado/no ponderado, descartado), vista de matriz (tabla) y vista de pipeline tipo kanban con **drag & drop** (JS nativo) para cambiar el estado de cada presentación. Incluye **stepper visual de fases** con flechas tipo chevron que muestra la fase activa del proceso.
 - **M&A — Pipeline de venta**: módulo integrado en cada participada para gestionar procesos de venta de la compañía a posibles compradores.
-  - Procesos M&A (equivalente a una ronda): precio pedido, mejor oferta, pipeline ponderado.
+  - Procesos M&A (equivalente a una ronda): precio pedido, mejor oferta, pipeline ponderado. Incluye **stepper visual de fases** con chevrons. Los campos NDA y DD han sido eliminados del flujo.
   - Compradores con ficha propia, cronología de interacciones y contactos.
-  - Pipeline kanban con estados propios (Identificado → Contactado → Reunión → NDA firmado → Due Diligence → Oferta recibida → Negociación | Vendido / Descartado) y columnas adicionales respecto a fundraising: NDA firmado, DD iniciada, precio de oferta.
+  - Pipeline kanban con estados propios (Identificado → Contactado → Reunión → Oferta recibida → Negociación | Vendido / Descartado) y precio de oferta por contacto.
   - Catálogo de estados M&A configurable desde Ajustes.
 - **Colaboraciones**: módulo integrado en cada participada para hacer seguimiento de posibles clientes, proveedores y partners de desarrollo de negocio.
   - Seguimiento por tipo de relación (cliente potencial, proveedor potencial, partner tecnológico, partner comercial).
   - Cronología de interacciones por colaboración.
   - Vista global de colaboraciones con filtro por estado.
+  - Cronología de contactos del Colaborador con **filtros por contexto** (Todos / Ronda de Inversión / Proceso M&A / Colaboraciones) y eliminación de cualquier entrada.
   - Catálogo de estados de colaboración configurable desde Ajustes.
-- **Inversores**: listado/grid con búsqueda y agrupación (tipo/país); ficha de detalle con cronología combinada de contactos (registros manuales + interacciones ligadas a presentaciones), contactos y presentaciones asociadas.
+- **Inversores**: listado/grid con búsqueda y agrupación (tipo/país); ficha de detalle con cronología combinada de contactos (registros manuales + interacciones ligadas a presentaciones), contactos y presentaciones asociadas. La cronología incluye **filtros por contexto** (Todos / Ronda de Inversión / Proceso M&A / Colaboraciones) y permite eliminar cualquier entrada (incluyendo emails).
 - **Presentaciones (introductions)**: vista global con búsqueda y filtro por estado.
-- **Bandeja de entrada**: gestión de emails recibidos con **resumen automático heurístico** (sin IA externa, basado en reglas/regex), sugerencia de inversor por dominio de email del remitente, y guardado del resumen como interacción de una presentación o como registro de contacto del inversor.
+- **Bandeja de entrada**: gestión de emails recibidos con flujo guiado en 3 pasos:
+  1. **Detección automática de contacto** — busca el remitente (`from_email`) en la base de datos de contactos de Inversores y Colaboradores. Si se encuentra, se autoselecciona y aparece un banner verde de confirmación. Si no existe, ofrece la opción de crearlo como nuevo contacto de un Inversor o Colaborador sin salir de la pantalla.
+  2. **Selección de Participada** — filtra las participadas disponibles.
+  3. **Selección de proceso** — muestra las Rondas de Inversión o Procesos M&A activos de esa participada para vincular el email a la cronología correcta.
+  - Los emails guardados quedan identificados como `Bandeja de entrada` en la cronología de contactos.
+  - Eliminación de emails desde la bandeja y desde la cronología de contactos.
 - **Informes**: KPIs agregados de rondas abiertas/cerradas, comunicaciones por ronda y contactados en la última semana.
 - **Usuarios** (solo admin): alta/edición de usuarios, rol, MFA, participadas asignadas.
 - **Ajustes**: edición de perfil y de los catálogos configurables (estados de presentación, fases de ronda, etapas de relación, estados M&A, estados de colaboración).
@@ -63,10 +69,11 @@ requirements.txt     Dependencias Python
 
 | Módulo | Modelos clave |
 |---|---|
-| Fundraising | `Round`, `Introduction`, `Interaction`, `EstadoPresentacion`, `FaseRonda` |
-| M&A | `ProcesoMA`, `ContactoMA`, `InteraccionMA`, `Comprador`, `EstadoMA` |
-| Colaboraciones | `Colaboracion`, `InteraccionColaboracion`, `Colaborador`, `EstadoColaboracion` |
-| Inversores | `Investor`, `InvestorLog`, `EtapaRelacion` |
+| Fundraising | `Round`, `Introduction`, `Interaction`, `EstadoPresentacion`, `FaseRonda`, `RoundFaseLog` |
+| M&A | `ProcesoMA`, `ContactoMA`, `InteraccionMA`, `Comprador`, `EstadoMA`, `FaseMA`, `ProcesoMAFaseLog` |
+| Colaboraciones | `Colaboracion`, `InteraccionColaboracion`, `Colaborador`, `ColaboradorLog`, `EstadoColaboracion` |
+| Inversores | `Investor`, `InvestorContact`, `InvestorLog`, `EtapaRelacion` |
+| Bandeja | `InboxMessage` (FKs a `Investor`, `Colaborador`, `Round`, `ProcesoMA`) |
 
 ## Modelo de roles
 
@@ -176,9 +183,15 @@ sudo ./scripts/deploy.sh
 
 - ✅ Modelo de datos, RBAC, todas las pantallas del prototipo portadas a Django con persistencia real en MySQL.
 - ✅ Resumen heurístico de emails (sin IA externa), igual que el prototipo.
-- ✅ Módulo M&A con pipeline kanban de venta, compradores, procesos e interacciones.
+- ✅ Módulo M&A con pipeline kanban de venta, compradores, procesos e interacciones. Campos NDA y DD eliminados.
 - ✅ Módulo Colaboraciones con seguimiento de clientes/proveedores/partners por participada.
 - ✅ Formato numérico español (`.` miles, `,` decimales) en todos los importes.
+- ✅ Stepper visual de fases (chevrons) en fichas de Ronda y Proceso M&A.
+- ✅ Todos los labels de formularios en español (sin acentos, espacios como `_`).
+- ✅ Autocompletado de país con listado predefinido en Participadas, Inversores y Colaboradores.
+- ✅ Selección múltiple de sectores en el formulario de Participadas.
+- ✅ Filtros de cronología por contexto (Ronda / M&A / Colaboraciones) en fichas de Inversor y Colaborador.
+- ✅ Bandeja de entrada rediseñada: detección automática de contacto, selección en cascada Participada → Proceso, creación de nuevo contacto inline, identificación `Bandeja de entrada` en cronología, eliminación de emails.
 - ⏳ **Auth0**: pendiente de integrar para sustituir el login demo actual (variables ya previstas en `.env.example`).
 - ⏳ **Microsoft Graph (Outlook)**: pendiente de integrar para sincronizar la bandeja de entrada con buzones reales (variables ya previstas en `.env.example`); actualmente la bandeja se gestiona de forma manual.
 

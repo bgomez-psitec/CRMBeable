@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+{% block title %}{{ nombre }} — Repositorio de Contactos{% endblock %}
+{% block topbar_title %}
+  {% if entity_detail_url %}
+    <a href="{{ entity_detail_url }}" style="color:inherit;text-decoration:none" title="Ver ficha">
+      {{ nombre }}<i class="bi bi-arrow-up-right ms-1" style="font-size:.75em;opacity:.6"></i>
+    </a>
+  {% else %}
+    {{ nombre }}
+  {% endif %}
+{% endblock %}
+{% block topbar_sub %}{{ tipo }} · Documentos adjuntos{% endblock %}
+
+{% block content %}
+
+<div class="mb-3">
+  <a href="{% url 'crm:docs_centro' %}?tab={{ tipo|lower }}" class="btn-ghost" style="font-size:.82rem">
+    <i class="bi bi-arrow-left me-1"></i>Volver a Documentación
+  </a>
+</div>
+
+<div class="dc-card">
+  <div class="dc-table-wrap">
+    <table class="dc-table">
+      <thead>
+        <tr>
+          <th>Archivo</th>
+          <th>Tamaño</th>
+          <th style="width:120px"></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for f in files %}
+        <tr>
+          <td>
+            <a href="{{ f.url }}" target="_blank" class="text-decoration-none d-flex align-items-center gap-2" style="color:var(--dc-text)">
+              {% if f.name|lower|slice:"-4:" == ".pdf" %}
+                <i class="bi bi-file-earmark-pdf" style="color:#ef4444;font-size:1.1rem;flex-shrink:0"></i>
+              {% elif f.name|lower|slice:"-5:" == ".docx" or f.name|lower|slice:"-4:" == ".doc" %}
+                <i class="bi bi-file-earmark-word" style="color:#2563eb;font-size:1.1rem;flex-shrink:0"></i>
+              {% elif f.name|lower|slice:"-4:" == ".msg" %}
+                <i class="bi bi-envelope" style="color:var(--dc-accent);font-size:1.1rem;flex-shrink:0"></i>
+              {% elif f.name|lower|slice:"-5:" == ".xlsx" or f.name|lower|slice:"-4:" == ".xls" %}
+                <i class="bi bi-file-earmark-excel" style="color:#16a34a;font-size:1.1rem;flex-shrink:0"></i>
+              {% else %}
+                <i class="bi bi-file-earmark" style="color:var(--dc-text-muted);font-size:1.1rem;flex-shrink:0"></i>
+              {% endif %}
+              <span>{{ f.name }}</span>
+            </a>
+          </td>
+          <td style="color:var(--dc-text-muted);font-size:.82rem;white-space:nowrap">{{ f.size_kb }} KB</td>
+          <td>
+            <div class="d-flex align-items-center gap-1 justify-content-end">
+              {% if f.cronologia_url %}
+              <a href="{{ f.cronologia_url }}" title="Ver en cronología"
+                 style="background:none;border:none;cursor:pointer;padding:2px 6px;color:var(--dc-accent);opacity:.7;text-decoration:none;font-size:.8rem;display:inline-flex;align-items:center;gap:3px;white-space:nowrap"
+                 onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=.7">
+                <i class="bi bi-arrow-up-right-circle"></i> <span>Cronología</span>
+              </a>
+              {% endif %}
+              {% if can_edit %}
+              <form method="post" onsubmit="return confirm('¿Eliminar {{ f.name }}?')" style="margin:0">
+                {% csrf_token %}
+                <input type="hidden" name="delete_file" value="{{ f.name }}">
+                <button type="submit" title="Eliminar"
+                        style="background:none;border:none;cursor:pointer;padding:2px 6px;color:var(--dc-text-muted);opacity:.5"
+                        onmouseover="this.style.opacity=1;this.style.color='#ef4444'"
+                        onmouseout="this.style.opacity=.5;this.style.color='var(--dc-text-muted)'">
+                  <i class="bi bi-trash3" style="font-size:.85rem"></i>
+                </button>
+              </form>
+              {% endif %}
+            </div>
+          </td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="3" style="text-align:center;padding:32px;color:var(--dc-text-muted)">
+            Sin archivos en esta carpeta.
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

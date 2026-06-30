@@ -1,0 +1,406 @@
+{% extends "base.html" %}
+{% block title %}Pipeline Colaboraciones — CRM Gestora{% endblock %}
+{% block topbar_title %}Pipeline Colaboraciones{% endblock %}
+{% block topbar_sub %}Estado de todas las colaboraciones activas{% endblock %}
+{% block topbar_actions %}
+  {% if can_edit %}
+    <button class="btn-accent" data-bs-toggle="modal" data-bs-target="#newColabModal">
+      <i class="bi bi-plus-lg"></i> Nueva colaboración
+    </button>
+  {% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function toggleCPContact() {
+  const isInv = document.getElementById('cp_ct_inv').checked;
+  document.getElementById('cp_col_sel').style.display = isInv ? 'none' : '';
+  document.getElementById('cp_inv_sel').style.display = isInv ? '' : 'none';
+}
+document.querySelectorAll('.kanban-card[data-colab-id]').forEach(card => {
+  card.addEventListener('dragstart', e => {
+    e.dataTransfer.setData('text/plain', card.dataset.colabId);
+    card.classList.add('dragging');
+    e.stopPropagation();
+  });
+  card.addEventListener('dragend', () => card.classList.remove('dragging'));
+});
+document.querySelectorAll('.colab-kanban-body').forEach(col => {
+  col.addEventListener('dragover', e => { e.preventDefault(); col.classList.add('drag-over'); });
+  col.addEventListener('dragleave', () => col.classList.remove('drag-over'));
+  col.addEventListener('drop', e => {
+    e.preventDefault();
+    col.classList.remove('drag-over');
+    const colabId = e.dataTransfer.getData('text/plain');
+    const estadoId = col.dataset.estadoId;
+    const form = document.getElementById('colab-status-form');
+    form.action = `/colaboraciones/${colabId}/estado/`;
+    form.querySelector('[name=estado_id]').value = estadoId;
+    form.submit();
+  });
+});
+
+// ── Menú contextual kanban Colaboraciones ─────────────────────────────────
+{% if can_edit %}
+const ctxMenuColab = document.getElementById('kanban-ctx-colab');
+let ctxEstadoIdColab = '';
+
+document.querySelectorAll('.kanban-col').forEach(col => {
+  col.addEventListener('contextmenu', e => {
+    e.preventDefault();
+    const body = col.querySelector('.colab-kanban-body');
+    ctxEstadoIdColab = body ? body.dataset.estadoId : '';
+    ctxMenuColab.style.display = 'block';
+    ctxMenuColab.style.left = Math.min(e.pageX, window.innerWidth - 200) + 'px';
+    ctxMenuColab.style.top = e.pageY + 'px';
+  });
+});
+
+document.addEventListener('click', () => { ctxMenuColab.style.display = 'none'; });
+document.addEventListener('contextmenu', e => {
+  if (!e.target.closest('.kanban-col')) ctxMenuColab.style.display = 'none';
+});
+
+document.getElementById('ctx-colab-nueva').addEventListener('click', () => {
+  ctxMenuColab.style.display = 'none';
+
+  // Pre-seleccionar estado
+  const statusSel = document.querySelector('#newColabModal select[name=status]');
+  if (statusSel) statusSel.value = ctxEstadoIdColab || '';
+
+  // Pre-seleccionar participada si hay filtro activo
+  const companyFilter = '{{ company_filter }}';
+  if (companyFilter) {
+    const companySel = document.querySelector('#newColabModal select[name=company]');
+    if (companySel) companySel.value = companyFilter;
+  }
+
+  new bootstrap.Modal(document.getElementById('newColabModal')).show();
+});
+{% endif %}
+</script>
+{% endblock %}
+
+{% block content %}
+
+{# ── Barra filtros + toggle vista ─────────────────────────────────────────── #}
+<div class="d-flex gap-2 mb-4 flex-wrap align-items-center justify-content-between">
+  <form method="get">
+    <input type="hidden" name="view" value="{{ view }}">
+    <div class="d-flex gap-2 align-items-center flex-wrap">
+      <input type="text" name="q" value="{{ q }}" class="form-control" style="width:200px;flex-shrink:0" placeholder="Colaborador, participada…">
+      <select name="company" class="form-select" style="width:175px;flex-shrink:0" onchange="this.form.submit()">
+        <option value="">Todas las participadas</option>
+        {% for c in all_companies %}
+          <option value="{{ c.pk }}" {% if company_filter == c.pk|stringformat:"s" %}selected{% endif %}>{{ c.name }}</option>
+        {% endfor %}
+      </select>
+      {% if view == 'list' %}
+        <select name="estado" class="form-select" style="width:165px;flex-shrink:0" onchange="this.form.submit()">
+          <option value="">Todos los estados</option>
+          {% for e in estados_colab %}
+            <option value="{{ e.id }}" {% if estado_filter == e.id|stringformat:"s" %}selected{% endif %}>{{ e.nombre }}</option>
+          {% endfor %}
+        </select>
+        <select name="group1" class="form-select" style="width:155px;flex-shrink:0" onchange="this.form.submit()">
+          <option value="">Sin agrupar</option>
+          {% for val, lbl in group_labels %}
+            <option value="{{ val }}" {% if group1 == val %}selected{% endif %}>Agrupar: {{ lbl }}</option>
+          {% endfor %}
+        </select>
+        {% if group1 %}
+        <select name="group2" class="form-select" style="width:155px;flex-shrink:0" onchange="this.form.submit()">
+          <option value="">— 2ª agrupación —</option>
+          {% for val, lbl in group_labels %}{% if val != group1 %}
+            <option value="{{ val }}" {% if group2 == val %}selected{% endif %}>{{ lbl }}</option>
+          {% endif %}{% endfor %}
+        </select>
+        {% endif %}
+      {% endif %}
+      <button type="submit" class="btn-ghost" style="height:38px;flex-shrink:0">Filtrar</button>
+      {% if q or company_filter or group1 %}
+        <a href="{% url 'crm:colaboraciones_pipeline' %}?view={{ view }}" class="btn-ghost" style="color:var(--dc-danger);border-color:rgba(239,68,68,.3)">
+          <i class="bi bi-x"></i> Limpiar
+        </a>
+      {% endif %}
+    </div>
+  </form>
+  <div class="d-flex gap-1">
+    <a href="?view=list{% if q %}&q={{ q }}{% endif %}{% if company_filter %}&company={{ company_filter }}{% endif %}"
+       class="btn-ghost" style="{% if view == 'list' %}background:var(--dc-accent);color:#fff;border-color:var(--dc-accent){% endif %}">
+      <i class="bi bi-list-ul"></i> Listado
+    </a>
+    <a href="?view=kanban{% if q %}&q={{ q }}{% endif %}{% if company_filter %}&company={{ company_filter }}{% endif %}"
+       class="btn-ghost" style="{% if view == 'kanban' %}background:var(--dc-accent);color:#fff;border-color:var(--dc-accent){% endif %}">
+      <i class="bi bi-kanban"></i> Kanban
+    </a>
+  </div>
+</div>
+
+{% if view == 'list' %}
+{# ── Vista listado ────────────────────────────────────────────────────────── #}
+
+{% if groups %}
+  {% for k1, v1 in groups.items %}
+  <div class="dc-card mb-2">
+    <button class="dc-card__header w-100 text-start" style="background:none;border:none;cursor:pointer"
+            type="button" data-bs-toggle="collapse" data-bs-target="#cg1-{{ forloop.counter }}" aria-expanded="true">
+      <h2 class="dc-card__title d-flex align-items-center gap-2 mb-0">
+        {{ k1 }}<span class="dc-badge dc-badge--grey ms-1">{{ v1|length }}</span>
+      </h2>
+      <i class="bi bi-chevron-right grp-chevron"></i>
+    </button>
+    <div class="collapse show" id="cg1-{{ forloop.counter }}">
+      {% if group2 %}
+        {% for k2, v2 in v1.items %}
+        <div class="grp-l2-wrap">
+          <button class="grp-l2-header" type="button"
+                  data-bs-toggle="collapse" data-bs-target="#cg2-{{ forloop.parentloop.counter }}-{{ forloop.counter }}" aria-expanded="true">
+            <span class="d-flex align-items-center gap-2">{{ k2 }}<span class="dc-badge dc-badge--grey">{{ v2|length }}</span></span>
+            <i class="bi bi-chevron-right grp-chevron"></i>
+          </button>
+          <div class="collapse show dc-table-wrap" id="cg2-{{ forloop.parentloop.counter }}-{{ forloop.counter }}">
+            <table class="dc-table">
+              <thead><tr><th>Contacto</th><th>Participada</th><th>Tipo relación</th><th>Estado</th><th>Próximo paso</th><th>Fecha</th></tr></thead>
+              <tbody>
+                {% for col in v2 %}
+                <tr style="cursor:pointer" onclick="location.href='{% url 'crm:colaboracion_detail' col.pk %}'">
+                  <td><b>{% if col.colaborador %}<a href="{% url 'crm:colaborador_detail' col.colaborador.pk %}" onclick="event.stopPropagation()" style="color:inherit;text-decoration:none" onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'">{{ col.colaborador.name }}</a>{% elif col.investor %}<a href="{% url 'crm:investor_detail' col.investor.pk %}" onclick="event.stopPropagation()" style="color:inherit;text-decoration:none" onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'">{{ col.investor.name }}</a>{% else %}—{% endif %}</b></td>
+                  <td><a href="{% url 'crm:company_detail' col.company.pk %}" onclick="event.stopPropagation()" style="color:inherit;text-decoration:none;font-weight:inherit" onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'">{{ col.company.name }}</a></td>
+                  <td style="color:var(--dc-text-muted)">{{ col.tipo_relacion|default:"—" }}</td>
+                  <td><span class="dc-badge dc-badge--blue">{{ col.status.nombre|default:"—" }}</span></td>
+                  <td style="font-size:.855rem">{{ col.next_action|default:"—" }}</td>
+                  <td style="font-size:.8rem">{% if col.next_date %}<span class="text-accent fw-semibold">{{ col.next_date|date:"d M Y" }}</span>{% else %}—{% endif %}</td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="6" style="text-align:center;padding:20px;color:var(--dc-text-muted)">Sin colaboraciones.</td></tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+        {% endfor %}
+      {% else %}
+        <div class="dc-table-wrap">
+          <table class="dc-table">
+            <thead><tr><th>Contacto</th><th>Participada</th><th>Tipo relación</th><th>Estado</th><th>Próximo paso</th><th>Fecha</th></tr></thead>
+            <tbody>
+              {% for col in v1 %}
+              <tr style="cursor:pointer" onclick="location.href='{% url 'crm:colaboracion_detail' col.pk %}'">
+                <td><b>{% if col.colaborador %}<a href="{% url 'crm:colaborador_detail' col.colaborador.pk %}" onclick="event.stopPropagation()" style="color:inherit;text-decoration:none" onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'">{{ col.colaborador.name }}</a>{% elif col.investor %}<a href="{% url 'crm:investor_detail' col.investor.pk %}" onclick="event.stopPropagation()" style="color:inherit;text-decoration:none" onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'">{{ col.investor.name }}</a>{% else %}—{% endif %}</b></td>
+                <td><a href="{% url 'crm:company_detail' col.company.pk %}" onclick="event.stopPropagation()" style="color:inherit;text-decoration:none;font-weight:inherit" onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'">{{ col.company.name }}</a></td>
+                <td style="color:var(--dc-text-muted)">{{ col.tipo_relacion|default:"—" }}</td>
+                <td><span class="dc-badge dc-badge--blue">{{ col.status.nombre|default:"—" }}</span></td>
+                <td style="font-size:.855rem">{{ col.next_action|default:"—" }}</td>
+                <td style="font-size:.8rem">{% if col.next_date %}<span class="text-accent fw-semibold">{{ col.next_date|date:"d M Y" }}</span>{% else %}—{% endif %}</td>
+              </tr>
+              {% empty %}
+              <tr><td colspan="6" style="text-align:center;padding:20px;color:var(--dc-text-muted)">Sin colaboraciones.</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% endif %}
+    </div>
+  </div>
+  {% empty %}
+  <div style="text-align:center;padding:48px;color:var(--dc-text-muted)">Sin colaboraciones que coincidan.</div>
+  {% endfor %}
+
+{% else %}
+  <div class="dc-card">
+    <div class="dc-table-wrap">
+      <table class="dc-table">
+        <thead>
+          <tr><th>Contacto</th><th>Participada</th><th>Tipo relación</th><th>Estado</th><th>Próximo paso</th><th>Fecha</th></tr>
+        </thead>
+        <tbody>
+          {% for col in colaboraciones_flat %}
+          <tr style="cursor:pointer" onclick="location.href='{% url 'crm:colaboracion_detail' col.pk %}'">
+            <td><b>{% if col.colaborador %}<a href="{% url 'crm:colaborador_detail' col.colaborador.pk %}" onclick="event.stopPropagation()" style="color:inherit;text-decoration:none" onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'">{{ col.colaborador.name }}</a>{% elif col.investor %}<a href="{% url 'crm:investor_detail' col.investor.pk %}" onclick="event.stopPropagation()" style="color:inherit;text-decoration:none" onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'">{{ col.investor.name }}</a>{% else %}—{% endif %}</b></td>
+            <td><a href="{% url 'crm:company_detail' col.company.pk %}" onclick="event.stopPropagation()" style="color:inherit;text-decoration:none;font-weight:inherit" onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'">{{ col.company.name }}</a></td>
+            <td style="color:var(--dc-text-muted)">{{ col.tipo_relacion|default:"—" }}</td>
+            <td><span class="dc-badge dc-badge--blue">{{ col.status.nombre|default:"—" }}</span></td>
+            <td style="font-size:.855rem">{{ col.next_action|default:"—" }}</td>
+            <td style="font-size:.8rem">{% if col.next_date %}<span class="text-accent fw-semibold">{{ col.next_date|date:"d M Y" }}</span>{% else %}—{% endif %}</td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="6" style="text-align:center;padding:32px;color:var(--dc-text-muted)">Sin colaboraciones.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+{% endif %}
+
+{% else %}
+{# ── Vista kanban ─────────────────────────────────────────────────────────── #}
+<div class="d-flex gap-3 align-items-start overflow-auto pb-3 kanban-board">
+
+  {% for stage in pipe_stages %}
+  <div class="kanban-col" data-col-id="{{ stage.estado.id|default:'none' }}">
+    <div class="kanban-col-header">
+      <span class="fw-semibold" style="font-size:.855rem">
+        {{ stage.estado.nombre|default:"Sin estado" }}
+        <span class="dc-badge dc-badge--grey ms-1">{{ stage.items|length }}</span>
+      </span>
+    </div>
+    <div class="kanban-body colab-kanban-body" data-estado-id="{{ stage.estado.id|default:'' }}">
+      {% for col in stage.items %}
+      <div class="kanban-card" draggable="true" data-colab-id="{{ col.pk }}"
+           onclick="location.href='{% url 'crm:colaboracion_detail' col.pk %}'">
+        <div style="font-size:.72rem;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--dc-accent);margin-bottom:2px">
+          {{ col.company.name }}
+        </div>
+        <b style="font-size:.855rem">{% if col.colaborador %}<a href="{% url 'crm:colaborador_detail' col.colaborador.pk %}" onclick="event.stopPropagation()" style="color:inherit;text-decoration:none" onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'">{{ col.colaborador.name }}</a>{% elif col.investor %}<a href="{% url 'crm:investor_detail' col.investor.pk %}" onclick="event.stopPropagation()" style="color:inherit;text-decoration:none" onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'">{{ col.investor.name }}</a>{% else %}—{% endif %}</b>
+        {% if col.tipo_relacion %}<div style="font-size:.75rem;color:var(--dc-text-muted)">{{ col.tipo_relacion }}</div>{% endif %}
+        {% if col.next_action %}
+          <div style="font-size:.74rem;color:var(--dc-text-muted);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">→ {{ col.next_action }}</div>
+        {% endif %}
+        {% if col.next_date %}
+          <div style="font-size:.74rem;color:var(--dc-accent);font-weight:600;margin-top:2px">{{ col.next_date|date:"d M Y" }}</div>
+        {% endif %}
+      </div>
+      {% empty %}
+      <div class="kanban-empty">Sin colaboraciones</div>
+      {% endfor %}
+    </div>
+  </div>
+  {% endfor %}
+
+  {% if end_stages %}
+  <div class="kanban-divider"></div>
+  {% for stage in end_stages %}
+  <div class="kanban-col" data-col-id="{{ stage.estado.id }}">
+    <div class="kanban-col-header">
+      <span class="fw-semibold" style="font-size:.855rem">
+        {{ stage.estado.nombre }}
+        <span class="dc-badge dc-badge--grey ms-1">{{ stage.items|length }}</span>
+      </span>
+    </div>
+    <div class="kanban-body colab-kanban-body" data-estado-id="{{ stage.estado.id }}">
+      {% for col in stage.items %}
+      <div class="kanban-card" draggable="true" data-colab-id="{{ col.pk }}"
+           onclick="location.href='{% url 'crm:colaboracion_detail' col.pk %}'">
+        <div style="font-size:.72rem;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--dc-accent);margin-bottom:2px">{{ col.company.name }}</div>
+        <b style="font-size:.855rem">{% if col.colaborador %}<a href="{% url 'crm:colaborador_detail' col.colaborador.pk %}" onclick="event.stopPropagation()" style="color:inherit;text-decoration:none" onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'">{{ col.colaborador.name }}</a>{% elif col.investor %}<a href="{% url 'crm:investor_detail' col.investor.pk %}" onclick="event.stopPropagation()" style="color:inherit;text-decoration:none" onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'">{{ col.investor.name }}</a>{% else %}—{% endif %}</b>
+        {% if col.tipo_relacion %}<div style="font-size:.75rem;color:var(--dc-text-muted)">{{ col.tipo_relacion }}</div>{% endif %}
+      </div>
+      {% empty %}
+      <div class="kanban-empty">Sin colaboraciones</div>
+      {% endfor %}
+    </div>
+  </div>
+  {% endfor %}
+  {% endif %}
+
+</div>
+
+<form id="colab-status-form" method="post" style="display:none">
+  {% csrf_token %}
+  <input type="hidden" name="estado_id">
+  <input type="hidden" name="next" value="pipeline">
+</form>
+{% endif %}
+
+{# ── Modal nueva colaboración ─────────────────────────────────────────────── #}
+{% if can_edit %}
+<div class="modal fade" id="newColabModal" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <form method="post" class="modal-content dc-form">
+      {% csrf_token %}
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="bi bi-diagram-3 me-2" style="color:#3b82f6"></i>Nueva colaboración</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="row g-3">
+          <div class="col-md-6">
+            <label class="form-label">Participada <span style="color:var(--dc-danger)">*</span></label>
+            <select name="company" class="form-select" required>
+              <option value="">— Seleccionar participada —</option>
+              {% for c in all_companies %}<option value="{{ c.pk }}" data-company-id="{{ c.pk }}">{{ c.name }}</option>{% endfor %}
+            </select>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Tipo de contacto</label>
+            <div class="d-flex gap-3 mb-2">
+              <label style="cursor:pointer"><input type="radio" name="contact_type" value="colaborador" id="cp_ct_col" checked onchange="toggleCPContact()"> Colaborador</label>
+              <label style="cursor:pointer"><input type="radio" name="contact_type" value="investor" id="cp_ct_inv" onchange="toggleCPContact()"> Inversor</label>
+            </div>
+            <div id="cp_col_sel">
+              <select name="colaborador" class="form-select">
+                <option value="">— Seleccionar colaborador —</option>
+                {% for c in all_colaboradores %}<option value="{{ c.pk }}">{{ c.name }}</option>{% endfor %}
+              </select>
+            </div>
+            <div id="cp_inv_sel" style="display:none">
+              <select name="investor" class="form-select">
+                <option value="">— Seleccionar inversor —</option>
+                {% for inv in all_investors %}<option value="{{ inv.pk }}">{{ inv.name }}</option>{% endfor %}
+              </select>
+            </div>
+          </div>
+          <div class="col-md-4">
+            <label class="form-label">Estado inicial</label>
+            <select name="status" class="form-select">
+              <option value="">— Sin estado —</option>
+              {% for e in estados_colab %}<option value="{{ e.id }}">{{ e.nombre }}</option>{% endfor %}
+            </select>
+          </div>
+          <div class="col-md-4">
+            <label class="form-label">Tipo de relación</label>
+            <select name="tipo_relacion" class="form-select">
+              <option value="">— Sin especificar —</option>
+              <option value="Colaborador">Colaborador</option>
+              <option value="Cliente">Cliente</option>
+              <option value="Proveedor">Proveedor</option>
+              <option value="Otro">Otro</option>
+            </select>
+          </div>
+          <div class="col-md-4">
+            <label class="form-label">Presentado por</label>
+            <input type="text" name="intro_by" class="form-control">
+          </div>
+          <div class="col-md-4">
+            <label class="form-label">Fecha de inicio</label>
+            <input type="date" name="date" class="form-control">
+          </div>
+          <div class="col-md-4">
+            <label class="form-label">Próximo paso</label>
+            <input type="text" name="next_action" class="form-control">
+          </div>
+          <div class="col-md-4">
+            <label class="form-label">Fecha próximo paso</label>
+            <input type="date" name="next_date" class="form-control">
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Descripción</label>
+            <input type="text" name="descripcion" class="form-control">
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Notas</label>
+            <textarea name="notes" class="form-control" rows="2"></textarea>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn-ghost" data-bs-dismiss="modal">Cancelar</button>
+        <button type="submit" class="btn-accent">Guardar</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endif %}
+
+{% if can_edit %}
+<div id="kanban-ctx-colab" style="display:none;position:fixed;z-index:9999;background:var(--dc-surface);border:1px solid var(--dc-border);border-radius:8px;box-shadow:0 4px 16px rgba(0,0,0,.18);padding:4px;min-width:180px">
+  <button id="ctx-colab-nueva" class="d-flex align-items-center gap-2 w-100 px-3 py-2 text-start"
+          style="background:none;border:none;cursor:pointer;border-radius:6px;font-size:.875rem;color:var(--dc-text)"
+          onmouseover="this.style.background='var(--dc-hover)'" onmouseout="this.style.background='none'">
+    <i class="bi bi-plus-circle" style="color:var(--dc-accent)"></i> Nueva colaboración aquí
+  </button>
+</div>
+{% endif %}
+
+{% endblock %}

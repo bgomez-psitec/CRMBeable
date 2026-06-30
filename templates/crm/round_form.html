@@ -1,11 +1,85 @@
 {% extends "base.html" %}
-{% load django_bootstrap5 %}
+{% load django_bootstrap5 crm_filters %}
 {% block title %}{{ title }} — CRM Gestora{% endblock %}
 {% block topbar_title %}{{ title }}{% endblock %}
 {% block content %}
-<form method="post" class="card card-body" style="max-width:640px">
-  {% csrf_token %}
-  {% bootstrap_form form %}
-  <button type="submit" class="btn btn-warning">Guardar</button>
-</form>
+<div class="dc-card dc-card__body" style="max-width:640px">
+  <form method="post" class="dc-form">
+    {% csrf_token %}
+    {% bootstrap_form form %}
+    <div class="d-flex gap-2 mt-3">
+      <button type="submit" class="btn-accent">Guardar</button>
+      <a href="{% if round %}{% url 'crm:round_detail' round.pk %}{% else %}{% url 'crm:company_detail' company.pk %}{% endif %}" class="btn-ghost">Cancelar</a>
+    </div>
+  </form>
+</div>
+
+{% if fase_logs %}
+<div class="dc-card dc-card__body mt-4" style="max-width:640px">
+  <div class="fw-semibold mb-3" style="font-size:.9rem"><i class="bi bi-clock-history me-2" style="color:var(--dc-accent)"></i>Historial de fases</div>
+  {% for log in fase_logs %}
+  <div class="d-flex align-items-center gap-3 py-2 border-bottom" style="font-size:.845rem">
+    <i class="bi bi-arrow-right-circle flex-shrink-0" style="color:var(--dc-accent)"></i>
+    <span class="fw-semibold flex-shrink-0" style="min-width:82px">{{ log.date|date:"d M Y" }}</span>
+    <span class="dc-badge dc-badge--grey flex-shrink-0">{{ log.fase.nombre|default:"—" }}</span>
+    <span class="text-muted flex-shrink-0" style="font-size:.75rem">{{ log.created_by }}</span>
+    <div class="ms-auto d-flex gap-1 flex-shrink-0">
+      <button class="btn-ghost" style="padding:2px 8px;font-size:.78rem"
+        onclick="openFaseLogEdit({{ log.pk }},'{{ log.date|date:"Y-m-d" }}','{{ log.fase_id }}')">
+        <i class="bi bi-pencil"></i>
+      </button>
+      <form method="post" action="{% url 'crm:round_fase_log_del' log.pk %}" style="display:inline"
+        onsubmit="return confirm('¿Eliminar este registro de fase?')">
+        {% csrf_token %}
+        <button type="submit" class="btn-ghost" style="padding:2px 8px;font-size:.78rem;color:var(--dc-danger)">
+          <i class="bi bi-trash"></i>
+        </button>
+      </form>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+{# Modal edición entrada de fase #}
+<div class="modal fade" id="faseLogEditModal" tabindex="-1">
+  <div class="modal-dialog modal-sm">
+    <div class="modal-content dc-form">
+      <div class="modal-header">
+        <h6 class="modal-title">Editar registro de fase</h6>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <form id="faseLogEditForm" method="post" action="">
+        {% csrf_token %}
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label">Fase</label>
+            <select name="fase_id" id="faseLogFase" class="form-select">
+              {% for f in fases_ronda %}
+              <option value="{{ f.pk }}">{{ f.nombre }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Fecha</label>
+            <input type="date" name="date" id="faseLogDate" class="form-control">
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn-ghost" data-bs-dismiss="modal">Cancelar</button>
+          <button type="submit" class="btn-accent">Guardar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script>
+function openFaseLogEdit(pk, date, faseId) {
+  document.getElementById('faseLogEditForm').action = `/rondas/fase-log/${pk}/upd/`;
+  document.getElementById('faseLogDate').value = date;
+  document.getElementById('faseLogFase').value = faseId;
+  bootstrap.Modal.getOrCreateInstance(document.getElementById('faseLogEditModal')).show();
+}
+</script>
 {% endblock %}

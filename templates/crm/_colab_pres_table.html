@@ -1,0 +1,20 @@
+{% load crm_filters %}
+<table class="dc-table">
+  <thead>
+    <tr><th>Participada</th><th>Colaborador</th><th>Tipo</th><th>Estado</th><th>Descripción</th><th>Próximo paso</th></tr>
+  </thead>
+  <tbody>
+    {% for col in rows %}
+    <tr style="cursor:pointer" onclick="location.href='{% url 'crm:colaboracion_detail' col.pk %}'">
+      <td><b>{{ col.company.name }}</b></td>
+      <td>{{ col.contact.name|default:"—" }}</td>
+      <td style="font-size:.8rem;color:var(--dc-text-muted)">{{ col.tipo_relacion|default:"—" }}</td>
+      <td><span class="dc-badge dc-badge--blue">{{ col.status.nombre|default:"—" }}</span></td>
+      <td style="font-size:.8rem;color:var(--dc-text-muted)">{{ col.descripcion|default:"—" }}</td>
+      <td style="font-size:.855rem">{{ col.next_action|default:"—" }}{% if col.next_date %} · <span class="text-accent fw-semibold">{{ col.next_date|date:"d M Y" }}</span>{% endif %}</td>
+    </tr>
+    {% empty %}
+    <tr><td colspan="6" style="text-align:center;padding:32px;color:var(--dc-text-muted)">Sin presentaciones de colaboración que coincidan.</td></tr>
+    {% endfor %}
+  </tbody>
+</table>

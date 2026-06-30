@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% block title %}Documentos — {{ company.name }}{% endblock %}
+{% block topbar_title %}
+  <a href="{% url 'crm:company_detail' company.pk %}" style="color:inherit;text-decoration:none" title="Ver participada">
+    {{ company.name }}<i class="bi bi-arrow-up-right ms-1" style="font-size:.75em;opacity:.6"></i>
+  </a>
+{% endblock %}
+{% block topbar_sub %}Centro de Documentación{% endblock %}
+
+{% block content %}
+
+<div class="d-flex align-items-center gap-2 mb-4">
+  <a href="{% url 'crm:docs_centro' %}" style="font-size:.85rem;color:var(--dc-text-muted);text-decoration:none">
+    <i class="bi bi-grid me-1"></i>Documentación
+  </a>
+  <i class="bi bi-chevron-right" style="font-size:.7rem;color:var(--dc-text-muted)"></i>
+  <span style="font-size:.85rem;font-weight:600">{{ company.name }}</span>
+</div>
+
+<div class="row g-3">
+  {% for c in carpetas %}
+  <div class="col-sm-6 col-lg-4">
+    <a href="{{ c.url }}"
+       class="dc-card d-flex align-items-center gap-3 px-4 py-3"
+       style="text-decoration:none;color:var(--dc-text);transition:background .15s"
+       onmouseover="this.style.background='var(--dc-hover)'" onmouseout="this.style.background=''">
+      <div style="width:40px;height:40px;border-radius:10px;flex-shrink:0;display:flex;align-items:center;justify-content:center;
+        {% if c.icon == 'bi-folder2' %}background:rgba(245,158,11,.12){% elif c.icon == 'bi-graph-up-arrow' %}background:rgba(59,130,246,.12){% else %}background:rgba(168,85,247,.12){% endif %}">
+        <i class="bi {{ c.icon }}" style="font-size:1.1rem;
+          {% if c.icon == 'bi-folder2' %}color:#f59e0b{% elif c.icon == 'bi-graph-up-arrow' %}color:#3b82f6{% else %}color:#a855f7{% endif %}"></i>
+      </div>
+      <div style="flex:1;min-width:0">
+        <div class="fw-semibold" style="font-size:.9rem">{{ c.label }}</div>
+        <div style="font-size:.75rem;color:var(--dc-text-muted)">
+          {% if c.icon == 'bi-folder2' %}Carpeta general
+          {% elif c.icon == 'bi-graph-up-arrow' %}Ronda de Inversión
+          {% else %}Proceso M&amp;A{% endif %}
+        </div>
+      </div>
+      <div class="text-end flex-shrink-0">
+        <div style="font-size:1.1rem;font-weight:700;color:var(--dc-accent)">{{ c.count }}</div>
+        <div style="font-size:.68rem;color:var(--dc-text-muted)">archivo{{ c.count|pluralize:",s" }}</div>
+      </div>
+    </a>
+  </div>
+  {% empty %}
+  <div class="col-12">
+    <div class="dc-card dc-card__body text-center py-5" style="color:var(--dc-text-muted)">
+      Esta participada no tiene rondas ni procesos aún.
+    </div>
+  </div>
+  {% endfor %}
+</div>
+
+{% endblock %}

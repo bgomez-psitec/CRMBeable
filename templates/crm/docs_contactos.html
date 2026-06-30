@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+{% block title %}Repositorio Inversores / Colaboradores — CRM{% endblock %}
+{% block topbar_title %}Repositorio de Contactos{% endblock %}
+{% block topbar_sub %}Documentos adjuntos a inversores y colaboradores{% endblock %}
+
+{% block content %}
+
+{% if not entidades %}
+<div class="dc-card dc-card__body" style="text-align:center;padding:48px;color:var(--dc-text-muted)">
+  <i class="bi bi-folder2-open" style="font-size:2.5rem;display:block;margin-bottom:12px"></i>
+  <div style="font-size:.95rem">Aún no hay documentos guardados.</div>
+  <div style="font-size:.82rem;margin-top:6px">Arrastra un fichero sobre la cronología de un inversor o colaborador para empezar.</div>
+  <div style="font-size:.78rem;margin-top:8px;color:var(--dc-text-muted);opacity:.7">Ruta: {{ root }}</div>
+</div>
+{% else %}
+
+{# ── Inversores ───────────────────────────────────────────────────────────── #}
+{% with inv_list=entidades|dictsort:"nombre" %}
+{% if inv_list %}
+<p class="mb-2" style="font-size:.68rem;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--dc-text-muted)">
+  <i class="bi bi-person-badge me-1"></i>Inversores
+</p>
+<div class="row g-3 mb-4">
+  {% for e in entidades %}
+  {% if e.tipo == 'Inversores' %}
+  <div class="col-sm-6 col-lg-4">
+    <a href="{{ e.url }}" class="text-decoration-none">
+      <div class="dc-card dc-card__body h-100" style="cursor:pointer;transition:transform .15s,box-shadow .15s"
+           onmouseenter="this.style.transform='translateY(-2px)';this.style.boxShadow='0 4px 16px rgba(0,0,0,.1)'"
+           onmouseleave="this.style.transform='';this.style.boxShadow=''">
+        <div class="d-flex align-items-center gap-3">
+          <i class="bi bi-folder2" style="font-size:1.6rem;color:var(--dc-accent);flex-shrink:0"></i>
+          <div style="min-width:0">
+            <div class="fw-semibold" style="font-size:.9rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ e.nombre }}</div>
+            <div style="font-size:.75rem;color:var(--dc-text-muted)">{{ e.count }} archivo{{ e.count|pluralize }}</div>
+          </div>
+        </div>
+      </div>
+    </a>
+  </div>
+  {% endif %}
+  {% endfor %}
+</div>
+{% endif %}
+{% endwith %}
+
+{# ── Separador ────────────────────────────────────────────────────────────── #}
+<p class="mb-2" style="font-size:.68rem;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--dc-text-muted)">
+  <i class="bi bi-people me-1"></i>Colaboradores
+</p>
+<div class="row g-3">
+  {% for e in entidades %}
+  {% if e.tipo == 'Colaboradores' %}
+  <div class="col-sm-6 col-lg-4">
+    <a href="{{ e.url }}" class="text-decoration-none">
+      <div class="dc-card dc-card__body h-100" style="cursor:pointer;transition:transform .15s,box-shadow .15s"
+           onmouseenter="this.style.transform='translateY(-2px)';this.style.boxShadow='0 4px 16px rgba(0,0,0,.1)'"
+           onmouseleave="this.style.transform='';this.style.boxShadow=''">
+        <div class="d-flex align-items-center gap-3">
+          <i class="bi bi-folder2" style="font-size:1.6rem;color:#8b5cf6;flex-shrink:0"></i>
+          <div style="min-width:0">
+            <div class="fw-semibold" style="font-size:.9rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ e.nombre }}</div>
+            <div style="font-size:.75rem;color:var(--dc-text-muted)">{{ e.count }} archivo{{ e.count|pluralize }}</div>
+          </div>
+        </div>
+      </div>
+    </a>
+  </div>
+  {% endif %}
+  {% endfor %}
+</div>
+
+{% endif %}
+{% endblock %}

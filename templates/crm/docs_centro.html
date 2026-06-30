@@ -1,0 +1,156 @@
+{% extends "base.html" %}
+{% block title %}Documentación — CRM Gestora{% endblock %}
+{% block topbar_title %}Documentación{% endblock %}
+{% block topbar_sub %}Archivos organizados por participada, inversor y colaborador{% endblock %}
+
+{% block content %}
+
+{# ── Sub-pestañas ────────────────────────────────────────────────────────── #}
+<div class="d-flex gap-3 mb-5" style="border-bottom:2px solid var(--dc-border);padding-bottom:0">
+
+  <a href="?tab=participadas" style="text-decoration:none;padding:10px 20px 12px;font-size:.92rem;font-weight:600;
+     display:inline-flex;align-items:center;gap:8px;white-space:nowrap;
+     {% if active_tab == 'participadas' %}
+       color:var(--dc-accent);border-bottom:3px solid var(--dc-accent);margin-bottom:-2px;
+     {% else %}
+       color:var(--dc-text-muted);border-bottom:3px solid transparent;margin-bottom:-2px;
+     {% endif %}
+     transition:color .15s">
+    <span style="width:32px;height:32px;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;
+          {% if active_tab == 'participadas' %}background:rgba(var(--dc-accent-rgb),.12){% else %}background:var(--dc-hover){% endif %}">
+      <i class="bi bi-building" style="font-size:1rem{% if active_tab == 'participadas' %};color:var(--dc-accent){% endif %}"></i>
+    </span>
+    Participadas
+  </a>
+
+  <a href="?tab=inversores" style="text-decoration:none;padding:10px 20px 12px;font-size:.92rem;font-weight:600;
+     display:inline-flex;align-items:center;gap:8px;white-space:nowrap;
+     {% if active_tab == 'inversores' %}
+       color:var(--dc-accent);border-bottom:3px solid var(--dc-accent);margin-bottom:-2px;
+     {% else %}
+       color:var(--dc-text-muted);border-bottom:3px solid transparent;margin-bottom:-2px;
+     {% endif %}
+     transition:color .15s">
+    <span style="width:32px;height:32px;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;
+          {% if active_tab == 'inversores' %}background:rgba(var(--dc-accent-rgb),.12){% else %}background:var(--dc-hover){% endif %}">
+      <i class="bi bi-person-badge" style="font-size:1rem{% if active_tab == 'inversores' %};color:var(--dc-accent){% endif %}"></i>
+    </span>
+    Inversores
+  </a>
+
+  <a href="?tab=colaboradores" style="text-decoration:none;padding:10px 20px 12px;font-size:.92rem;font-weight:600;
+     display:inline-flex;align-items:center;gap:8px;white-space:nowrap;
+     {% if active_tab == 'colaboradores' %}
+       color:var(--dc-accent);border-bottom:3px solid var(--dc-accent);margin-bottom:-2px;
+     {% else %}
+       color:var(--dc-text-muted);border-bottom:3px solid transparent;margin-bottom:-2px;
+     {% endif %}
+     transition:color .15s">
+    <span style="width:32px;height:32px;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;
+          {% if active_tab == 'colaboradores' %}background:rgba(var(--dc-accent-rgb),.12){% else %}background:var(--dc-hover){% endif %}">
+      <i class="bi bi-people" style="font-size:1rem{% if active_tab == 'colaboradores' %};color:var(--dc-accent){% endif %}"></i>
+    </span>
+    Colaboradores
+  </a>
+
+</div>
+
+{# ── Pestaña Participadas ─────────────────────────────────────────────────── #}
+{% if active_tab == 'participadas' %}
+<div class="row g-3">
+  {% for item in participadas_data %}
+  <div class="col-sm-6 col-lg-4">
+    <a href="{% url 'crm:docs_company' item.company.pk %}"
+       class="dc-card d-flex align-items-center gap-3 px-4 py-3"
+       style="text-decoration:none;color:var(--dc-text);transition:background .15s"
+       onmouseover="this.style.background='var(--dc-hover)'" onmouseout="this.style.background=''">
+      <div style="width:40px;height:40px;border-radius:10px;background:rgba(var(--dc-accent-rgb),.12);
+                  display:flex;align-items:center;justify-content:center;flex-shrink:0">
+        <i class="bi bi-building" style="font-size:1.1rem;color:var(--dc-accent)"></i>
+      </div>
+      <div style="flex:1;min-width:0">
+        <div class="fw-semibold" style="font-size:.9rem">{{ item.company.name }}</div>
+        <div style="font-size:.75rem;color:var(--dc-text-muted)">
+          {{ item.company.rounds.count }} ronda{{ item.company.rounds.count|pluralize:",s" }} ·
+          {{ item.company.procesos_ma.count }} proceso{{ item.company.procesos_ma.count|pluralize:",s" }} MA
+        </div>
+      </div>
+      <div class="text-end flex-shrink-0">
+        <div style="font-size:1.1rem;font-weight:700;color:var(--dc-accent)">{{ item.total }}</div>
+        <div style="font-size:.68rem;color:var(--dc-text-muted)">archivo{{ item.total|pluralize:",s" }}</div>
+      </div>
+    </a>
+  </div>
+  {% empty %}
+  <div class="col-12">
+    <div class="dc-card dc-card__body text-center py-5" style="color:var(--dc-text-muted)">
+      No hay participadas disponibles.
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+{# ── Pestaña Inversores ───────────────────────────────────────────────────── #}
+{% if active_tab == 'inversores' %}
+<div class="row g-3">
+  {% for e in inversores_data %}
+  <div class="col-sm-6 col-lg-4">
+    <a href="{{ e.url }}" class="text-decoration-none">
+      <div class="dc-card dc-card__body h-100" style="cursor:pointer;transition:transform .15s,box-shadow .15s"
+           onmouseenter="this.style.transform='translateY(-2px)';this.style.boxShadow='0 4px 16px rgba(0,0,0,.1)'"
+           onmouseleave="this.style.transform='';this.style.boxShadow=''">
+        <div class="d-flex align-items-center gap-3">
+          <i class="bi bi-folder2" style="font-size:1.6rem;color:var(--dc-accent);flex-shrink:0"></i>
+          <div style="min-width:0">
+            <div class="fw-semibold" style="font-size:.9rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ e.nombre }}</div>
+            <div style="font-size:.75rem;color:var(--dc-text-muted)">{{ e.count }} archivo{{ e.count|pluralize }}</div>
+          </div>
+        </div>
+      </div>
+    </a>
+  </div>
+  {% empty %}
+  <div class="col-12">
+    <div class="dc-card dc-card__body text-center py-5" style="color:var(--dc-text-muted)">
+      <i class="bi bi-folder2-open" style="font-size:2.5rem;display:block;margin-bottom:12px"></i>
+      <div style="font-size:.95rem">Aún no hay documentos de inversores.</div>
+      <div style="font-size:.82rem;margin-top:6px">Arrastra un fichero sobre la cronología de un inversor para empezar.</div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+{# ── Pestaña Colaboradores ────────────────────────────────────────────────── #}
+{% if active_tab == 'colaboradores' %}
+<div class="row g-3">
+  {% for e in colaboradores_data %}
+  <div class="col-sm-6 col-lg-4">
+    <a href="{{ e.url }}" class="text-decoration-none">
+      <div class="dc-card dc-card__body h-100" style="cursor:pointer;transition:transform .15s,box-shadow .15s"
+           onmouseenter="this.style.transform='translateY(-2px)';this.style.boxShadow='0 4px 16px rgba(0,0,0,.1)'"
+           onmouseleave="this.style.transform='';this.style.boxShadow=''">
+        <div class="d-flex align-items-center gap-3">
+          <i class="bi bi-folder2" style="font-size:1.6rem;color:#8b5cf6;flex-shrink:0"></i>
+          <div style="min-width:0">
+            <div class="fw-semibold" style="font-size:.9rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ e.nombre }}</div>
+            <div style="font-size:.75rem;color:var(--dc-text-muted)">{{ e.count }} archivo{{ e.count|pluralize }}</div>
+          </div>
+        </div>
+      </div>
+    </a>
+  </div>
+  {% empty %}
+  <div class="col-12">
+    <div class="dc-card dc-card__body text-center py-5" style="color:var(--dc-text-muted)">
+      <i class="bi bi-folder2-open" style="font-size:2.5rem;display:block;margin-bottom:12px"></i>
+      <div style="font-size:.95rem">Aún no hay documentos de colaboradores.</div>
+      <div style="font-size:.82rem;margin-top:6px">Arrastra un fichero sobre la cronología de un colaborador para empezar.</div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+{% endblock %}

@@ -1,0 +1,208 @@
+{% extends "base.html" %}
+{% load crm_filters %}
+{% block title %}KPIs Colaboraciones — CRM Gestora{% endblock %}
+{% block topbar_title %}KPIs Colaboraciones{% endblock %}
+{% block topbar_sub %}Resumen de colaboraciones activas{% endblock %}
+
+{% block content %}
+
+{# ══ KPIs GLOBALES ════════════════════════════════════════════════════════ #}
+<div class="row g-2 mb-4">
+  {% include "crm/_kpi_card.html" with label="Colaboraciones activas" value=total_activas fmt="num" color="green" %}
+  {% include "crm/_kpi_card.html" with label="Colaboraciones cerradas" value=total_cerradas fmt="num" color="red" %}
+  {% include "crm/_kpi_card.html" with label="Total colaboraciones" value=total_all fmt="num" color="text" %}
+  {% include "crm/_kpi_card.html" with label="Colaboradores distintos" value=total_colaboradores fmt="num" color="blue" %}
+  {% include "crm/_kpi_card.html" with label="Participadas implicadas" value=total_participadas fmt="num" color="blue" %}
+</div>
+
+{# ══ GRÁFICOS ═══════════════════════════════════════════════════════════ #}
+<div class="row g-3 mb-4">
+
+  {# ── Embudo por estado ── #}
+  <div class="col-md-5">
+    <div class="dc-card h-100">
+      <div class="dc-card__header">
+        <h2 class="dc-card__title">Estado de las colaboraciones</h2>
+      </div>
+      <div class="dc-card__body">
+        <div class="d-flex gap-4 align-items-center mb-4">
+          <div style="position:relative;width:140px;height:140px;flex-shrink:0">
+            <canvas id="donutStatus" width="140" height="140"></canvas>
+            <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;pointer-events:none">
+              <span style="font-size:1.5rem;font-weight:700">{{ total_all }}</span>
+              <span style="font-size:.68rem;color:var(--dc-text-muted);text-transform:uppercase">Total</span>
+            </div>
+          </div>
+          <div style="flex:1">
+            <div class="d-flex justify-content-between mb-2" style="font-size:.8rem">
+              <span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#22c55e;margin-right:6px"></span>Activas</span>
+              <span style="color:var(--dc-text-muted)">{{ total_activas }} &nbsp;<b>{{ total_activas|pct_of:total_all }}%</b></span>
+            </div>
+            <div class="d-flex justify-content-between mb-2" style="font-size:.8rem">
+              <span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#ef4444;margin-right:6px"></span>Cerradas</span>
+              <span style="color:var(--dc-text-muted)">{{ total_cerradas }} &nbsp;<b>{{ total_cerradas|pct_of:total_all }}%</b></span>
+            </div>
+          </div>
+        </div>
+        {# Embudo por estado #}
+        {% for e in embudo %}
+        <div class="d-flex align-items-center gap-2 mb-2">
+          <span class="embudo-dot" data-idx="{{ forloop.counter0 }}"
+                style="display:inline-block;width:8px;height:8px;border-radius:50%;flex-shrink:0;background:#ccc"></span>
+          <span style="flex:1;font-size:.8rem">{{ e.nombre }}</span>
+          <span style="font-size:.8rem;font-weight:600;min-width:24px;text-align:right">{{ e.count }}</span>
+          <div style="width:100px;height:5px;background:var(--dc-hover);border-radius:3px;overflow:hidden">
+            <div class="embudo-bar" data-idx="{{ forloop.counter0 }}" style="height:100%;width:{{ e.pct }}%;border-radius:3px;background:#ccc"></div>
+          </div>
+          <span style="font-size:.75rem;color:var(--dc-text-muted);min-width:32px;text-align:right">{{ e.pct }}%</span>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+
+  {# ── Por tipo de relación ── #}
+  <div class="col-md-3">
+    <div class="dc-card h-100">
+      <div class="dc-card__header">
+        <h2 class="dc-card__title">Por tipo de relación</h2>
+      </div>
+      <div class="dc-card__body">
+        <div style="position:relative;width:140px;height:140px;margin:0 auto 16px">
+          <canvas id="donutTipo" width="140" height="140"></canvas>
+        </div>
+        {% for tipo, cnt in tipo_counts.items %}
+        <div class="d-flex justify-content-between align-items-center mb-2" style="font-size:.8rem">
+          <span class="tipo-dot" data-idx="{{ forloop.counter0 }}"
+                style="display:flex;align-items:center;gap:6px">
+            <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#ccc"></span>
+            {{ tipo }}
+          </span>
+          <span class="fw-semibold">{{ cnt }}</span>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+
+  {# ── Top participadas ── #}
+  <div class="col-md-4">
+    <div class="dc-card h-100">
+      <div class="dc-card__header">
+        <h2 class="dc-card__title">Participadas más activas</h2>
+      </div>
+      <div class="dc-card__body p-0">
+        {% for item in top_companies %}
+        <a href="{% url 'crm:company_detail' item.company.pk %}" class="d-flex align-items-center gap-3 px-4 py-3"
+           style="border-bottom:1px solid var(--dc-border);text-decoration:none;color:var(--dc-text);transition:background .15s"
+           onmouseover="this.style.background='var(--dc-hover)'" onmouseout="this.style.background=''">
+          <div style="flex:1;font-size:.85rem;font-weight:500">{{ item.company.name }}</div>
+          <span class="dc-badge dc-badge--blue" style="font-size:.72rem">{{ item.n }} colab.</span>
+        </a>
+        {% empty %}
+        <p class="px-4 py-3" style="color:var(--dc-text-muted);font-size:.85rem">Sin datos.</p>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+</div>
+
+{# ══ TOP COLABORADORES ════════════════════════════════════════════════════ #}
+<div class="row g-3 mb-4">
+  <div class="col-lg-6">
+    <div class="dc-card">
+      <div class="dc-card__header">
+        <h2 class="dc-card__title">Top colaboradores por actividad</h2>
+      </div>
+      <div class="dc-card__body p-0">
+        {% for item in top_colabs %}
+        <a href="{% url 'crm:colaborador_detail' item.colaborador.pk %}" class="d-flex align-items-center gap-3 px-4 py-3"
+           style="border-bottom:1px solid var(--dc-border);text-decoration:none;color:var(--dc-text);transition:background .15s"
+           onmouseover="this.style.background='var(--dc-hover)'" onmouseout="this.style.background=''">
+          <div style="width:32px;height:32px;border-radius:50%;background:var(--dc-accent);display:flex;align-items:center;justify-content:center;font-size:.7rem;font-weight:700;color:#fff;flex-shrink:0">
+            {{ item.colaborador.name|slice:":2"|upper }}
+          </div>
+          <div style="flex:1">
+            <div style="font-size:.85rem;font-weight:500">{{ item.colaborador.name }}</div>
+            <div style="font-size:.73rem;color:var(--dc-text-muted)">{{ item.colaborador.country|default:"—" }}</div>
+          </div>
+          <div class="text-end">
+            <div style="font-size:.85rem;font-weight:700;color:var(--dc-accent)">{{ item.n_act }}</div>
+            <div style="font-size:.7rem;color:var(--dc-text-muted)">activas / {{ item.n_total }} total</div>
+          </div>
+        </a>
+        {% empty %}
+        <p class="px-4 py-3" style="color:var(--dc-text-muted);font-size:.85rem">Sin datos.</p>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+
+  {# ══ ÚLTIMAS COLABORACIONES ═══════════════════════════════════════════ #}
+  <div class="col-lg-6">
+    <div class="dc-card">
+      <div class="dc-card__header">
+        <h2 class="dc-card__title">Colaboraciones recientes</h2>
+      </div>
+      <div class="dc-card__body p-0">
+        {% for c in recientes %}
+        <a href="{% url 'crm:colaboracion_detail' c.pk %}" class="d-flex align-items-center gap-3 px-4 py-3"
+           style="border-bottom:1px solid var(--dc-border);text-decoration:none;color:var(--dc-text);transition:background .15s"
+           onmouseover="this.style.background='var(--dc-hover)'" onmouseout="this.style.background=''">
+          <div style="flex:1;min-width:0">
+            <div style="font-size:.85rem;font-weight:500">
+              {% if c.colaborador %}{{ c.colaborador.name }}{% elif c.investor %}{{ c.investor.name }}{% else %}—{% endif %}
+            </div>
+            <div style="font-size:.73rem;color:var(--dc-text-muted)">
+              {{ c.company.name }}{% if c.tipo_relacion %} · {{ c.tipo_relacion }}{% endif %}
+            </div>
+          </div>
+          <div class="text-end flex-shrink-0">
+            {% if c.status %}
+            <span class="dc-badge dc-badge--grey" style="font-size:.7rem">{{ c.status.nombre }}</span>
+            {% endif %}
+            {% if c.date %}
+            <div style="font-size:.72rem;color:var(--dc-text-muted);margin-top:3px">{{ c.date|date:"d M Y" }}</div>
+            {% endif %}
+          </div>
+        </a>
+        {% empty %}
+        <p class="px-4 py-3" style="color:var(--dc-text-muted);font-size:.85rem">Sin colaboraciones recientes.</p>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script>
+const PALETTE = ['#22c55e','#3b82f6','#f59e0b','#6366f1','#ef4444','#06b6d4','#a855f7','#64748b'];
+
+// Donut activas/cerradas
+const ctxS = document.getElementById('donutStatus');
+if (ctxS) {
+  new Chart(ctxS, { type:'doughnut', data:{ labels:['Activas','Cerradas'], datasets:[{ data:[{{ total_activas }},{{ total_cerradas }}], backgroundColor:['#22c55e','#ef4444'], borderWidth:2, borderColor:'transparent' }] }, options:{ cutout:'72%', plugins:{ legend:{ display:false } } } });
+}
+
+// Donut tipo relación
+const tipoData  = [{% for tipo, cnt in tipo_counts.items %}{{ cnt }}{% if not forloop.last %},{% endif %}{% endfor %}];
+const tipoNames = [{% for tipo, cnt in tipo_counts.items %}"{{ tipo|escapejs }}"{% if not forloop.last %},{% endif %}{% endfor %}];
+const ctxT = document.getElementById('donutTipo');
+if (ctxT && tipoData.length) {
+  const tColors = tipoData.map((_,i) => PALETTE[i % PALETTE.length]);
+  new Chart(ctxT, { type:'doughnut', data:{ labels:tipoNames, datasets:[{ data:tipoData, backgroundColor:tColors, borderWidth:2, borderColor:'transparent' }] }, options:{ cutout:'68%', plugins:{ legend:{ display:false } } } });
+  document.querySelectorAll('.tipo-dot').forEach(el => {
+    const span = el.querySelector('span');
+    if (span) span.style.background = tColors[parseInt(el.dataset.idx)] || '#ccc';
+  });
+}
+
+// Colores embudo
+const embudoColors = [{% for e in embudo %}"{{ forloop.counter0 }}"{% if not forloop.last %},{% endif %}{% endfor %}].map((_,i) => PALETTE[i % PALETTE.length]);
+document.querySelectorAll('.embudo-dot').forEach(dot => { dot.style.background = embudoColors[parseInt(dot.dataset.idx)] || '#ccc'; });
+document.querySelectorAll('.embudo-bar').forEach(bar => { bar.style.background = embudoColors[parseInt(bar.dataset.idx)] || '#ccc'; });
+</script>
+{% endblock %}

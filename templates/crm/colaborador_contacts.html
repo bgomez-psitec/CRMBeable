@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% load crm_filters %}
+{% block title %}Contactos de Colaboradores — CRM Gestora{% endblock %}
+{% block topbar_title %}Contactos de Colaboradores{% endblock %}
+{% block topbar_sub %}Directorio de personas de contacto{% endblock %}
+{% block topbar_actions %}
+  <a href="{% url 'crm:colaboradores' %}" class="btn-ghost">
+    <i class="bi bi-arrow-left"></i> Volver a Colaboradores
+  </a>
+{% endblock %}
+{% block content %}
+
+<form method="get" class="d-flex gap-2 mb-4 flex-wrap align-items-center">
+  <input type="text" name="q" value="{{ q }}" class="form-control" style="max-width:220px" placeholder="Nombre, cargo, email…">
+  <select name="colaborador" class="form-select" style="max-width:220px" onchange="this.form.submit()">
+    <option value="">Todos los colaboradores</option>
+    {% for col in all_colaboradores %}
+      <option value="{{ col.pk }}" {% if colaborador_id == col.pk|stringformat:"s" %}selected{% endif %}>{{ col.name }}</option>
+    {% endfor %}
+  </select>
+  <button type="submit" class="btn-ghost" style="height:38px;align-self:center">Buscar</button>
+  {% if q or colaborador_id %}
+    <a href="{% url 'crm:colaborador_contacts' %}" class="btn-ghost" style="color:var(--dc-danger);border-color:rgba(239,68,68,.3)">
+      <i class="bi bi-x"></i> Limpiar
+    </a>
+  {% endif %}
+</form>
+
+<div class="dc-card">
+  <div class="dc-table-wrap">
+    <table class="dc-table">
+      <thead>
+        <tr><th>Colaborador</th><th>Nombre</th><th>Cargo</th><th>Email</th><th>Teléfono</th></tr>
+      </thead>
+      <tbody>
+        {% for c in contacts %}
+        <tr style="cursor:pointer" onclick="location.href='{% url 'crm:colaborador_detail' c.colaborador_id %}'">
+          <td><b>{{ c.colaborador.name }}</b></td>
+          <td>{{ c.name }}</td>
+          <td style="color:var(--dc-text-muted)">{{ c.role|default:"—" }}</td>
+          <td>{% if c.email %}<a href="mailto:{{ c.email }}" onclick="event.stopPropagation()">{{ c.email }}</a>{% else %}—{% endif %}</td>
+          <td style="color:var(--dc-text-muted)">{{ c.phone|default:"—" }}</td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="5" style="text-align:center;padding:32px;color:var(--dc-text-muted)">Sin contactos que coincidan.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

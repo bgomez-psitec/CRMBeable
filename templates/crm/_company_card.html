@@ -1,24 +1,23 @@
 {% load crm_filters %}
-<div class="col-md-6">
-  <div class="card h-100" style="cursor:pointer" onclick="location.href='{% url 'crm:company_detail' card.company.pk %}'">
-    <div class="card-body">
-      <div class="d-flex justify-content-between align-items-start">
-        <div>
-          <div class="fw-semibold">{{ card.company.name }}</div>
-          <div class="text-muted small">{{ card.company.country }}{% if card.company.int_code %} · {{ card.company.int_code }}{% endif %}</div>
-        </div>
-        <span class="badge text-bg-warning">{{ card.company.stage|default:"—" }}</span>
-      </div>
-      <div class="d-flex justify-content-between text-muted small mt-2">
-        <span>Valoración <b class="text-dark">{{ card.company.valuation|euros }} €</b></span>
-      </div>
-      <div class="mt-2">
-        <div class="d-flex justify-content-between small">
-          <span>Captado activo: <b class="text-warning">{{ card.invertido|euros }} €</b> / {{ card.target|euros }} €</span>
-          <span>{{ card.pct }}%</span>
-        </div>
-        <div class="progress" style="height:6px"><div class="progress-bar bg-warning" style="width:{{ card.pct }}%"></div></div>
-      </div>
+<div class="col-md-6 col-xl-4">
+  <div class="dc-card" style="cursor:pointer;padding:8px 12px" onclick="location.href='{% url 'crm:company_detail' card.company.pk %}'">
+    <div class="d-flex justify-content-between align-items-center gap-2">
+      <span class="fw-semibold text-truncate d-flex align-items-center gap-2" style="font-size:.875rem">
+        {% if card.company.logo %}
+          <img src="{{ card.company.logo.url }}" alt=""
+               style="width:22px;height:22px;object-fit:contain;border-radius:4px;
+                      background:#fff;border:1px solid var(--dc-border);flex-shrink:0">
+        {% endif %}
+        {{ card.company.name }}
+      </span>
+      <span class="dc-badge dc-badge--amber flex-shrink-0" style="font-size:.68rem">{{ card.company.stage|default:"—" }}</span>
+    </div>
+    <div class="d-flex gap-2 flex-wrap mt-1 align-items-center" style="font-size:.75rem;color:var(--dc-text-muted)">
+      {% if card.company.country %}<span>{{ card.company.country }}</span>{% endif %}
+      {% if card.company.valuation %}<span>· Val. <b style="color:var(--dc-text)">{{ card.company.valuation|euros }} €</b></span>{% endif %}
+      {% if card.n_rondas %}<span style="color:var(--dc-accent)">· <i class="bi bi-graph-up-arrow"></i> {{ card.n_rondas }} ronda{{ card.n_rondas|pluralize:"s" }} / {{ card.n_inv }} inv.</span>{% endif %}
+      {% if card.n_colab %}<span style="color:#3b82f6">· <i class="bi bi-diagram-3"></i> {{ card.n_colab }} colab.</span>{% endif %}
+      {% if card.n_ma %}<span style="color:#f59e0b">· <i class="bi bi-briefcase"></i> {{ card.n_ma }} M&A</span>{% endif %}
     </div>
   </div>
 </div>

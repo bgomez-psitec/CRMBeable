@@ -1,60 +1,462 @@
 {% extends "base.html" %}
-{% block title %}{{ col.colaborador.name }} ↔ {{ col.company.name }} — CRM Gestora{% endblock %}
-{% block topbar_title %}{{ col.colaborador.name }}{% endblock %}
+{% load crm_filters %}
+{% block title %}{{ col.contact.name|default:"—" }} ↔ {{ col.company.name }} — CRM Gestora{% endblock %}
+{% block topbar_title %}
+  {% if col.colaborador %}
+    <a href="{% url 'crm:colaborador_detail' col.colaborador.pk %}" style="color:inherit;text-decoration:none" title="Ver colaborador">
+      {{ col.colaborador.name }}<i class="bi bi-arrow-up-right ms-1" style="font-size:.75em;opacity:.6"></i>
+    </a>
+  {% elif col.investor %}
+    <a href="{% url 'crm:investor_detail' col.investor.pk %}" style="color:inherit;text-decoration:none" title="Ver inversor">
+      {{ col.investor.name }}<i class="bi bi-arrow-up-right ms-1" style="font-size:.75em;opacity:.6"></i>
+    </a>
+  {% else %}—{% endif %}
+{% endblock %}
 {% block topbar_sub %}Colaboración con {{ col.company.name }}{% endblock %}
 {% block topbar_actions %}
-  <a class="btn btn-outline-secondary btn-sm" href="{% url 'crm:company_detail' col.company.pk %}"><i class="bi bi-arrow-left"></i> Participada</a>
+  <a class="btn-ghost" href="{% url 'crm:company_detail' col.company.pk %}"><i class="bi bi-arrow-left"></i> Participada</a>
+  {% if can_edit %}
+  <button class="btn-ghost" onclick="openColEdit()"><i class="bi bi-pencil"></i> Editar</button>
+  {% endif %}
 {% endblock %}
 {% block content %}
-<div class="card card-body mb-4">
-  <div class="row g-2 small">
-    <div class="col-md-3">Tipo de relación <b>{{ col.tipo_relacion|default:"—" }}</b></div>
-    <div class="col-md-3">Estado <b>{{ col.status.nombre|default:"—" }}</b></div>
-    <div class="col-md-3">Inicio <b>{{ col.date|date:"d M Y"|default:"—" }}</b></div>
-    <div class="col-md-3">Presentado por <b>{{ col.intro_by|default:"—" }}</b></div>
+
+{% if estados_col %}
+<div class="dc-card mb-4" style="padding:16px 20px">
+  <div style="display:flex;align-items:stretch;width:100%;overflow:hidden;border-radius:6px;border:1px solid var(--dc-border)">
+    {% for e in estados_col %}
+    <div style="flex:1;display:flex;align-items:center;justify-content:center;padding:10px 6px;position:relative;
+      {% if col.status_id == e.pk %}background:var(--dc-accent);color:#fff;font-weight:700
+      {% else %}background:var(--dc-surface);color:var(--dc-text-muted){% endif %};
+      font-size:.78rem;text-align:center;cursor:default;min-width:0">
+      <span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ e.nombre }}</span>
+      {% if not forloop.last %}
+      <div style="position:absolute;right:-10px;top:0;bottom:0;width:20px;z-index:2;
+        {% if col.status_id == e.pk %}background:var(--dc-accent){% else %}background:var(--dc-surface){% endif %};
+        clip-path:polygon(0 0,100% 50%,0 100%)"></div>
+      <div style="position:absolute;right:-11px;top:0;bottom:0;width:21px;z-index:1;background:var(--dc-border);
+        clip-path:polygon(0 0,100% 50%,0 100%)"></div>
+      {% endif %}
+    </div>
+    {% endfor %}
   </div>
-  {% if col.descripcion %}<div class="mt-2 text-muted small">{{ col.descripcion }}</div>{% endif %}
+</div>
+{% endif %}
+
+<div class="dc-card dc-card__body mb-4">
+  <div class="row g-2" style="font-size:.855rem">
+    <div class="col-md-4">Tipo de relación <b>{{ col.tipo_relacion|default:"—" }}</b></div>
+    <div class="col-md-4">Inicio <b>{{ col.date|date:"d M Y"|default:"—" }}</b></div>
+    <div class="col-md-4">Presentado por <b>{{ col.intro_by|default:"—" }}</b></div>
+  </div>
+  {% if col.descripcion %}<div style="margin-top:8px;font-size:.8rem;color:var(--dc-text-muted);white-space:pre-wrap;word-break:break-word">{{ col.descripcion }}</div>{% endif %}
   {% if col.next_action %}
-  <div class="mt-2 small"><span class="text-muted">Próximo paso:</span> {{ col.next_action }}{% if col.next_date %} · <span class="text-warning fw-semibold">{{ col.next_date|date:"d M Y" }}</span>{% endif %}</div>
+  <div style="margin-top:8px;font-size:.855rem"><span style="color:var(--dc-text-muted)">Próximo paso:</span> {{ col.next_action }}{% if col.next_date %} · <span class="text-accent fw-semibold">{{ col.next_date|date:"d M Y" }}</span>{% endif %}</div>
   {% endif %}
-  {% if col.notes %}<div class="mt-2 small text-muted" style="white-space:pre-line">{{ col.notes }}</div>{% endif %}
+  {% if col.notes %}<div style="margin-top:8px;font-size:.8rem;color:var(--dc-text-muted);white-space:pre-line">{{ col.notes }}</div>{% endif %}
 </div>
 
-<div class="card card-body">
+<div class="dc-card dc-card__body">
   <div class="d-flex justify-content-between align-items-center mb-3">
-    <div class="fw-semibold"><i class="bi bi-clock-history"></i> Cronología</div>
+    <div class="fw-semibold"><i class="bi bi-clock-history" style="color:var(--dc-accent)"></i> Cronología de Contacto</div>
     {% if can_edit %}
-    <div class="d-flex gap-2">
-      <button class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#logModal" onclick="document.getElementById('log-type').value='Email'"><i class="bi bi-envelope"></i> Email</button>
-      <button class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#logModal" onclick="document.getElementById('log-type').value='Llamada'"><i class="bi bi-telephone"></i> Llamada</button>
-      <button class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#logModal" onclick="document.getElementById('log-type').value='Reunión'"><i class="bi bi-people"></i> Reunión</button>
-    </div>
+    <button class="btn-accent" onclick="openColEdit()"><i class="bi bi-plus-lg me-1"></i>Añadir interacción</button>
     {% endif %}
   </div>
-  {% for x in chrono %}
-  <div class="d-flex gap-3 py-2 border-bottom">
-    <div style="width:90px;flex-shrink:0" class="small text-warning">{{ x.date|date:"d M Y"|default:"—" }}<div class="text-muted">{{ x.type }}</div></div>
-    <div class="flex-grow-1 small" style="white-space:pre-line">{{ x.note }}</div>
+
+  {% for entry in chrono_rich %}
+  {% with x=entry.obj %}
+  <div class="py-2 border-bottom" style="font-size:.835rem">
+    {# Línea 1: metadatos + acciones #}
+    <div class="d-flex align-items-center gap-2" style="flex-wrap:wrap;min-width:0">
+      {% if x.type == 'Email' %}<i class="bi bi-envelope flex-shrink-0" style="color:var(--dc-accent);width:16px;text-align:center"></i>
+      {% elif x.type == 'Llamada' %}<i class="bi bi-telephone flex-shrink-0" style="color:#3b82f6;width:16px;text-align:center"></i>
+      {% elif x.type == 'Reunión' %}<i class="bi bi-people flex-shrink-0" style="color:#f59e0b;width:16px;text-align:center"></i>
+      {% elif x.type == 'Estado' %}<i class="bi bi-arrow-left-right flex-shrink-0" style="color:#8b5cf6;width:16px;text-align:center"></i>
+      {% else %}<i class="bi bi-sticky flex-shrink-0" style="color:var(--dc-text-muted);width:16px;text-align:center"></i>{% endif %}
+      <span class="fw-semibold flex-shrink-0" style="color:var(--dc-accent);min-width:74px">{{ x.date|date:"d M Y"|default:"—" }}</span>
+      <span class="flex-shrink-0 dc-badge" style="font-size:.68rem;background:rgba(139,92,246,.12);color:#7c3aed;border:1px solid rgba(139,92,246,.25)"><i class="bi bi-handshake me-1"></i>Colab.</span>
+      <span class="dc-badge dc-badge--grey flex-shrink-0" style="font-size:.68rem;max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="{{ col.company.name }}">{{ col.company.name }}</span>
+      {% if entry.kind != 'legacy' %}<span class="flex-shrink-0" style="font-size:.73rem;color:var(--dc-text-muted)"><i class="bi bi-person"></i> {{ x.created_by|default:"—" }}</span>{% endif %}
+      {% if entry.kind != 'legacy' and x.attachment_url %}
+      <a href="{{ x.attachment_url }}" target="_blank" title="Abrir documento adjunto"
+         class="flex-shrink-0" style="color:var(--dc-accent);opacity:.75;line-height:1;padding:2px 4px"
+         onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=.75">
+        <i class="bi bi-file-earmark-arrow-down" style="font-size:.95rem"></i>
+      </a>
+      {% endif %}
+      <span style="flex:1"></span>
+      {% if can_edit %}
+      {% if entry.kind == 'legacy' %}
+        <form method="post" action="{% url 'crm:colaboracion_log_delete' x.id %}" class="flex-shrink-0"
+              onsubmit="return confirm('¿Eliminar esta entrada?')">
+          {% csrf_token %}
+          <button type="submit" title="Eliminar" style="background:none;border:none;cursor:pointer;padding:2px 4px;color:var(--dc-text-muted);opacity:.5;line-height:1"
+                  onmouseover="this.style.opacity=1;this.style.color='#ef4444'" onmouseout="this.style.opacity=.5;this.style.color='var(--dc-text-muted)'">
+            <i class="bi bi-x-lg" style="font-size:.8rem"></i>
+          </button>
+        </form>
+      {% else %}
+        <button type="button" title="Editar"
+                data-log-action="edit"
+                data-modal="col-log-edit-modal"
+                data-url="{% url 'crm:colaboracion_log_upd' x.id %}"
+                data-kind="{{ entry.kind }}"
+                data-col-pk="{{ col.pk }}"
+                data-type="{{ x.type|escapejs }}"
+                data-date="{{ x.date|date:'Y-m-d'|default:'' }}"
+                data-summary="{{ x.summary|escapejs }}"
+                style="background:none;border:none;cursor:pointer;padding:2px 4px;color:var(--dc-text-muted);opacity:.5;line-height:1;flex-shrink:0"
+                onmouseover="this.style.opacity=1;this.style.color='var(--dc-accent)'" onmouseout="this.style.opacity=.5;this.style.color='var(--dc-text-muted)'">
+          <i class="bi bi-pencil" style="font-size:.8rem"></i>
+        </button>
+        <form method="post" action="{% url 'crm:colaboracion_log_del' x.id %}" class="flex-shrink-0"
+              onsubmit="return confirm('¿Eliminar esta entrada de la cronología?')">
+          {% csrf_token %}
+          <input type="hidden" name="kind" value="{{ entry.kind }}">
+          <input type="hidden" name="col_pk" value="{{ col.pk }}">
+          <button type="submit" title="Eliminar" style="background:none;border:none;cursor:pointer;padding:2px 4px;color:var(--dc-text-muted);opacity:.5;line-height:1"
+                  onmouseover="this.style.opacity=1;this.style.color='#ef4444'" onmouseout="this.style.opacity=.5;this.style.color='var(--dc-text-muted)'">
+            <i class="bi bi-x-lg" style="font-size:.8rem"></i>
+          </button>
+        </form>
+      {% endif %}
+      {% endif %}
+    </div>
+    {# Línea 2: texto completo, siempre visible #}
+    <div style="margin-top:4px;padding-left:24px;color:var(--dc-text);font-size:.835rem;line-height:1.5;white-space:pre-wrap;word-break:break-word">{% if entry.kind == 'legacy' %}{{ x.note|format_log }}{% else %}{{ x.summary|format_log }}{% endif %}</div>
   </div>
+  {% endwith %}
   {% empty %}
-  <div class="text-muted text-center py-4">Sin interacciones registradas.</div>
+  <div style="text-align:center;padding:32px;color:var(--dc-text-muted)">Sin interacciones registradas.</div>
   {% endfor %}
 </div>
 
 {% if can_edit %}
-<div class="modal fade" id="logModal" tabindex="-1">
-  <div class="modal-dialog">
-    <form method="post" class="modal-content">
-      {% csrf_token %}
-      <div class="modal-header"><h5 class="modal-title">Registrar interacción</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
-      <div class="modal-body">
-        <input type="hidden" name="type" id="log-type" value="Nota">
-        <div class="mb-2"><label class="form-label">Fecha</label><input type="date" name="date" class="form-control"></div>
-        <div class="mb-2"><label class="form-label">Resumen</label><textarea name="summary" class="form-control" rows="3"></textarea></div>
+{# ── Modal edición colaboración + cronología AJAX ─────────────────── #}
+<div class="modal fade" id="editColModal" tabindex="-1">
+  <div class="modal-dialog modal-xl">
+    <div class="modal-content dc-form">
+      <div class="modal-header" style="padding:14px 20px">
+        <h5 class="modal-title" style="font-size:.95rem">
+          <i class="bi bi-pencil me-2" style="color:var(--dc-accent)"></i>
+          {{ col.contact.name|default:"Colaboración" }} ↔ {{ col.company.name }}
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
       </div>
-      <div class="modal-footer"><button type="submit" class="btn btn-warning">Guardar</button></div>
+      <div class="modal-body" style="padding:0">
+        <div class="row g-0" style="min-height:420px">
+          {# ── Columna izquierda: campos ── #}
+          <div class="col-md-5" style="padding:20px 24px;border-right:1px solid var(--dc-border)">
+            <form id="editColForm" method="post" action="{% url 'crm:colaboracion_edit_inline' col.pk %}">
+              {% csrf_token %}
+              <div class="mb-3">
+                <label class="form-label">Tipo de relación</label>
+                <select name="tipo_relacion" class="form-select">
+                  <option value="">— Sin tipo —</option>
+                  <option value="Colaborador"{% if col.tipo_relacion == 'Colaborador' %} selected{% endif %}>Colaborador</option>
+                  <option value="Cliente"{% if col.tipo_relacion == 'Cliente' %} selected{% endif %}>Cliente</option>
+                  <option value="Proveedor"{% if col.tipo_relacion == 'Proveedor' %} selected{% endif %}>Proveedor</option>
+                  <option value="Otro"{% if col.tipo_relacion == 'Otro' %} selected{% endif %}>Otro</option>
+                </select>
+              </div>
+              <div class="mb-3">
+                <label class="form-label">Estado</label>
+                <select name="status" class="form-select">
+                  <option value="">— Sin estado —</option>
+                  {% for e in estados_col %}<option value="{{ e.pk }}"{% if col.status_id == e.pk %} selected{% endif %}>{{ e.nombre }}</option>{% endfor %}
+                </select>
+              </div>
+              <div class="mb-3">
+                <label class="form-label">Fecha inicio</label>
+                <input type="date" name="date" class="form-control" value="{{ col.date|date:"Y-m-d"|default:'' }}">
+              </div>
+              <div class="mb-3">
+                <label class="form-label">Presentado por</label>
+                <input type="text" name="intro_by" class="form-control" value="{{ col.intro_by|default:'' }}">
+              </div>
+              <div class="mb-3">
+                <label class="form-label">Próximo paso</label>
+                <input type="text" name="next_action" class="form-control" value="{{ col.next_action|default:'' }}">
+              </div>
+              <div class="mb-3">
+                <label class="form-label">Fecha próximo paso</label>
+                <input type="date" name="next_date" class="form-control" value="{{ col.next_date|date:"Y-m-d"|default:'' }}">
+              </div>
+              <div class="mb-4">
+                <label class="form-label">Descripción</label>
+                <textarea name="descripcion" class="form-control" rows="2">{{ col.descripcion|default:'' }}</textarea>
+              </div>
+              <button type="submit" class="btn-accent w-100">Guardar</button>
+            </form>
+          </div>
+          {# ── Columna derecha: cronología ── #}
+          <div class="col-md-7" style="padding:20px 24px;display:flex;flex-direction:column">
+            <div style="font-size:.78rem;color:var(--dc-text-muted);margin-bottom:10px">
+              Cronología · <span style="color:var(--dc-accent);font-weight:600">Colaboración · {{ col.company.name }}</span>
+            </div>
+            <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px">
+              <button type="button" id="colLogPill-Nota" onclick="setColLogType('Nota')"
+                class="dc-badge dc-badge--grey" style="cursor:pointer;border:1px solid var(--dc-border);font-size:.75rem;padding:3px 10px">Nota</button>
+              <button type="button" id="colLogPill-Email" onclick="setColLogType('Email')"
+                class="dc-badge dc-badge--grey" style="cursor:pointer;border:1px solid var(--dc-border);font-size:.75rem;padding:3px 10px">Email</button>
+              <button type="button" id="colLogPill-Llamada" onclick="setColLogType('Llamada')"
+                class="dc-badge dc-badge--grey" style="cursor:pointer;border:1px solid var(--dc-border);font-size:.75rem;padding:3px 10px">Llamada</button>
+              <button type="button" id="colLogPill-Reunión" onclick="setColLogType('Reunión')"
+                class="dc-badge dc-badge--grey" style="cursor:pointer;border:1px solid var(--dc-border);font-size:.75rem;padding:3px 10px">Reunión</button>
+            </div>
+            <div style="display:flex;gap:6px;align-items:flex-start;margin-bottom:8px">
+              <input type="date" id="colLogDate" class="form-control form-control-sm" style="width:140px;flex-shrink:0">
+              <textarea id="colLogSummary" class="form-control form-control-sm" rows="2"
+                style="resize:none;flex:1" placeholder="Descripción de la interacción…"></textarea>
+              <button type="button" id="colLogSave" onclick="saveColLog()" class="btn-accent" style="padding:6px 12px;font-size:.8rem;white-space:nowrap;align-self:flex-end">Añadir</button>
+            </div>
+            <div id="colChronoList" style="flex:1;overflow-y:auto;max-height:300px">
+              <div style="color:var(--dc-text-muted);font-size:.8rem;text-align:center;padding:20px">Cargando…</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+{# ── Modal editar entrada de cronología ── #}
+<div id="col-log-edit-modal" style="display:none;position:fixed;inset:0;z-index:10001;background:rgba(0,0,0,.5);align-items:center;justify-content:center">
+  <div class="dc-card" style="width:560px;max-width:96vw;padding:28px">
+    <div class="d-flex align-items-center gap-2 mb-4">
+      <i class="bi bi-pencil-square" style="color:var(--dc-accent);font-size:1.1rem"></i>
+      <h5 style="margin:0;font-size:1rem;font-weight:700">Editar entrada de cronología</h5>
+      <button type="button" onclick="document.getElementById('col-log-edit-modal').style.display='none'"
+              style="margin-left:auto;background:none;border:none;font-size:1.2rem;cursor:pointer;color:var(--dc-text-muted)">
+        <i class="bi bi-x-lg"></i>
+      </button>
+    </div>
+    <form id="col-log-edit-form" method="post">
+      {% csrf_token %}
+      <input type="hidden" name="kind" id="col-log-edit-kind">
+      <div class="mb-3">
+        <label style="font-size:.78rem;font-weight:600;color:var(--dc-text-muted);display:block;margin-bottom:6px">Tipo</label>
+        <div style="display:flex;gap:6px;flex-wrap:wrap" id="col-log-edit-pills">
+          <button type="button" data-type="Nota"    onclick="setEditPill('Nota')"    style="border-radius:20px;padding:4px 12px;font-size:.78rem;cursor:pointer;border:1px solid var(--dc-border);background:none;color:var(--dc-text)"><i class="bi bi-sticky me-1"></i>Nota</button>
+          <button type="button" data-type="Email"   onclick="setEditPill('Email')"   style="border-radius:20px;padding:4px 12px;font-size:.78rem;cursor:pointer;border:1px solid var(--dc-border);background:none;color:var(--dc-text)"><i class="bi bi-envelope me-1"></i>Email</button>
+          <button type="button" data-type="Llamada" onclick="setEditPill('Llamada')" style="border-radius:20px;padding:4px 12px;font-size:.78rem;cursor:pointer;border:1px solid var(--dc-border);background:none;color:var(--dc-text)"><i class="bi bi-telephone me-1"></i>Llamada</button>
+          <button type="button" data-type="Reunión" onclick="setEditPill('Reunión')" style="border-radius:20px;padding:4px 12px;font-size:.78rem;cursor:pointer;border:1px solid var(--dc-border);background:none;color:var(--dc-text)"><i class="bi bi-people me-1"></i>Reunión</button>
+        </div>
+        <input type="hidden" name="type" id="col-log-edit-type">
+      </div>
+      <div class="mb-3">
+        <label style="font-size:.78rem;font-weight:600;color:var(--dc-text-muted);display:block;margin-bottom:4px">Fecha</label>
+        <input type="date" name="date" id="col-log-edit-date"
+               style="width:180px;padding:7px 10px;border:1px solid var(--dc-border);border-radius:6px;
+                      background:var(--dc-surface);color:var(--dc-text);font-size:.85rem">
+      </div>
+      <div class="mb-4">
+        <label style="font-size:.78rem;font-weight:600;color:var(--dc-text-muted);display:block;margin-bottom:4px">Texto / resumen</label>
+        <textarea name="summary" id="col-log-edit-summary" rows="6" spellcheck="false"
+                  style="width:100%;padding:9px 11px;border:1px solid var(--dc-border);border-radius:6px;
+                         background:var(--dc-surface);color:var(--dc-text);font-size:.855rem;
+                         line-height:1.6;resize:vertical"></textarea>
+      </div>
+      <div class="d-flex gap-2 justify-content-end">
+        <button type="button" class="btn-ghost"
+                onclick="document.getElementById('col-log-edit-modal').style.display='none'">Cancelar</button>
+        <button type="submit" class="btn-accent"><i class="bi bi-check2 me-1"></i>Guardar cambios</button>
+      </div>
     </form>
   </div>
 </div>
+
+{# ── Overlay drag & drop en modal ── #}
+<div id="colDragOverlay" style="display:none;position:absolute;inset:0;background:rgba(99,102,241,.08);
+  border:2px dashed var(--dc-accent);border-radius:8px;z-index:9999;pointer-events:none;
+  align-items:center;justify-content:center;flex-direction:column;gap:8px">
+  <i class="bi bi-cloud-upload" style="font-size:2rem;color:var(--dc-accent)"></i>
+  <div style="font-size:.85rem;color:var(--dc-accent);font-weight:600">Soltar para adjuntar</div>
+</div>
+<div id="colParseSpinner" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.3);z-index:99999;align-items:center;justify-content:center">
+  <div class="spinner-border" style="color:var(--dc-accent)"></div>
+</div>
+<div class="modal fade" id="colEmailReview" tabindex="-1" style="z-index:100000">
+  <div class="modal-dialog">
+    <div class="modal-content dc-form">
+      <div class="modal-header"><h6 class="modal-title">Revisar email parseado</h6><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+      <div class="modal-body">
+        <div class="mb-2">
+          <label class="form-label" style="font-size:.8rem">Fecha</label>
+          <input type="date" id="colReviewDate" class="form-control form-control-sm">
+        </div>
+        <div>
+          <label class="form-label" style="font-size:.8rem">Resumen</label>
+          <div id="colReviewSummary" contenteditable="true" class="form-control" style="min-height:80px;font-size:.85rem"></div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn-ghost" data-bs-dismiss="modal">Cancelar</button>
+        <button type="button" class="btn-accent" onclick="confirmColEmailReview()">Confirmar y añadir</button>
+      </div>
+    </div>
+  </div>
+</div>
 {% endif %}
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+{% if can_edit %}
+const _COL_PK = {{ col.pk }};
+let _colLogType = 'Nota';
+let _colDropFile = null;
+
+function openColEdit() {
+  document.getElementById('colLogDate').value = new Date().toISOString().slice(0, 10);
+  setColLogType('Nota');
+  loadColChrono();
+  new bootstrap.Modal(document.getElementById('editColModal')).show();
+}
+
+function setColLogType(t) {
+  _colLogType = t;
+  ['Nota','Email','Llamada','Reunión'].forEach(x => {
+    const el = document.getElementById('colLogPill-' + x);
+    if (!el) return;
+    el.style.background  = x === t ? 'var(--dc-accent)' : '';
+    el.style.color       = x === t ? '#fff' : '';
+    el.style.borderColor = x === t ? 'var(--dc-accent)' : 'var(--dc-border)';
+  });
+}
+
+function loadColChrono() {
+  const list = document.getElementById('colChronoList');
+  list.innerHTML = '<div style="color:var(--dc-text-muted);font-size:.8rem;text-align:center;padding:20px">Cargando…</div>';
+  fetch(`/colaboraciones/${_COL_PK}/cronologia/`)
+    .then(r => r.json())
+    .then(data => renderColChrono(data.logs || []))
+    .catch(() => { list.innerHTML = '<div style="color:var(--dc-danger);font-size:.8rem;padding:12px">Error al cargar.</div>'; });
+}
+
+function renderColChrono(logs) {
+  const el = document.getElementById('colChronoList');
+  if (!logs.length) {
+    el.innerHTML = '<div style="color:var(--dc-text-muted);font-size:.8rem;text-align:center;padding:20px">Sin interacciones registradas.</div>';
+    return;
+  }
+  const typeIcon  = {Nota:'bi-sticky',Email:'bi-envelope',Llamada:'bi-telephone','Reunión':'bi-people',Estado:'bi-arrow-left-right'};
+  const typeColor = {Nota:'var(--dc-text-muted)',Email:'var(--dc-accent)',Llamada:'#3b82f6','Reunión':'#f59e0b',Estado:'#8b5cf6'};
+  el.innerHTML = logs.map(l => {
+    const icon  = typeIcon[l.type]  || 'bi-circle';
+    const color = typeColor[l.type] || 'var(--dc-text-muted)';
+    return `<div style="display:flex;gap:10px;padding:8px 0;border-bottom:1px solid var(--dc-border)">
+      <div style="width:82px;flex-shrink:0;font-size:.75rem">
+        <div style="color:var(--dc-accent);font-weight:600">${l.date}</div>
+        <div style="display:flex;align-items:center;gap:3px;color:${color}"><i class="bi ${icon}" style="font-size:.7rem"></i>${l.type}</div>
+      </div>
+      <div style="flex:1;font-size:.82rem;color:var(--dc-text);line-height:1.4">${l.summary||'—'}</div>
+    </div>`;
+  }).join('');
+}
+
+function saveColLog() {
+  const summary = document.getElementById('colLogSummary').value.trim();
+  const date    = document.getElementById('colLogDate').value;
+  if (!summary) { document.getElementById('colLogSummary').focus(); return; }
+  const btn = document.getElementById('colLogSave');
+  btn.disabled = true;
+  const csrf = document.querySelector('[name=csrfmiddlewaretoken]');
+  const fd = new FormData();
+  fd.append('csrfmiddlewaretoken', csrf ? csrf.value : '');
+  fd.append('type', _colLogType);
+  fd.append('summary', summary);
+  fd.append('date', date);
+  if (_colDropFile) { fd.append('attachment', _colDropFile); _colDropFile = null; }
+  fetch(`/colaboraciones/${_COL_PK}/cronologia/`, {method: 'POST', body: fd})
+    .then(r => r.json())
+    .then(data => { if (data.ok) { document.getElementById('colLogSummary').value = ''; loadColChrono(); } })
+    .finally(() => { btn.disabled = false; });
+}
+
+// ── Modal editar entrada (página completa) ────────────────────────────────
+function setEditPill(t) {
+  document.getElementById('col-log-edit-type').value = t;
+  document.querySelectorAll('#col-log-edit-pills button').forEach(b => {
+    const active = b.dataset.type === t;
+    b.style.background  = active ? 'var(--dc-accent)' : '';
+    b.style.color       = active ? '#fff' : 'var(--dc-text)';
+    b.style.borderColor = active ? 'var(--dc-accent)' : 'var(--dc-border)';
+  });
+}
+
+document.querySelectorAll('[data-log-action="edit"][data-modal="col-log-edit-modal"]').forEach(btn => {
+  btn.addEventListener('click', function () {
+    document.getElementById('col-log-edit-form').action   = this.dataset.url;
+    document.getElementById('col-log-edit-kind').value    = this.dataset.kind || 'colab';
+    document.getElementById('col-log-edit-colpk').value   = this.dataset.colPk || '';
+    document.getElementById('col-log-edit-date').value    = this.dataset.date || '';
+    document.getElementById('col-log-edit-summary').value = this.dataset.summary || '';
+    setEditPill(this.dataset.type || 'Nota');
+    document.getElementById('col-log-edit-modal').style.display = 'flex';
+  });
+});
+
+// ── Drag & drop sobre el modal de edición ─────────────────────────────────
+(function () {
+  const modal   = document.getElementById('editColModal');
+  if (!modal) return;
+  const overlay = document.getElementById('colDragOverlay');
+  const spinner = document.getElementById('colParseSpinner');
+  let _dc = 0;
+
+  modal.addEventListener('dragenter', e => {
+    e.preventDefault();
+    _dc++;
+    if (_dc === 1) {
+      const mc = modal.querySelector('.modal-content');
+      if (mc) { mc.style.position = 'relative'; mc.appendChild(overlay); }
+      overlay.style.display = 'flex';
+    }
+  });
+  modal.addEventListener('dragleave', () => { _dc--; if (_dc <= 0) { _dc = 0; overlay.style.display = 'none'; } });
+  modal.addEventListener('dragover', e => e.preventDefault());
+  modal.addEventListener('drop', e => {
+    e.preventDefault();
+    _dc = 0;
+    overlay.style.display = 'none';
+    const file = e.dataTransfer.files[0];
+    if (!file) return;
+    if (file.name.toLowerCase().endsWith('.msg')) {
+      spinner.style.display = 'flex';
+      const fd = new FormData();
+      const csrf = document.querySelector('[name=csrfmiddlewaretoken]');
+      fd.append('csrfmiddlewaretoken', csrf ? csrf.value : '');
+      fd.append('file', file);
+      fetch('/parse-email/', {method: 'POST', body: fd})
+        .then(r => r.json())
+        .then(data => {
+          spinner.style.display = 'none';
+          _colDropFile = file;
+          document.getElementById('colReviewDate').value = data.date || new Date().toISOString().slice(0, 10);
+          document.getElementById('colReviewSummary').textContent = data.summary || data.subject || '';
+          bootstrap.Modal.getOrCreateInstance(document.getElementById('colEmailReview')).show();
+        })
+        .catch(() => { spinner.style.display = 'none'; });
+    } else {
+      _colDropFile = file;
+      document.getElementById('colLogDate').value = new Date().toISOString().slice(0, 10);
+      document.getElementById('colLogSummary').value = file.name;
+      setColLogType('Nota');
+    }
+  });
+})();
+
+function confirmColEmailReview() {
+  const date    = document.getElementById('colReviewDate').value;
+  const summary = document.getElementById('colReviewSummary').textContent.trim();
+  bootstrap.Modal.getInstance(document.getElementById('colEmailReview')).hide();
+  document.getElementById('colLogDate').value    = date;
+  document.getElementById('colLogSummary').value = summary;
+  setColLogType('Email');
+}
+{% endif %}
+</script>
 {% endblock %}

@@ -1,31 +1,314 @@
 {% extends "base.html" %}
+{% load crm_filters %}
 {% block title %}Inversores — CRM Gestora{% endblock %}
 {% block topbar_title %}Inversores{% endblock %}
+{% block topbar_sub %}Inversores posibles clasificados{% endblock %}
+{% block topbar_actions %}
+  <a href="{% url 'crm:investor_contacts' %}" class="btn-ghost">
+    <i class="bi bi-person-lines-fill"></i> Contactos
+  </a>
+  {% if can_edit %}
+  <button class="btn-accent" data-bs-toggle="modal" data-bs-target="#newInvestorModal">
+    <i class="bi bi-plus-lg"></i> Nuevo inversor
+  </button>
+  {% endif %}
+{% endblock %}
 {% block content %}
-<form method="get" class="d-flex gap-2 mb-3">
-  <input type="text" name="q" value="{{ q }}" class="form-control" style="max-width:260px" placeholder="Buscar inversor…">
-  <select name="group" class="form-select" style="max-width:200px" onchange="this.form.submit()">
-    <option value="">Sin agrupar</option>
-    <option value="type" {% if group == 'type' %}selected{% endif %}>Agrupar: Tipo</option>
-    <option value="country" {% if group == 'country' %}selected{% endif %}>Agrupar: País</option>
-  </select>
-  <button type="submit" class="btn btn-outline-secondary">Buscar</button>
+
+<div class="d-flex gap-2 mb-4 flex-wrap align-items-center justify-content-between">
+  <form method="get">
+    <input type="hidden" name="view" value="{{ view }}">
+    <div class="d-flex gap-2 align-items-center flex-wrap" style="row-gap:6px">
+      <input type="text" name="q" value="{{ q }}" class="form-control" style="width:185px;flex-shrink:0" placeholder="Buscar inversor…">
+      <select name="tipo" class="form-select" style="width:170px;flex-shrink:0" onchange="this.form.submit()">
+        <option value="">Tipo de inversor</option>
+        {% for val, lbl in tipo_inversor_choices %}
+          <option value="{{ val }}" {% if tipo_filter == val %}selected{% endif %}>{{ lbl }}</option>
+        {% endfor %}
+      </select>
+      <select name="categoria" class="form-select" style="width:170px;flex-shrink:0" onchange="this.form.submit()">
+        <option value="">Categoría (etapa)</option>
+        {% for val, lbl in etapa_inversion_choices %}
+          <option value="{{ val }}" {% if cat_filter == val %}selected{% endif %}>{{ lbl }}</option>
+        {% endfor %}
+      </select>
+      <select name="tipo_inv" class="form-select" style="width:165px;flex-shrink:0" onchange="this.form.submit()">
+        <option value="">Tipo de inversión</option>
+        <option value="LP"                {% if tipoinv_filter == 'LP' %}selected{% endif %}>LP</option>
+        <option value="Inversión Directa" {% if tipoinv_filter == 'Inversión Directa' %}selected{% endif %}>Inversión Directa</option>
+      </select>
+      {% if view == 'list' %}
+        <select name="group1" class="form-select" style="width:155px;flex-shrink:0" onchange="this.form.submit()">
+          <option value="">Sin agrupar</option>
+          {% for val, lbl in group_labels %}
+            <option value="{{ val }}" {% if group1 == val %}selected{% endif %}>Agrupar: {{ lbl }}</option>
+          {% endfor %}
+        </select>
+        {% if group1 %}
+        <select name="group2" class="form-select" style="width:155px;flex-shrink:0" onchange="this.form.submit()">
+          <option value="">— 2ª agrupación —</option>
+          {% for val, lbl in group_labels %}{% if val != group1 %}
+            <option value="{{ val }}" {% if group2 == val %}selected{% endif %}>{{ lbl }}</option>
+          {% endif %}{% endfor %}
+        </select>
+        {% endif %}
+        {% if group1 and group2 %}
+        <select name="group3" class="form-select" style="width:155px;flex-shrink:0" onchange="this.form.submit()">
+          <option value="">— 3ª agrupación —</option>
+          {% for val, lbl in group_labels %}{% if val != group1 and val != group2 %}
+            <option value="{{ val }}" {% if group3 == val %}selected{% endif %}>{{ lbl }}</option>
+          {% endif %}{% endfor %}
+        </select>
+        {% endif %}
+      {% endif %}
+      <button type="submit" class="btn-ghost" style="height:38px;flex-shrink:0">Buscar</button>
+      {% if q or group1 or tipo_filter or cat_filter or tipoinv_filter %}
+        <a href="{% url 'crm:investors' %}?view={{ view }}" class="btn-ghost" style="color:var(--dc-danger);border-color:rgba(239,68,68,.3)">
+          <i class="bi bi-x"></i> Limpiar
+        </a>
+      {% endif %}
+    </div>
+  </form>
+  <div class="d-flex gap-1">
+    <a href="?view=pipeline{% if q %}&q={{ q }}{% endif %}"
+       class="btn-ghost" style="{% if view == 'pipeline' %}background:var(--dc-accent);color:#fff;border-color:var(--dc-accent){% endif %}">
+      <i class="bi bi-kanban"></i> Pipeline
+    </a>
+    <a href="?view=list{% if q %}&q={{ q }}{% endif %}"
+       class="btn-ghost" style="{% if view == 'list' %}background:var(--dc-accent);color:#fff;border-color:var(--dc-accent){% endif %}">
+      <i class="bi bi-list-ul"></i> Listado
+    </a>
+  </div>
+</div>
+
+{% if view == 'pipeline' %}
+{# ── Vista pipeline / kanban por etapa de relación ───────────────────────── #}
+<div class="d-flex gap-3 align-items-start overflow-auto pb-3 kanban-board">
+  {% for stage in pipe_stages %}
+  <div class="kanban-col inv-kanban-col" data-col-id="{{ stage.etapa.id|default:'none' }}">
+    <div class="kanban-col-header">
+      <span class="fw-semibold" style="font-size:.855rem">
+        {{ stage.etapa.nombre|default:"Sin estado" }}
+        <span class="dc-badge dc-badge--grey ms-1">{{ stage.items|length }}</span>
+      </span>
+    </div>
+    <div class="kanban-body inv-kanban-body" data-etapa-id="{{ stage.etapa.id|default:'' }}">
+      {% for card in stage.items %}
+      <div class="kanban-card" draggable="true" data-investor-id="{{ card.investor.pk }}"
+           onclick="location.href='{% url 'crm:investor_detail' card.investor.pk %}'">
+        <div style="font-size:.72rem;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--dc-accent);margin-bottom:2px">
+          {{ card.investor.type|default:"—" }}
+        </div>
+        <b style="font-size:.875rem">{{ card.investor.name }}</b>
+        {% if card.investor.country %}<div style="font-size:.75rem;color:var(--dc-text-muted)">{{ card.investor.country }}</div>{% endif %}
+        {% if card.active %}<div style="font-size:.74rem;color:var(--dc-accent);margin-top:2px">{{ card.active }} presentación{% if card.active != 1 %}es{% endif %} activa{% if card.active != 1 %}s{% endif %}</div>{% endif %}
+      </div>
+      {% empty %}
+      <div class="kanban-empty">Sin inversores</div>
+      {% endfor %}
+    </div>
+  </div>
+  {% endfor %}
+</div>
+<form id="inv-relation-form" method="post" style="display:none">
+  {% csrf_token %}
+  <input type="hidden" name="relation_id">
+  <input type="hidden" name="next" value="investors">
 </form>
 
-{% if not cards %}
-  <div class="text-muted text-center py-5">Sin inversores que coincidan.</div>
+{% elif not cards %}
+  <div style="text-align:center;padding:48px;color:var(--dc-text-muted)">Sin inversores que coincidan.</div>
+
 {% elif groups %}
-  {% for key, group_cards in groups.items %}
-    <div class="card mb-3">
-      <div class="card-header fw-semibold">{{ key }} <span class="badge text-bg-secondary">{{ group_cards|length }}</span></div>
-      <div class="card-body row g-3">
-        {% for card in group_cards %}{% include "crm/_investor_card.html" %}{% endfor %}
-      </div>
+  {# Nivel 1 #}
+  {% for k1, v1 in groups.items %}
+  <div class="dc-card mb-2">
+    <button class="dc-card__header w-100 text-start" style="background:none;border:none;cursor:pointer"
+            type="button" data-bs-toggle="collapse" data-bs-target="#g1-{{ forloop.counter }}"
+            aria-expanded="false">
+      <h2 class="dc-card__title d-flex align-items-center gap-2 mb-0">
+        {{ k1 }}
+        <span class="dc-badge dc-badge--grey ms-1">{{ v1|count_items }}</span>
+      </h2>
+      <i class="bi bi-chevron-right grp-chevron"></i>
+    </button>
+    <div class="collapse" id="g1-{{ forloop.counter }}">
+      {% if group2 %}
+        {# Nivel 2 #}
+        {% for k2, v2 in v1.items %}
+        <div class="grp-l2-wrap">
+          <button class="grp-l2-header" type="button"
+                  data-bs-toggle="collapse" data-bs-target="#g2-{{ forloop.parentloop.counter }}-{{ forloop.counter }}"
+                  aria-expanded="false">
+            <span class="d-flex align-items-center gap-2">
+              {{ k2 }}
+              <span class="dc-badge dc-badge--grey">{{ v2|count_items }}</span>
+            </span>
+            <i class="bi bi-chevron-right grp-chevron"></i>
+          </button>
+          <div class="collapse" id="g2-{{ forloop.parentloop.counter }}-{{ forloop.counter }}">
+            {% if group3 %}
+              {# Nivel 3 #}
+              {% for k3, v3 in v2.items %}
+              <div class="grp-l3-wrap">
+                <button class="grp-l3-header" type="button"
+                        data-bs-toggle="collapse" data-bs-target="#g3-{{ forloop.parentloop.parentloop.counter }}-{{ forloop.parentloop.counter }}-{{ forloop.counter }}"
+                        aria-expanded="false">
+                  <span class="d-flex align-items-center gap-2">
+                    {{ k3 }}
+                    <span class="dc-badge dc-badge--grey">{{ v3|length }}</span>
+                  </span>
+                  <i class="bi bi-chevron-right grp-chevron"></i>
+                </button>
+                <div class="collapse p-3" id="g3-{{ forloop.parentloop.parentloop.counter }}-{{ forloop.parentloop.counter }}-{{ forloop.counter }}">
+                  <div class="row g-3">{% for card in v3 %}{% include "crm/_investor_card.html" %}{% endfor %}</div>
+                </div>
+              </div>
+              {% endfor %}
+            {% else %}
+              <div class="p-3"><div class="row g-3">{% for card in v2 %}{% include "crm/_investor_card.html" %}{% endfor %}</div></div>
+            {% endif %}
+          </div>
+        </div>
+        {% endfor %}
+      {% else %}
+        <div class="dc-card__body"><div class="row g-3">{% for card in v1 %}{% include "crm/_investor_card.html" %}{% endfor %}</div></div>
+      {% endif %}
     </div>
+  </div>
   {% endfor %}
+
 {% else %}
   <div class="row g-3">
     {% for card in cards %}{% include "crm/_investor_card.html" %}{% endfor %}
   </div>
 {% endif %}
+
+{% if can_edit %}
+<div class="modal fade" id="newInvestorModal" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <form method="post" action="{% url 'crm:investor_create' %}" class="modal-content dc-form">
+      {% csrf_token %}
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="bi bi-person-plus me-2"></i>Nuevo inversor</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="row g-3">
+          <div class="col-md-6">
+            <label class="form-label">Nombre <span style="color:var(--dc-danger)">*</span></label>
+            <input type="text" name="name" class="form-control" required placeholder="Nombre del inversor">
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Tipo</label>
+            <select name="type" class="form-select">
+              <option value="">— Sin tipo —</option>
+              {% for val, lbl in tipo_inversor_choices %}
+                <option value="{{ val }}">{{ lbl }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">País</label>
+            <input type="text" name="country" class="form-control" placeholder="España">
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Etapa de relación</label>
+            <select name="relation" class="form-select">
+              <option value="">— Sin etapa —</option>
+              {% for r in etapas_relacion %}
+                <option value="{{ r.pk }}">{{ r.nombre }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="col-12">
+            <label class="form-label">Sectores</label>
+            <div class="multiselect-wrap" style="position:relative">
+              <button type="button" class="form-select text-start" id="newInvSectorToggle"
+                      style="cursor:pointer;background:var(--dc-surface);color:var(--dc-text)"
+                      onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'block':'none';event.stopPropagation()">
+                <span id="newInvSectorLabel">Selecciona sectores…</span>
+              </button>
+              <div id="newInvSectorDropdown" style="display:none;position:absolute;z-index:1055;top:calc(100% + 2px);left:0;right:0;
+                   background:var(--dc-surface);border:1px solid var(--dc-border);border-radius:var(--dc-radius-sm);
+                   box-shadow:0 4px 16px rgba(0,0,0,.12);padding:8px 0;max-height:220px;overflow-y:auto"
+                   onclick="event.stopPropagation()">
+                {% for s in sector_opts %}
+                <label style="display:flex;align-items:center;gap:8px;padding:5px 14px;cursor:pointer;font-size:.875rem"
+                       onmouseover="this.style.background='var(--dc-hover)'" onmouseout="this.style.background=''">
+                  <input type="checkbox" name="sectors" value="{{ s }}" class="new-inv-sector-cb"
+                         style="width:15px;height:15px;accent-color:var(--dc-accent)">{{ s }}
+                </label>
+                {% endfor %}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn-ghost" data-bs-dismiss="modal">Cancelar</button>
+        <button type="submit" class="btn-accent">Crear inversor</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Sector multiselect for new investor modal
+document.addEventListener('click', () => {
+  const d = document.getElementById('newInvSectorDropdown');
+  if (d) d.style.display = 'none';
+});
+document.querySelectorAll('.new-inv-sector-cb').forEach(cb => cb.addEventListener('change', () => {
+  const checked = [...document.querySelectorAll('.new-inv-sector-cb:checked')].map(c => c.value);
+  document.getElementById('newInvSectorLabel').textContent = checked.length ? checked.join(', ') : 'Selecciona sectores…';
+}));
+
+document.addEventListener('DOMContentLoaded', () => {
+  // Collapse chevrons (list view)
+  document.querySelectorAll('.collapse').forEach(el => {
+    const btn = document.querySelector(`[data-bs-target="#${el.id}"]`);
+    if (!btn) return;
+    el.addEventListener('show.bs.collapse', () => btn.querySelector('.grp-chevron')?.classList.add('rotated'));
+    el.addEventListener('hide.bs.collapse', () => btn.querySelector('.grp-chevron')?.classList.remove('rotated'));
+  });
+
+  // ── Pipeline drag-and-drop ──────────────────────────────────────────────
+  const form = document.getElementById('inv-relation-form');
+  if (!form) return;
+
+  let dragged = null;
+
+  document.querySelectorAll('.inv-kanban-body .kanban-card').forEach(card => {
+    card.addEventListener('dragstart', e => {
+      dragged = card;
+      setTimeout(() => card.classList.add('dragging'), 0);
+    });
+    card.addEventListener('dragend', () => {
+      card.classList.remove('dragging');
+      dragged = null;
+    });
+  });
+
+  document.querySelectorAll('.inv-kanban-body').forEach(col => {
+    col.addEventListener('dragover', e => { e.preventDefault(); col.classList.add('drag-over'); });
+    col.addEventListener('dragleave', () => col.classList.remove('drag-over'));
+    col.addEventListener('drop', e => {
+      e.preventDefault();
+      col.classList.remove('drag-over');
+      if (!dragged) return;
+      const investorId = dragged.dataset.investorId;
+      const etapaId    = col.dataset.etapaId;
+      form.action = `/inversores/${investorId}/relacion/`;
+      form.querySelector('[name=relation_id]').value = etapaId;
+      form.querySelector('[name=next]').value = window.location.search;
+      col.appendChild(dragged);
+      form.submit();
+    });
+  });
+});
+</script>
 {% endblock %}

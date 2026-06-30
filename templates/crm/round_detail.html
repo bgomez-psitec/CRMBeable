@@ -2,14 +2,64 @@
 {% load crm_filters %}
 {% block title %}{{ company.name }} — {{ round.type }} — CRM Gestora{% endblock %}
 {% block topbar_title %}{{ company.name }} — {{ round.type }}{% endblock %}
-{% block topbar_sub %}{{ round.status.nombre|default:"—" }}{% if round.rstage %} · {{ round.rstage }}{% endif %} · {{ round.start|date:"d M Y" }} → {{ round.close|date:"d M Y" }}{% endblock %}
+{% block topbar_sub %}{% if round.rstage %}{{ round.rstage }} · {% endif %}{{ round.start|date:"d M Y" }} → {{ round.close|date:"d M Y" }}{% endblock %}
+{% block topbar_actions %}
+  <a class="btn-ghost" href="{% url 'crm:docs_carpeta' round.company.pk 'ronda' round.pk %}"><i class="bi bi-folder2"></i> Documentos</a>
+  {% if can_edit %}
+    <a class="btn-ghost" href="{% url 'crm:round_edit' round.pk %}"><i class="bi bi-pencil"></i> Editar</a>
+    <button class="btn-accent" data-bs-toggle="modal" data-bs-target="#addInvestorModal">
+      <i class="bi bi-plus-lg"></i> Añadir inversor
+    </button>
+  {% endif %}
+{% endblock %}
 {% block content %}
-<div class="row g-3 mb-4">
-  <div class="col"><div class="card card-body"><div class="text-muted small">Objetivo de ronda</div><div class="h5 mb-0">{{ kpis.target|euros }} €</div><div class="small text-muted">{{ kpis.total_count }} inversores</div></div></div>
-  <div class="col"><div class="card card-body"><div class="text-muted small">Invertido ({{ kpis.pct }}%)</div><div class="h5 mb-0 text-success">{{ kpis.invertido|euros }} €</div><div class="small text-muted">{{ kpis.inv_count }} invertidos</div></div></div>
-  <div class="col"><div class="card card-body"><div class="text-muted small">Pipeline ponderado</div><div class="h5 mb-0">{{ kpis.weighted|euros }} €</div><div class="small text-muted">{{ kpis.other_count }} en proceso</div></div></div>
-  <div class="col"><div class="card card-body"><div class="text-muted small">Pipeline no ponderado</div><div class="h5 mb-0">{{ kpis.pipe_total|euros }} €</div><div class="small text-muted">{{ kpis.pipe_count }} inversores</div></div></div>
-  <div class="col"><div class="card card-body"><div class="text-muted small">Descartado</div><div class="h5 mb-0 text-danger">{{ kpis.desc_total|euros }} €</div><div class="small text-muted">{{ kpis.desc_count }} descartados</div></div></div>
+{# ── Stepper de fases de la ronda ────────────────────────────────────── #}
+{% if fases_ronda %}
+<style>
+.dc-stepper{display:flex;margin-bottom:0}
+.dc-stepper-cell{
+  flex:1;min-width:0;position:relative;text-align:center;
+  padding:9px 22px;font-size:.72rem;font-weight:500;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  cursor:default;user-select:none;color:#fff;background:#94a3b8;
+  margin-right:-14px;z-index:1;
+  clip-path:polygon(0 0,calc(100% - 14px) 0,100% 50%,calc(100% - 14px) 100%,0 100%,14px 50%);
+}
+.dc-stepper-cell:first-child{
+  clip-path:polygon(0 0,calc(100% - 14px) 0,100% 50%,calc(100% - 14px) 100%,0 100%);
+}
+.dc-stepper-cell:last-child{
+  margin-right:0;
+  clip-path:polygon(0 0,100% 0,100% 100%,0 100%,14px 50%);
+}
+.dc-stepper-cell:first-child:last-child{clip-path:none;margin-right:0}
+.dc-stepper-cell.active{background:#10b981;font-weight:700}
+.dc-stepper-dates{display:flex;margin-bottom:1.25rem}
+.dc-stepper-date{flex:1;text-align:center;font-size:.64rem;color:#94a3b8;padding-top:4px;line-height:1.7}
+</style>
+<div class="dc-stepper">
+  {% for fase in fases_ronda %}
+  <div class="dc-stepper-cell {% if round.status_id == fase.pk %}active{% endif %}"
+       style="z-index:{{ forloop.revcounter }}">{{ fase.nombre }}</div>
+  {% endfor %}
+</div>
+<div class="dc-stepper-dates">
+  {% for fase in fases_ronda %}
+  <div class="dc-stepper-date">
+    {% with f_dates=fase_dates|get_item:fase.pk %}
+    {% for fecha in f_dates %}{{ fecha|date:"d/m/y" }}<br>{% endfor %}
+    {% endwith %}
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+<div class="row g-2 mb-4">
+  <div class="col"><div class="dc-card" style="padding:10px 14px"><div style="font-size:.72rem;color:var(--dc-text-muted)">Objetivo de ronda <span style="color:var(--dc-text)">· {{ kpis.total_count }} inv.</span></div><div class="fw-bold" style="font-size:1.1rem;margin-top:2px">{{ kpis.target|euros }} €</div></div></div>
+  <div class="col"><div class="dc-card" style="padding:10px 14px"><div style="font-size:.72rem;color:var(--dc-text-muted)">Invertido <span style="color:var(--dc-text)">· {{ kpis.inv_count }} inv. ({{ kpis.pct }}%)</span></div><div class="fw-bold" style="font-size:1.1rem;color:#065f46;margin-top:2px">{{ kpis.invertido|euros }} €</div></div></div>
+  <div class="col"><div class="dc-card" style="padding:10px 14px"><div style="font-size:.72rem;color:var(--dc-text-muted)">Pipeline ponderado <span style="color:var(--dc-text)">· {{ kpis.other_count }} en proc.</span></div><div class="fw-bold" style="font-size:1.1rem;margin-top:2px">{{ kpis.weighted|euros }} €</div></div></div>
+  <div class="col"><div class="dc-card" style="padding:10px 14px"><div style="font-size:.72rem;color:var(--dc-text-muted)">Pipeline no pond. <span style="color:var(--dc-text)">· {{ kpis.pipe_count }} inv.</span></div><div class="fw-bold" style="font-size:1.1rem;margin-top:2px">{{ kpis.pipe_total|euros }} €</div></div></div>
+  <div class="col"><div class="dc-card" style="padding:10px 14px"><div style="font-size:.72rem;color:var(--dc-text-muted)">Descartado <span style="color:var(--dc-text)">· {{ kpis.desc_count }} descart.</span></div><div class="fw-bold" style="font-size:1.1rem;color:var(--dc-danger);margin-top:2px">{{ kpis.desc_total|euros }} €</div></div></div>
 </div>
 
 <ul class="nav nav-tabs mb-3">
@@ -18,43 +68,82 @@
 </ul>
 
 {% if tab == 'matriz' %}
-  <div class="card">
-    <table class="table mb-0">
-      <thead><tr><th>Inversor</th><th>Tipo</th><th>Estado</th><th>Ticket</th><th>Intro por</th><th>Próximo paso</th></tr></thead>
-      <tbody>
-        {% for it in intros %}
-        <tr>
-          <td><b>{{ it.investor.name }}</b><div class="text-muted small">{{ it.investor.country }}</div></td>
-          <td class="text-muted">{{ it.investor.type }}</td>
-          <td><span class="badge text-bg-info">{{ it.status.nombre|default:"—" }}</span></td>
-          <td class="fw-semibold">{{ it.ticket|euros }} €</td>
-          <td class="text-muted">{{ it.intro_by|default:"—" }}</td>
-          <td>{{ it.next_action|default:"—" }}{% if it.next_date %} · <span class="text-warning">{{ it.next_date|date:"d M Y" }}</span>{% endif %}</td>
-        </tr>
-        {% empty %}
-        <tr><td colspan="6" class="text-muted text-center py-4">Aún no hay inversores en esta ronda.</td></tr>
-        {% endfor %}
-      </tbody>
-    </table>
+  <div class="dc-card">
+    <div class="dc-table-wrap">
+      <table class="dc-table">
+        <thead><tr><th>Inversor</th><th>Tipo</th><th>Estado</th><th>Ticket</th><th>Intro por</th><th>Próximo paso</th>{% if can_edit %}<th style="width:36px"></th>{% endif %}</tr></thead>
+        <tbody>
+          {% for it in intros %}
+          <tr>
+            <td>
+              {% if it.investor %}
+                <a href="{% url 'crm:investor_detail' it.investor.pk %}?from_round={{ round.pk }}" class="text-decoration-none" style="color:var(--dc-text)">
+                  <b>{{ it.contact.name }}</b>
+                </a>
+              {% elif it.colaborador %}
+                <a href="{% url 'crm:colaborador_detail' it.colaborador.pk %}?from_round={{ round.pk }}" class="text-decoration-none" style="color:var(--dc-text)">
+                  <b>{{ it.contact.name }}</b>
+                </a>
+              {% else %}
+                <b>{{ it.contact.name }}</b>
+              {% endif %}
+              <div style="font-size:.78rem;color:var(--dc-text-muted)">{{ it.contact.country|default:"" }}</div>
+            </td>
+            <td style="color:var(--dc-text-muted)">{% if it.investor %}{{ it.investor.type }}{% else %}<span class="dc-badge dc-badge--blue" style="font-size:.72rem">Colaborador</span>{% endif %}</td>
+            <td><span class="dc-badge dc-badge--blue">{{ it.status.nombre|default:"—" }}</span></td>
+            <td class="fw-semibold">{{ it.ticket|euros }} €</td>
+            <td style="color:var(--dc-text-muted)">{{ it.intro_by|default:"—" }}</td>
+            <td>{{ it.next_action|default:"—" }}{% if it.next_date %} · <span class="text-accent fw-semibold">{{ it.next_date|date:"d M Y" }}</span>{% endif %}</td>
+            {% if can_edit %}
+            <td style="padding:4px 6px;text-align:right">
+              <button type="button" class="btn-ghost" style="padding:3px 7px;font-size:.78rem"
+                      onclick="openIntroEdit('{{ it.id }}','{{ it.contact.name|escapejs }}','{{ it.status_id|default:'' }}','{{ it.ticket|default:'' }}','{{ it.date|date:"Y-m-d"|default:"" }}','{{ it.intro_by|default:""|escapejs }}','{{ it.next_action|default:""|escapejs }}','{{ it.next_date|date:"Y-m-d"|default:"" }}','{{ it.notes|default:""|escapejs }}','matriz')"
+                      title="Editar presentación">
+                <i class="bi bi-pencil"></i>
+              </button>
+            </td>
+            {% endif %}
+          </tr>
+          {% empty %}
+          <tr><td colspan="7" style="text-align:center;padding:32px;color:var(--dc-text-muted)">Aún no hay inversores en esta ronda.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
   </div>
 {% else %}
-  <div class="text-muted small mb-3"><i class="bi bi-hand-index"></i> Arrastra las tarjetas entre columnas para cambiar el estado.</div>
+  <div style="font-size:.8rem;color:var(--dc-text-muted);margin-bottom:12px"><i class="bi bi-hand-index"></i> Arrastra las tarjetas entre columnas para cambiar el estado.</div>
   <div class="d-flex gap-3 align-items-start overflow-auto pb-3 kanban-board">
     {% for stage in pipe_stages %}
       <div class="kanban-col" data-estado-id="{{ stage.estado.id }}">
         <div class="kanban-col-header">
           <div class="d-flex justify-content-between align-items-center">
-            <span class="fw-semibold">{{ stage.estado.nombre }} <span class="badge text-bg-secondary">{{ stage.items|length }}</span></span>
-            <span class="text-muted small">Peso {{ stage.peso }}%</span>
+            <span class="fw-semibold" style="font-size:.855rem">{{ stage.estado.nombre }} <span class="dc-badge dc-badge--grey ms-1">{{ stage.items|length }}</span></span>
+            <span style="font-size:.75rem;color:var(--dc-text-muted)">{{ stage.peso }}%</span>
           </div>
-          <div class="text-muted small">{{ stage.total|euros }} €</div>
+          <div style="font-size:.78rem;color:var(--dc-text-muted)">{{ stage.total|euros }} €</div>
         </div>
         <div class="kanban-body" data-estado-id="{{ stage.estado.id }}">
           {% for it in stage.items %}
-            <div class="kanban-card" draggable="true" data-intro-id="{{ it.id }}">
-              <b>{{ it.investor.name }}</b>
-              <div>{{ it.ticket|euros }} €</div>
-              <div class="text-muted small">{{ it.next_date|date:"d M"|default:"—" }}</div>
+            <div class="kanban-card" draggable="true" data-intro-id="{{ it.id }}"
+                 data-intro-status="{{ it.status_id|default:'' }}"
+                 data-intro-ticket="{{ it.ticket|default:'' }}"
+                 data-intro-date="{{ it.date|date:'Y-m-d'|default:'' }}"
+                 data-intro-intro-by="{{ it.intro_by|default:'' }}"
+                 data-intro-next-action="{{ it.next_action|default:'' }}"
+                 data-intro-next-date="{{ it.next_date|date:'Y-m-d'|default:'' }}"
+                 data-intro-notes="{{ it.notes|default:'' }}"
+                 data-intro-name="{{ it.contact.name }}"
+                 data-contact-url="{% if it.investor %}{% url 'crm:investor_detail' it.investor.pk %}{% elif it.colaborador %}{% url 'crm:colaborador_detail' it.colaborador.pk %}{% endif %}">
+              <div class="d-flex justify-content-between align-items-start mb-1">
+                <a class="kanban-contact-link fw-semibold" style="font-size:.855rem;color:var(--dc-text);text-decoration:none;border-radius:4px;padding:1px 3px;margin:-1px -3px;transition:background .15s,color .15s" onmouseover="this.style.background='var(--dc-accent)';this.style.color='#fff'" onmouseout="this.style.background='';this.style.color='var(--dc-text)'"
+                   href="{% if it.investor %}{% url 'crm:investor_detail' it.investor.pk %}?from_round={{ round.pk }}{% elif it.colaborador %}{% url 'crm:colaborador_detail' it.colaborador.pk %}?from_round={{ round.pk }}{% endif %}">
+                  {{ it.contact.name }}
+                </a>
+                {% if can_edit %}<button type="button" class="kanban-edit-btn" title="Editar" style="background:none;border:none;cursor:pointer;padding:0 2px;color:var(--dc-text-muted);opacity:.5;font-size:.78rem;flex-shrink:0"><i class="bi bi-pencil"></i></button>{% endif %}
+              </div>
+              <div style="font-size:.8rem;color:var(--dc-text-muted)">{{ it.ticket|euros }} €</div>
+              <div style="font-size:.75rem;color:var(--dc-text-muted)">{{ it.next_date|date:"d M"|default:"—" }}</div>
             </div>
           {% empty %}
             <div class="kanban-empty">Sin inversores</div>
@@ -66,14 +155,29 @@
     {% for stage in end_stages %}
       <div class="kanban-col" data-estado-id="{{ stage.estado.id }}">
         <div class="kanban-col-header">
-          <span class="fw-semibold">{{ stage.estado.nombre }} <span class="badge text-bg-secondary">{{ stage.items|length }}</span></span>
-          <div class="text-muted small">{{ stage.total|euros }} €</div>
+          <span class="fw-semibold" style="font-size:.855rem">{{ stage.estado.nombre }} <span class="dc-badge dc-badge--grey ms-1">{{ stage.items|length }}</span></span>
+          <div style="font-size:.78rem;color:var(--dc-text-muted)">{{ stage.total|euros }} €</div>
         </div>
         <div class="kanban-body" data-estado-id="{{ stage.estado.id }}">
           {% for it in stage.items %}
-            <div class="kanban-card" draggable="true" data-intro-id="{{ it.id }}">
-              <b>{{ it.investor.name }}</b>
-              <div>{{ it.ticket|euros }} €</div>
+            <div class="kanban-card" draggable="true" data-intro-id="{{ it.id }}"
+                 data-intro-status="{{ it.status_id|default:'' }}"
+                 data-intro-ticket="{{ it.ticket|default:'' }}"
+                 data-intro-date="{{ it.date|date:'Y-m-d'|default:'' }}"
+                 data-intro-intro-by="{{ it.intro_by|default:'' }}"
+                 data-intro-next-action="{{ it.next_action|default:'' }}"
+                 data-intro-next-date="{{ it.next_date|date:'Y-m-d'|default:'' }}"
+                 data-intro-notes="{{ it.notes|default:'' }}"
+                 data-intro-name="{{ it.contact.name }}"
+                 data-contact-url="{% if it.investor %}{% url 'crm:investor_detail' it.investor.pk %}{% elif it.colaborador %}{% url 'crm:colaborador_detail' it.colaborador.pk %}{% endif %}">
+              <div class="d-flex justify-content-between align-items-start mb-1">
+                <a class="kanban-contact-link fw-semibold" style="font-size:.855rem;color:var(--dc-text);text-decoration:none;border-radius:4px;padding:1px 3px;margin:-1px -3px;transition:background .15s,color .15s" onmouseover="this.style.background='var(--dc-accent)';this.style.color='#fff'" onmouseout="this.style.background='';this.style.color='var(--dc-text)'"
+                   href="{% if it.investor %}{% url 'crm:investor_detail' it.investor.pk %}?from_round={{ round.pk }}{% elif it.colaborador %}{% url 'crm:colaborador_detail' it.colaborador.pk %}?from_round={{ round.pk }}{% endif %}">
+                  {{ it.contact.name }}
+                </a>
+                {% if can_edit %}<button type="button" class="kanban-edit-btn" title="Editar" style="background:none;border:none;cursor:pointer;padding:0 2px;color:var(--dc-text-muted);opacity:.5;font-size:.78rem;flex-shrink:0"><i class="bi bi-pencil"></i></button>{% endif %}
+              </div>
+              <div style="font-size:.8rem;color:var(--dc-text-muted)">{{ it.ticket|euros }} €</div>
             </div>
           {% empty %}
             <div class="kanban-empty">Sin inversores</div>
@@ -85,71 +189,325 @@
 
   <form id="status-form" method="post" style="display:none">{% csrf_token %}<input type="hidden" name="estado_id"></form>
 {% endif %}
-{% endblock %}
 
-{% block extra_head %}
-<style>
-  .kanban-board { align-items: stretch; }
-  .kanban-col {
-    background: #eef0f3;
-    border-radius: 8px;
-    padding: 12px;
-    min-width: 230px;
-    max-width: 230px;
-    flex-shrink: 0;
-    display: flex;
-    flex-direction: column;
-  }
-  .kanban-col-header {
-    padding-bottom: 8px;
-    margin-bottom: 8px;
-    border-bottom: 2px solid #d7dae0;
-  }
-  .kanban-body {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    min-height: 70px;
-    flex: 1;
-  }
-  .kanban-body.drag-over { background: rgba(255, 193, 7, .12); border-radius: 6px; }
-  .kanban-card {
-    background: #fff;
-    border: 1px solid #e3e5e9;
-    border-radius: 6px;
-    box-shadow: 0 1px 2px rgba(16, 24, 40, .06);
-    padding: 8px 10px;
-    font-size: 13px;
-    cursor: grab;
-  }
-  .kanban-card:active { cursor: grabbing; }
-  .kanban-card.dragging { opacity: .4; }
-  .kanban-empty {
-    border: 1px dashed #c8cbd2;
-    border-radius: 6px;
-    padding: 10px;
-    text-align: center;
-    font-size: 12px;
-    color: #9094a0;
-  }
-  .kanban-divider { width: 1px; align-self: stretch; background: #d7dae0; flex-shrink: 0; }
-</style>
+{% if can_edit %}
+{# ── Modal editar presentación ─────────────────────────────────────────── #}
+<div class="modal fade" id="editIntroModal" tabindex="-1">
+  <div class="modal-dialog modal-xl">
+    <div class="modal-content dc-form">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="bi bi-pencil me-2" style="color:var(--dc-accent)"></i>Presentación — <span id="editIntroName"></span></h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body" style="padding:0">
+        <div class="row g-0" style="min-height:420px">
+
+          {# ── Columna izquierda: datos de la presentación ── #}
+          <div class="col-md-5" style="padding:20px;border-right:1px solid var(--dc-border)">
+            <div style="font-size:.72rem;font-weight:700;letter-spacing:.06em;color:var(--dc-text-muted);text-transform:uppercase;margin-bottom:12px">Datos de presentación</div>
+            <form method="post" id="editIntroForm">
+              {% csrf_token %}
+              <input type="hidden" name="tab" id="editIntroTab" value="matriz">
+              <div class="row g-2">
+                <div class="col-12">
+                  <label class="form-label">Estado</label>
+                  <select name="status" class="form-select form-select-sm" id="editIntroStatus">
+                    <option value="">— Sin estado —</option>
+                    {% for e in estados %}<option value="{{ e.id }}">{{ e.nombre }}</option>{% endfor %}
+                  </select>
+                </div>
+                <div class="col-12">
+                  <label class="form-label">Ticket (€)</label>
+                  <input type="text" name="ticket" id="editIntroTicket" class="form-control form-control-sm" inputmode="decimal" placeholder="0" autocomplete="off">
+                </div>
+                <div class="col-6">
+                  <label class="form-label">Fecha intro</label>
+                  <input type="date" name="date" id="editIntroDate" class="form-control form-control-sm">
+                </div>
+                <div class="col-6">
+                  <label class="form-label">Presentado por</label>
+                  <input type="text" name="intro_by" id="editIntroBy" class="form-control form-control-sm">
+                </div>
+                <div class="col-12">
+                  <label class="form-label">Próximo paso</label>
+                  <input type="text" name="next_action" id="editIntroNextAction" class="form-control form-control-sm">
+                </div>
+                <div class="col-12">
+                  <label class="form-label">Fecha próximo paso</label>
+                  <input type="date" name="next_date" id="editIntroNextDate" class="form-control form-control-sm">
+                </div>
+                <div class="col-12 mt-2">
+                  <button type="submit" class="btn-accent w-100">Guardar cambios</button>
+                </div>
+              </div>
+            </form>
+          </div>
+
+          {# ── Columna derecha: cronología de la ronda ── #}
+          <div class="col-md-7" style="padding:20px;display:flex;flex-direction:column">
+            <div style="font-size:.72rem;font-weight:700;letter-spacing:.06em;color:var(--dc-text-muted);text-transform:uppercase;margin-bottom:12px">
+              Cronología de esta ronda
+              <span id="editIntroChrContext" style="color:var(--dc-text);font-weight:400;text-transform:none;letter-spacing:0;margin-left:6px"></span>
+            </div>
+
+            {# Añadir nuevo log #}
+            <div class="mb-3 p-2" style="background:var(--dc-hover);border-radius:8px">
+              <div class="d-flex gap-1 mb-2 flex-wrap">
+                <button type="button" class="intro-log-pill" data-type="Nota" style="padding:4px 10px;border-radius:20px;border:1px solid var(--dc-border);background:var(--dc-card);font-size:.75rem;cursor:pointer;transition:all .15s"><i class="bi bi-sticky me-1"></i>Nota</button>
+                <button type="button" class="intro-log-pill" data-type="Email" style="padding:4px 10px;border-radius:20px;border:1px solid var(--dc-border);background:var(--dc-card);font-size:.75rem;cursor:pointer;transition:all .15s"><i class="bi bi-envelope me-1"></i>Email</button>
+                <button type="button" class="intro-log-pill" data-type="Llamada" style="padding:4px 10px;border-radius:20px;border:1px solid var(--dc-border);background:var(--dc-card);font-size:.75rem;cursor:pointer;transition:all .15s"><i class="bi bi-telephone me-1"></i>Llamada</button>
+                <button type="button" class="intro-log-pill" data-type="Reunión" style="padding:4px 10px;border-radius:20px;border:1px solid var(--dc-border);background:var(--dc-card);font-size:.75rem;cursor:pointer;transition:all .15s"><i class="bi bi-people me-1"></i>Reunión</button>
+              </div>
+              <div class="d-flex gap-2 align-items-center">
+                <input type="date" id="introLogDate" class="form-control form-control-sm" style="width:130px;flex-shrink:0">
+                <textarea id="introLogSummary" class="form-control form-control-sm" placeholder="Resumen…" rows="2" style="resize:none;min-height:56px;line-height:1.45"></textarea>
+                <button type="button" id="introLogSave" class="btn-accent" style="white-space:nowrap;flex-shrink:0" onclick="saveIntroLog()">
+                  <i class="bi bi-plus-lg"></i> Añadir
+                </button>
+              </div>
+            </div>
+
+            {# Lista de logs #}
+            <div id="introChronoList" style="flex:1;overflow-y:auto;max-height:300px">
+              <div style="text-align:center;padding:24px;color:var(--dc-text-muted);font-size:.85rem">
+                <i class="bi bi-arrow-repeat"></i> Cargando…
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn-ghost" data-bs-dismiss="modal">Cerrar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="addInvestorModal" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <form method="post" class="modal-content dc-form">
+      {% csrf_token %}
+      <input type="hidden" name="tab" value="{{ tab }}">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="bi bi-person-plus me-2" style="color:var(--dc-accent)"></i>Añadir contacto a la ronda</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="row g-3">
+          <div class="col-12">
+            <label class="form-label">Tipo de contacto</label>
+            <div class="d-flex gap-3">
+              <label style="cursor:pointer"><input type="radio" name="contact_type" value="investor" id="rnd_ct_inv" checked onchange="toggleRndContact()"> Inversor</label>
+              <label style="cursor:pointer"><input type="radio" name="contact_type" value="colaborador" id="rnd_ct_col" onchange="toggleRndContact()"> Colaborador</label>
+            </div>
+          </div>
+          <div class="col-md-6" id="rnd_inv_sel">
+            <label class="form-label">Inversor</label>
+            <select name="investor" class="form-select">
+              <option value="">— Seleccionar inversor —</option>
+              {% for inv in all_investors %}
+                <option value="{{ inv.pk }}">{{ inv.name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="col-md-6" id="rnd_col_sel" style="display:none">
+            <label class="form-label">Colaborador</label>
+            <select name="colaborador" class="form-select">
+              <option value="">— Seleccionar colaborador —</option>
+              {% for c in all_colaboradores %}
+                <option value="{{ c.pk }}">{{ c.name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Estado inicial</label>
+            <select name="status" class="form-select">
+              <option value="">— Sin estado —</option>
+              {% for e in estados %}<option value="{{ e.id }}">{{ e.nombre }}</option>{% endfor %}
+            </select>
+          </div>
+          <div class="col-md-4">
+            <label class="form-label">Ticket (€)</label>
+            <input type="number" name="ticket" class="form-control" placeholder="0" min="0" step="1000">
+          </div>
+          <div class="col-md-4">
+            <label class="form-label">Fecha de intro</label>
+            <input type="date" name="date" class="form-control">
+          </div>
+          <div class="col-md-4">
+            <label class="form-label">Presentado por</label>
+            <input type="text" name="intro_by" class="form-control" placeholder="Nombre">
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Próximo paso</label>
+            <input type="text" name="next_action" class="form-control" placeholder="Ej: Enviar teaser">
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Fecha próximo paso</label>
+            <input type="date" name="next_date" class="form-control">
+          </div>
+          <div class="col-12">
+            <label class="form-label">Notas</label>
+            <textarea name="notes" class="form-control" rows="2"></textarea>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn-ghost" data-bs-dismiss="modal">Cancelar</button>
+        <button type="submit" class="btn-accent">Añadir contacto</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endif %}
+
+{# Menú contextual kanban ronda #}
+<div id="ctx-rnd" style="display:none;position:fixed;z-index:9999;background:var(--dc-surface);border:1px solid var(--dc-border);border-radius:8px;box-shadow:0 4px 16px rgba(0,0,0,.2);padding:6px 0;min-width:190px">
+  <button id="ctx-rnd-nueva" style="padding:8px 16px;font-size:.875rem;background:none;border:none;cursor:pointer;width:100%;text-align:left;color:var(--dc-text)">
+    <i class="bi bi-person-plus me-2" style="color:var(--dc-accent)"></i> Añadir contacto
+  </button>
+</div>
 {% endblock %}
 
 {% block extra_js %}
 <script>
+function toggleRndContact() {
+  const isInv = document.getElementById('rnd_ct_inv').checked;
+  document.getElementById('rnd_inv_sel').style.display = isInv ? '' : 'none';
+  document.getElementById('rnd_col_sel').style.display = isInv ? 'none' : '';
+}
+let _currentIntroId = null;
+let _currentIntroLogType = 'Nota';
+let _introDropFile = null;   // archivo arrastrado al panel de cronología
+
+function fmtTicket(val) {
+  if (val === null || val === undefined || val === '') return '';
+  const n = parseFloat(String(val).replace(/\./g, '').replace(',', '.'));
+  if (isNaN(n)) return '';
+  return n.toLocaleString('es-ES', {minimumFractionDigits: 0, maximumFractionDigits: 2});
+}
+
+function renderIntroChrono(logs) {
+  const el = document.getElementById('introChronoList');
+  if (!logs.length) {
+    el.innerHTML = '<div style="text-align:center;padding:24px;color:var(--dc-text-muted);font-size:.85rem">Sin interacciones registradas para esta ronda.</div>';
+    return;
+  }
+  const typeIcon  = {Nota:'bi-sticky',Email:'bi-envelope',Llamada:'bi-telephone','Reunión':'bi-people',Estado:'bi-arrow-left-right'};
+  const typeColor = {Nota:'var(--dc-text-muted)',Email:'var(--dc-accent)',Llamada:'#3b82f6','Reunión':'#f59e0b',Estado:'#8b5cf6'};
+  el.innerHTML = logs.map(l => {
+    const icon  = typeIcon[l.type]  || 'bi-circle';
+    const color = typeColor[l.type] || 'var(--dc-text-muted)';
+    const isEstado = l.type === 'Estado';
+    return `
+    <div style="display:flex;gap:10px;padding:8px 0;border-bottom:1px solid var(--dc-border);${isEstado ? 'background:rgba(139,92,246,.04);border-radius:4px;padding-left:6px' : ''}">
+      <div style="width:82px;flex-shrink:0;font-size:.75rem">
+        <div style="color:var(--dc-accent);font-weight:600">${l.date}</div>
+        <div style="display:flex;align-items:center;gap:3px;color:${color}"><i class="bi ${icon}" style="font-size:.7rem"></i>${l.type}</div>
+      </div>
+      <div style="flex:1;font-size:.82rem;color:var(--dc-text);line-height:1.4">${l.summary||'—'}</div>
+    </div>`;
+  }).join('');
+}
+
+function loadIntroChrono(id) {
+  document.getElementById('introChronoList').innerHTML =
+    '<div style="text-align:center;padding:24px;color:var(--dc-text-muted);font-size:.85rem"><i class="bi bi-arrow-repeat"></i> Cargando…</div>';
+  fetch(`/presentaciones/${id}/cronologia/`)
+    .then(r => r.json())
+    .then(data => {
+      if (data.round) document.getElementById('editIntroChrContext').textContent = data.round;
+      renderIntroChrono(data.logs);
+    });
+}
+
+function setIntroLogType(type) {
+  _currentIntroLogType = type;
+  document.querySelectorAll('.intro-log-pill').forEach(b => {
+    const active = b.dataset.type === type;
+    b.style.background = active ? 'var(--dc-accent)' : 'var(--dc-card)';
+    b.style.color = active ? '#fff' : '';
+    b.style.borderColor = active ? 'var(--dc-accent)' : 'var(--dc-border)';
+  });
+}
+
+function saveIntroLog() {
+  const summary = document.getElementById('introLogSummary').value.trim();
+  const date    = document.getElementById('introLogDate').value;
+  if (!summary) { document.getElementById('introLogSummary').focus(); return; }
+  const btn = document.getElementById('introLogSave');
+  btn.disabled = true;
+  const csrf = document.querySelector('[name=csrfmiddlewaretoken]');
+  const fd = new FormData();
+  fd.append('csrfmiddlewaretoken', csrf ? csrf.value : '');
+  fd.append('type', _currentIntroLogType);
+  fd.append('summary', summary);
+  fd.append('date', date);
+  if (_introDropFile) { fd.append('attachment', _introDropFile); _introDropFile = null; }
+  fetch(`/presentaciones/${_currentIntroId}/cronologia/`, {method:'POST', body:fd})
+    .then(r => r.json())
+    .then(data => {
+      if (data.ok) {
+        document.getElementById('introLogSummary').value = '';
+        loadIntroChrono(_currentIntroId);
+      }
+    })
+    .finally(() => { btn.disabled = false; });
+}
+
+function openIntroEdit(id, name, status, ticket, date, introBy, nextAction, nextDate, notes, tab) {
+  _currentIntroId = id;
+  document.getElementById('editIntroForm').action = `/presentaciones/${id}/editar/`;
+  document.getElementById('editIntroTab').value = tab || 'matriz';
+  document.getElementById('editIntroName').textContent = name;
+  document.getElementById('editIntroStatus').value = status || '';
+  document.getElementById('editIntroTicket').value = fmtTicket(ticket);
+  document.getElementById('editIntroDate').value = date || '';
+  document.getElementById('editIntroBy').value = introBy || '';
+  document.getElementById('editIntroNextAction').value = nextAction || '';
+  document.getElementById('editIntroNextDate').value = nextDate || '';
+  // fecha hoy por defecto en el log
+  document.getElementById('introLogDate').value = new Date().toISOString().slice(0,10);
+  setIntroLogType('Nota');
+  loadIntroChrono(id);
+  new bootstrap.Modal(document.getElementById('editIntroModal')).show();
+}
+
+// Pills de tipo de log
+document.querySelectorAll('.intro-log-pill').forEach(b =>
+  b.addEventListener('click', () => setIntroLogType(b.dataset.type))
+);
+
+// Formateo del ticket: separador miles "." decimal ","
+const ticketInput = document.getElementById('editIntroTicket');
+if (ticketInput) {
+  ticketInput.addEventListener('blur', () => {
+    const raw = ticketInput.value.replace(/\./g, '').replace(',', '.');
+    const n = parseFloat(raw);
+    if (!isNaN(n)) ticketInput.value = n.toLocaleString('es-ES', {minimumFractionDigits:0, maximumFractionDigits:2});
+  });
+  document.getElementById('editIntroForm').addEventListener('submit', () => {
+    // Convertir "1.500.000" → "1500000" antes de enviar
+    ticketInput.value = ticketInput.value.replace(/\./g, '').replace(',', '.');
+  });
+}
 document.querySelectorAll('.kanban-card').forEach(card => {
   card.addEventListener('dragstart', e => {
     e.dataTransfer.setData('text/plain', card.dataset.introId);
     card.classList.add('dragging');
   });
   card.addEventListener('dragend', () => card.classList.remove('dragging'));
+  card.style.cursor = 'pointer';
+  card.addEventListener('click', e => {
+    if (e.target.closest('.kanban-contact-link')) return;
+    const d = card.dataset;
+    openIntroEdit(d.introId, d.introName, d.introStatus, d.introTicket, d.introDate,
+                  d.introIntroBy, d.introNextAction, d.introNextDate, d.introNotes, 'pipeline');
+  });
 });
 document.querySelectorAll('.kanban-body').forEach(col => {
-  col.addEventListener('dragover', e => {
-    e.preventDefault();
-    col.classList.add('drag-over');
-  });
+  col.addEventListener('dragover', e => { e.preventDefault(); col.classList.add('drag-over'); });
   col.addEventListener('dragleave', () => col.classList.remove('drag-over'));
   col.addEventListener('drop', e => {
     e.preventDefault();
@@ -162,5 +520,190 @@ document.querySelectorAll('.kanban-body').forEach(col => {
     form.submit();
   });
 });
+
+// ── Context menu clic derecho ─────────────────────────────────────────────
+(function () {
+  const ctx = document.getElementById('ctx-rnd');
+  if (!ctx) return;
+  let targetEstadoId = null;
+
+  document.querySelectorAll('.kanban-body').forEach(col => {
+    col.addEventListener('contextmenu', e => {
+      e.preventDefault();
+      targetEstadoId = col.dataset.estadoId;
+      ctx.style.left = Math.min(e.clientX, window.innerWidth - 210) + 'px';
+      ctx.style.top  = Math.min(e.clientY, window.innerHeight - 60) + 'px';
+      ctx.style.display = 'block';
+    });
+  });
+
+  document.addEventListener('click', () => { ctx.style.display = 'none'; });
+  ctx.addEventListener('click', e => e.stopPropagation());
+
+  document.getElementById('ctx-rnd-nueva').addEventListener('click', () => {
+    ctx.style.display = 'none';
+    const modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('addInvestorModal'));
+    if (targetEstadoId) {
+      const sel = document.querySelector('#addInvestorModal select[name=status]');
+      if (sel) sel.value = targetEstadoId;
+    }
+    modal.show();
+  });
+})();
 </script>
+
+{% if can_edit %}
+{# ── Drop zone para el panel de cronología del intro modal ────────────── #}
+
+{# Overlay de arrastre #}
+<div id="introDragOverlay" style="display:none;position:fixed;inset:0;z-index:10500;
+     background:rgba(var(--dc-accent-rgb),.18);backdrop-filter:blur(2px);
+     align-items:center;justify-content:center;border:3px dashed var(--dc-accent);pointer-events:none">
+  <div style="text-align:center;color:var(--dc-accent)">
+    <i class="bi bi-file-earmark-arrow-down" style="font-size:3rem;display:block;margin-bottom:8px"></i>
+    <div style="font-size:1.1rem;font-weight:700">Suelta aquí el archivo</div>
+    <div style="font-size:.85rem;opacity:.7">Email .msg, PDF, Word…</div>
+  </div>
+</div>
+
+{# Spinner #}
+<div id="introParseSpinner" style="display:none;position:fixed;inset:0;z-index:10502;
+     background:rgba(0,0,0,.45);align-items:center;justify-content:center">
+  <div class="dc-card" style="padding:28px 40px;text-align:center">
+    <div class="spinner-border text-primary mb-3" role="status"></div>
+    <div style="font-size:.9rem;font-weight:600">Extrayendo datos del email…</div>
+    <div style="font-size:.78rem;color:var(--dc-text-muted);margin-top:4px">El archivo se eliminará del servidor al terminar</div>
+  </div>
+</div>
+
+{# Modal de revisión del email #}
+<div id="introEmailReview" style="display:none;position:fixed;inset:0;z-index:10501;
+     background:rgba(0,0,0,.5);align-items:center;justify-content:center">
+  <div class="dc-card" style="width:560px;max-width:96vw;max-height:90vh;overflow-y:auto;padding:28px">
+    <div class="d-flex align-items-center gap-2 mb-4">
+      <i class="bi bi-envelope-check" style="color:var(--dc-accent);font-size:1.2rem"></i>
+      <h5 style="margin:0;font-size:1rem;font-weight:700">Revisión del email extraído</h5>
+      <button id="introEmailReviewClose" style="margin-left:auto;background:none;border:none;font-size:1.2rem;cursor:pointer;color:var(--dc-text-muted)"><i class="bi bi-x-lg"></i></button>
+    </div>
+    <div class="mb-3">
+      <label style="font-size:.78rem;font-weight:600;color:var(--dc-text-muted);display:block;margin-bottom:4px">Fecha <span style="opacity:.6">(editable)</span></label>
+      <input type="date" id="introErDate" style="width:180px;padding:7px 10px;border:1px solid var(--dc-border);border-radius:6px;background:var(--dc-surface);color:var(--dc-text);font-size:.85rem">
+    </div>
+    <div class="mb-3">
+      <label style="font-size:.78rem;font-weight:600;color:var(--dc-text-muted);display:block;margin-bottom:4px">Texto <span style="opacity:.6">(editable)</span></label>
+      <div id="introErSummary" contenteditable="true" spellcheck="false"
+           style="min-height:90px;padding:9px 11px;border:1px solid var(--dc-border);border-radius:6px;
+                  background:var(--dc-surface);color:var(--dc-text);font-size:.855rem;
+                  line-height:1.6;outline:none;white-space:pre-wrap;word-break:break-word;cursor:text"></div>
+    </div>
+    <div class="d-flex gap-2 justify-content-end mt-2">
+      <button id="introEmailReviewCancel" class="btn-ghost">Cancelar</button>
+      <button id="introEmailReviewConfirm" class="btn-primary"><i class="bi bi-check2 me-1"></i>Usar estos datos</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  let _dragCount   = 0;
+  let _processing  = false;
+  const overlay = document.getElementById('introDragOverlay');
+  const spinner = document.getElementById('introParseSpinner');
+  const review  = document.getElementById('introEmailReview');
+  const modal   = document.getElementById('editIntroModal');
+
+  function modalOpen() { return modal && modal.classList.contains('show'); }
+  function hasFile(dt) {
+    if (!dt) return false;
+    for (const item of (dt.items || [])) if (item.kind === 'file') return true;
+    return false;
+  }
+
+  // Escuchar sobre el propio modal para evitar conflictos con kanban
+  modal.addEventListener('dragenter', e => {
+    if (!hasFile(e.dataTransfer)) return;
+    e.preventDefault();
+    _dragCount++;
+    overlay.style.display = 'flex';
+  });
+  modal.addEventListener('dragleave', e => {
+    _dragCount = Math.max(0, _dragCount - 1);
+    if (_dragCount === 0) overlay.style.display = 'none';
+  });
+  modal.addEventListener('dragover', e => e.preventDefault());
+  modal.addEventListener('drop', e => {
+    e.preventDefault();
+    e.stopPropagation();
+    _dragCount = 0;
+    overlay.style.display = 'none';
+    const files = [...(e.dataTransfer.files || [])];
+    if (!files.length) return;
+    const msgFile = files.find(f => f.name.toLowerCase().endsWith('.msg'));
+    if (msgFile) processMsg(msgFile);
+    else         processDoc(files[0]);
+  });
+
+  function processMsg(file) {
+    if (_processing) return;
+    _processing = true;
+    _introDropFile = file;
+    spinner.style.display = 'flex';
+    const fd = new FormData();
+    fd.append('file', file);
+    fd.append('csrfmiddlewaretoken', document.querySelector('[name=csrfmiddlewaretoken]').value);
+    fetch('{% url "crm:parse_email" %}', { method: 'POST', body: fd })
+      .then(r => r.json())
+      .then(data => {
+        spinner.style.display = 'none';
+        _processing = false;
+        if (data.error) { alert('Error: ' + data.error); _introDropFile = null; return; }
+        showReview(data);
+      })
+      .catch(err => { spinner.style.display = 'none'; _processing = false; _introDropFile = null; alert('Error: ' + err); });
+  }
+
+  function processDoc(file) {
+    _introDropFile = file;
+    document.getElementById('introLogDate').value    = new Date().toISOString().slice(0,10);
+    document.getElementById('introLogSummary').value = file.name;
+    setIntroLogType('Nota');
+  }
+
+  function buildHtml(data) {
+    const isOut = (data.direction || '').includes('Out');
+    const esc   = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    let html = `<b style="color:${isOut ? '#3b82f6' : '#22c55e'}">${isOut ? '(Out)' : '(In)'}</b>`;
+    if (data.sender)   html += ` <b>De:</b> ${esc(data.sender)}`;
+    if (data.to_field) html += `<br><b>Para:</b> ${esc(data.to_field)}`;
+    if (data.subject)  html += `<br><b>Asunto:</b> ${esc(data.subject)}`;
+    return html;
+  }
+
+  function showReview(data) {
+    document.getElementById('introErDate').value        = data.date || '';
+    document.getElementById('introErSummary').innerHTML = buildHtml(data);
+    review.style.display = 'flex';
+  }
+
+  document.getElementById('introEmailReviewClose').addEventListener('click',  () => { review.style.display = 'none'; _introDropFile = null; });
+  document.getElementById('introEmailReviewCancel').addEventListener('click', () => { review.style.display = 'none'; _introDropFile = null; });
+
+  document.getElementById('introEmailReviewConfirm').addEventListener('click', () => {
+    document.getElementById('introLogDate').value    = document.getElementById('introErDate').value;
+    document.getElementById('introLogSummary').value = document.getElementById('introErSummary').innerText.trim();
+    review.style.display = 'none';
+    setIntroLogType('Email');
+    // _introDropFile ya tiene el archivo; saveIntroLog() lo adjuntará
+  });
+
+  // Indicador visual en la zona de drop del panel
+  const panel = document.querySelector('#editIntroModal .col-md-7');
+  if (panel) {
+    panel.addEventListener('dragover', e => { e.preventDefault(); panel.style.outline = '2px dashed var(--dc-accent)'; });
+    panel.addEventListener('dragleave', () => { panel.style.outline = ''; });
+    panel.addEventListener('drop', () => { panel.style.outline = ''; });
+  }
+})();
+</script>
+{% endif %}
 {% endblock %}

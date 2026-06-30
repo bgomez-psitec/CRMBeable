@@ -1,0 +1,102 @@
+{% extends "base.html" %}
+{% load crm_filters %}
+{% block title %}Comunicaciones — Ronda de Inversión{% endblock %}
+{% block topbar_title %}Comunicaciones{% endblock %}
+{% block topbar_sub %}Historial de contacto por ronda{% endblock %}
+
+{% block content %}
+
+{# ── Selector de ronda ──────────────────────────────────────────────────── #}
+<form method="get" class="d-flex gap-2 align-items-center mb-4 flex-wrap">
+  <select name="round" class="form-select" style="width:320px;flex-shrink:0" onchange="this.form.submit()">
+    <option value="">— Selecciona una ronda —</option>
+    {% for r in rounds %}
+      <option value="{{ r.pk }}" {% if selected_round_pk == r.pk|stringformat:"s" %}selected{% endif %}>
+        {{ r.company.name }} · {{ r.type }}
+      </option>
+    {% endfor %}
+  </select>
+</form>
+
+{% if not selected_round %}
+  <div class="dc-card">
+    <div class="dc-card__body text-center py-5" style="color:var(--dc-text-muted)">
+      Selecciona una ronda para ver las comunicaciones.
+    </div>
+  </div>
+{% else %}
+
+{# ── Lista de inversores con su cronología ────────────────────────────── #}
+{% for item in inv_comms %}
+<div class="dc-card mb-3">
+  <div class="dc-card__header" style="padding:14px 20px">
+    <div class="d-flex align-items-center gap-3">
+      {# Avatar iniciales #}
+      <div style="width:36px;height:36px;border-radius:50%;background:var(--dc-accent);
+                  display:flex;align-items:center;justify-content:center;
+                  font-size:.75rem;font-weight:700;color:#fff;flex-shrink:0">
+        {{ item.investor.name|slice:":2"|upper }}
+      </div>
+      <div style="flex:1">
+        <a href="{% url 'crm:investor_detail' item.investor.pk %}"
+           class="fw-semibold" style="font-size:.9rem;color:var(--dc-text);text-decoration:none">
+          {{ item.investor.name }}
+        </a>
+        <div style="font-size:.75rem;color:var(--dc-text-muted)">{{ item.investor.type|default:"—" }}</div>
+      </div>
+      {% if item.status %}
+      <span class="dc-badge" style="font-size:.72rem;
+        {% if item.status.nombre == 'Invertido' %}background:rgba(34,197,94,.15);color:#22c55e
+        {% elif item.status.nombre == 'Descartado' %}background:rgba(239,68,68,.15);color:#ef4444
+        {% elif item.status.nombre == 'Due diligence' %}background:rgba(59,130,246,.15);color:#3b82f6
+        {% elif item.status.nombre == 'Term sheet' %}background:rgba(168,85,247,.15);color:#a855f7
+        {% elif item.status.nombre == 'Interés' %}background:rgba(245,158,11,.15);color:#f59e0b
+        {% else %}background:rgba(100,116,139,.15);color:#64748b{% endif %}">
+        {{ item.status.nombre }}
+      </span>
+      {% endif %}
+    </div>
+  </div>
+
+  {% if item.timeline %}
+  <div style="padding:0 20px 12px">
+    {% for entry in item.timeline %}
+    <div class="d-flex gap-3 py-2" style="border-top:1px solid var(--dc-border)">
+      {# Icono tipo #}
+      <div style="flex-shrink:0;margin-top:2px">
+        {% if entry.type == 'Email' %}
+          <i class="bi bi-envelope" style="color:var(--dc-accent);font-size:.85rem"></i>
+        {% elif entry.type == 'Llamada' %}
+          <i class="bi bi-telephone" style="color:#22c55e;font-size:.85rem"></i>
+        {% elif entry.type == 'Reunión' %}
+          <i class="bi bi-people" style="color:#f59e0b;font-size:.85rem"></i>
+        {% else %}
+          <i class="bi bi-sticky" style="color:#94a3b8;font-size:.85rem"></i>
+        {% endif %}
+      </div>
+      <div style="flex:1">
+        <div style="font-size:.75rem;color:var(--dc-accent);font-weight:600;margin-bottom:2px">
+          {% if entry.date %}{{ entry.date|date:"j M Y" }}{% else %}—{% endif %}
+          — {{ entry.type|default:"Nota" }}
+        </div>
+        <div style="font-size:.82rem;color:var(--dc-text)">{{ entry.summary }}</div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="px-4 pb-3" style="font-size:.82rem;color:var(--dc-text-muted)">
+    Sin comunicaciones registradas.
+  </div>
+  {% endif %}
+</div>
+{% empty %}
+<div class="dc-card">
+  <div class="dc-card__body text-center py-5" style="color:var(--dc-text-muted)">
+    No hay inversores en esta ronda.
+  </div>
+</div>
+{% endfor %}
+
+{% endif %}
+{% endblock %}

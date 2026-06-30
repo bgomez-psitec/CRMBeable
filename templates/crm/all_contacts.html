@@ -1,0 +1,194 @@
+{% extends "base.html" %}
+{% load crm_filters %}
+{% block title %}Contactos — CRM Gestora{% endblock %}
+{% block topbar_title %}Contactos{% endblock %}
+{% block topbar_sub %}Directorio unificado de personas de contacto{% endblock %}
+
+{% block content %}
+
+{# ── Filtros ───────────────────────────────────────────────────────────── #}
+<form method="get" class="d-flex gap-2 mb-4 flex-wrap align-items-center">
+  <input type="text" name="q" value="{{ q }}" class="form-control" style="max-width:240px" placeholder="Nombre, cargo, email…">
+  <select name="tipo" class="form-select" style="max-width:180px" onchange="this.form.submit()">
+    <option value="">Todos</option>
+    <option value="investor"    {% if tipo == 'investor' %}selected{% endif %}>Solo inversores</option>
+    <option value="colaborador" {% if tipo == 'colaborador' %}selected{% endif %}>Solo colaboradores</option>
+  </select>
+  <button type="submit" class="btn-ghost" style="align-self:center">Buscar</button>
+  {% if q or tipo %}
+    <a href="{% url 'crm:all_contacts' %}" class="btn-ghost" style="color:var(--dc-danger);border-color:rgba(239,68,68,.3)">
+      <i class="bi bi-x"></i> Limpiar
+    </a>
+  {% endif %}
+  <span class="ms-auto" style="font-size:.8rem;color:var(--dc-text-muted)">{{ contacts|length }} contacto{% if contacts|length != 1 %}s{% endif %}</span>
+</form>
+
+{# ── Tabla ─────────────────────────────────────────────────────────────── #}
+<div class="dc-card">
+  <div class="dc-table-wrap">
+    <table class="dc-table">
+      <thead>
+        <tr>
+          <th>Nombre</th>
+          <th>Cargo</th>
+          <th>Email</th>
+          <th>Teléfono</th>
+          <th>Pertenece a</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for c in contacts %}
+        <tr>
+          <td class="fw-semibold">{{ c.name }}</td>
+          <td style="color:var(--dc-text-muted)">{{ c.role|default:"—" }}</td>
+          <td>{% if c.email %}<a href="mailto:{{ c.email }}">{{ c.email }}</a>{% else %}—{% endif %}</td>
+          <td style="color:var(--dc-text-muted)">{{ c.phone|default:"—" }}</td>
+          <td>
+            {% if c.tipo == 'investor' %}
+              <a href="{% url 'crm:investor_detail' c.parent_pk %}" class="dc-badge dc-badge--green"
+                 style="font-size:.72rem;text-decoration:none" title="Ir al inversor">
+                <i class="bi bi-graph-up-arrow me-1"></i>{{ c.parent_name }}
+              </a>
+            {% else %}
+              <a href="{% url 'crm:colaborador_detail' c.parent_pk %}" class="dc-badge dc-badge--blue"
+                 style="font-size:.72rem;text-decoration:none" title="Ir al colaborador">
+                <i class="bi bi-people me-1"></i>{{ c.parent_name }}
+              </a>
+            {% endif %}
+          </td>
+          <td>
+            {% if can_edit %}
+            <button class="btn-ghost edit-contact-btn" style="padding:3px 8px;font-size:.8rem"
+                    data-pk="{{ c.pk }}" data-tipo="{{ c.tipo }}"
+                    data-name="{{ c.name|escapejs }}" data-role="{{ c.role|escapejs }}"
+                    data-email="{{ c.email|escapejs }}" data-phone="{{ c.phone|escapejs }}">
+              <i class="bi bi-pencil"></i>
+            </button>
+            {% endif %}
+          </td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="6" style="text-align:center;padding:40px;color:var(--dc-text-muted)">
+            Sin contactos que coincidan con la búsqueda.
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{# ── Modal edición ─────────────────────────────────────────────────────── #}
+{% if can_edit %}
+<div class="modal fade" id="editContactModal" tabindex="-1">
+  <div class="modal-dialog">
+    <form method="post" action="{% url 'crm:contact_edit' %}" class="modal-content dc-form">
+      {% csrf_token %}
+      <input type="hidden" name="pk"   id="ec-pk">
+      <input type="hidden" name="tipo" id="ec-tipo">
+      <input type="hidden" name="next" value="{{ request.get_full_path }}">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="bi bi-pencil me-2"></i>Editar contacto</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="row g-3">
+          <div class="col-12">
+            <label class="form-label">Nombre</label>
+            <input type="text" name="name" id="ec-name" class="form-control" required>
+          </div>
+          <div class="col-12">
+            <label class="form-label">Cargo / Posición</label>
+            <input type="text" name="role" id="ec-role" class="form-control">
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Email</label>
+            <input type="email" name="email" id="ec-email" class="form-control">
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Teléfono</label>
+            <input type="text" name="phone" id="ec-phone" class="form-control">
+          </div>
+
+          {# ── Asignar a otro inversor / colaborador ── #}
+          <div class="col-12">
+            <div style="border-top:1px solid var(--dc-border);padding-top:14px;margin-top:4px">
+              <div class="fw-semibold mb-2" style="font-size:.8rem;color:var(--dc-text-muted);text-transform:uppercase;letter-spacing:.06em">
+                <i class="bi bi-plus-circle me-1"></i>Asignar también a…
+              </div>
+              <p style="font-size:.78rem;color:var(--dc-text-muted);margin-bottom:10px">
+                Si esta persona trabaja ahora también en otro inversor o colaborador, selecciónalo aquí y se creará una copia del contacto allí.
+              </p>
+              <div class="row g-2">
+                <div class="col-md-5">
+                  <select name="assign_tipo" id="ec-assign-tipo" class="form-select form-select-sm" onchange="updateAssignSelect()">
+                    <option value="">— No asignar —</option>
+                    <option value="investor">Inversor</option>
+                    <option value="colaborador">Colaborador</option>
+                  </select>
+                </div>
+                <div class="col-md-7">
+                  <select name="assign_pk" id="ec-assign-pk" class="form-select form-select-sm" disabled>
+                    <option value="">Selecciona primero el tipo…</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn-ghost" data-bs-dismiss="modal">Cancelar</button>
+        <button type="submit" class="btn-accent">Guardar</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const INVESTORS = [
+  {% for inv in all_investors %}{"pk":"{{ inv.pk }}","name":"{{ inv.name|escapejs }}"}{% if not forloop.last %},{% endif %}{% endfor %}
+];
+const COLABORADORES = [
+  {% for col in all_colaboradores %}{"pk":"{{ col.pk }}","name":"{{ col.name|escapejs }}"}{% if not forloop.last %},{% endif %}{% endfor %}
+];
+
+function updateAssignSelect() {
+  const tipo = document.getElementById('ec-assign-tipo').value;
+  const sel  = document.getElementById('ec-assign-pk');
+  sel.innerHTML = '';
+  if (!tipo) {
+    sel.disabled = true;
+    sel.innerHTML = '<option value="">Selecciona primero el tipo…</option>';
+    return;
+  }
+  const items = tipo === 'investor' ? INVESTORS : COLABORADORES;
+  sel.disabled = false;
+  sel.innerHTML = '<option value="">— Elige —</option>' +
+    items.map(i => `<option value="${i.pk}">${i.name}</option>`).join('');
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  document.querySelectorAll('.edit-contact-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const d = btn.dataset;
+      document.getElementById('ec-pk').value    = d.pk;
+      document.getElementById('ec-tipo').value  = d.tipo;
+      document.getElementById('ec-name').value  = d.name;
+      document.getElementById('ec-role').value  = d.role;
+      document.getElementById('ec-email').value = d.email;
+      document.getElementById('ec-phone').value = d.phone;
+      // resetear asignación
+      document.getElementById('ec-assign-tipo').value = '';
+      updateAssignSelect();
+      new bootstrap.Modal(document.getElementById('editContactModal')).show();
+    });
+  });
+});
+</script>
+{% endblock %}

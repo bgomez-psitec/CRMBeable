@@ -27,6 +27,10 @@ class EtapaRelacion(Catalogo):
     pass
 
 
+class EtapaRelacionColaborador(Catalogo):
+    pass
+
+
 class Fund(models.TextChoices):
     BIKF = 'BIKF', 'BIKF'
     BISEF = 'BISEF', 'BISEF'
@@ -233,6 +237,7 @@ class Company(models.Model):
     revenue = models.CharField('Facturación', max_length=30, choices=Facturacion.choices, blank=True)
     valuation = models.DecimalField(max_digits=14, decimal_places=2, null=True, blank=True)
     valuation_date = models.DateField(null=True, blank=True)
+    logo = models.ImageField('Logo', upload_to='logos/', null=True, blank=True)
 
     class Meta:
         verbose_name = 'Participada'
@@ -259,7 +264,7 @@ class Round(models.Model):
     type = models.CharField('Tipo', max_length=120)
     target = models.DecimalField(max_digits=14, decimal_places=2, null=True, blank=True)
     status = models.ForeignKey(FaseRonda, on_delete=models.SET_NULL, null=True, blank=True, related_name='rounds')
-    rstage = models.CharField('Etapa de la ronda', max_length=50, blank=True)
+    rstage = models.CharField('Etapa de la ronda', max_length=50, choices=EtapaInversion.choices, blank=True)
     start = models.DateField(null=True, blank=True)
     close = models.DateField(null=True, blank=True)
 
@@ -278,7 +283,8 @@ class Investor(models.Model):
     country = models.CharField(max_length=100, blank=True)
     sectors = models.CharField(max_length=500, blank=True, help_text='Lista separada por comas')
     areas = models.CharField(max_length=500, blank=True, help_text='Lista separada por comas')
-    inv_stage = models.CharField('Etapa de inversión', max_length=50, choices=EtapaInversion.choices, blank=True)
+    tipo_inversion = models.CharField('Tipo de inversión', max_length=100, blank=True)
+    inv_stage = models.CharField('Etapa de inversión', max_length=500, blank=True)
     ticket_range = models.CharField('Rango de ticket', max_length=30, choices=RangoTicket.choices, blank=True)
     aum = models.CharField('AUM', max_length=30, choices=RangoAUM.choices, blank=True)
     pub_status = models.CharField('Estado público', max_length=100, blank=True)
@@ -306,11 +312,31 @@ class InvestorContact(models.Model):
 
 
 class InvestorLog(models.Model):
+    CONTEXT_CHOICES = [
+        ('', 'General'),
+        ('ronda', 'Ronda de Inversión'),
+        ('ma', 'Proceso M&A'),
+        ('colaboracion', 'Colaboración'),
+    ]
     investor = models.ForeignKey(Investor, on_delete=models.CASCADE, related_name='logs')
     round = models.ForeignKey(Round, on_delete=models.SET_NULL, null=True, blank=True, related_name='investor_logs')
+    proceso_ma = models.ForeignKey('ProcesoMA', on_delete=models.SET_NULL, null=True, blank=True, related_name='investor_logs')
+    colaboracion = models.ForeignKey('Colaboracion', on_delete=models.SET_NULL, null=True, blank=True, related_name='investor_logs')
     date = models.DateField(null=True, blank=True)
     type = models.CharField(max_length=50, blank=True)
     summary = models.TextField(blank=True)
+    created_by = models.CharField(max_length=150, blank=True)
+    attachment_url = models.CharField(max_length=500, blank=True)
+    context = models.CharField(max_length=20, blank=True, choices=CONTEXT_CHOICES)
+
+    def process_label(self):
+        if self.round:
+            return f'{self.round.company.name} · {self.round.type}'
+        if self.proceso_ma:
+            return f'{self.proceso_ma.nombre} (M&A)'
+        if self.colaboracion:
+            return str(self.colaboracion.descripcion or self.colaboracion.company.name)
+        return ''
 
     class Meta:
         ordering = ['-date']
@@ -319,10 +345,45 @@ class InvestorLog(models.Model):
         return f'{self.investor} — {self.date}'
 
 
+class ColaboradorLog(models.Model):
+    CONTEXT_CHOICES = [
+        ('', 'General'),
+        ('ronda', 'Ronda de Inversión'),
+        ('ma', 'Proceso M&A'),
+        ('colaboracion', 'Colaboración'),
+    ]
+    colaborador = models.ForeignKey('Colaborador', on_delete=models.CASCADE, related_name='logs')
+    round = models.ForeignKey(Round, on_delete=models.SET_NULL, null=True, blank=True, related_name='colaborador_logs')
+    proceso_ma = models.ForeignKey('ProcesoMA', on_delete=models.SET_NULL, null=True, blank=True, related_name='colaborador_logs')
+    colaboracion = models.ForeignKey('Colaboracion', on_delete=models.SET_NULL, null=True, blank=True, related_name='colaborador_logs')
+    date = models.DateField(null=True, blank=True)
+    type = models.CharField(max_length=50, blank=True)
+    summary = models.TextField(blank=True)
+    created_by = models.CharField(max_length=150, blank=True)
+    attachment_url = models.CharField(max_length=500, blank=True)
+    context = models.CharField(max_length=20, blank=True, choices=CONTEXT_CHOICES)
+
+    def process_label(self):
+        if self.round:
+            return f'{self.round.company.name} · {self.round.type}'
+        if self.proceso_ma:
+            return f'{self.proceso_ma.nombre} (M&A)'
+        if self.colaboracion:
+            return str(self.colaboracion.descripcion or self.colaboracion.company.name)
+        return ''
+
+    class Meta:
+        ordering = ['-date']
+
+    def __str__(self):
+        return f'{self.colaborador} — {self.date}'
+
+
 class Introduction(models.Model):
     company = models.ForeignKey(Company, on_delete=models.CASCADE, related_name='introductions')
     round = models.ForeignKey(Round, on_delete=models.CASCADE, related_name='introductions')
-    investor = models.ForeignKey(Investor, on_delete=models.CASCADE, related_name='introductions')
+    investor = models.ForeignKey(Investor, on_delete=models.SET_NULL, null=True, blank=True, related_name='introductions')
+    colaborador = models.ForeignKey('Colaborador', on_delete=models.SET_NULL, null=True, blank=True, related_name='introductions')
     status = models.ForeignKey(EstadoPresentacion, on_delete=models.SET_NULL, null=True, blank=True, related_name='introductions')
     ticket = models.DecimalField(max_digits=14, decimal_places=2, null=True, blank=True)
     date = models.DateField(null=True, blank=True)
@@ -336,8 +397,12 @@ class Introduction(models.Model):
         verbose_name_plural = 'Presentaciones'
         ordering = ['-date']
 
+    @property
+    def contact(self):
+        return self.investor or self.colaborador
+
     def __str__(self):
-        return f'{self.investor} → {self.company}'
+        return f'{self.contact} → {self.company}'
 
 
 class Interaction(models.Model):
@@ -359,45 +424,14 @@ class EstadoMA(Catalogo):
     pass
 
 
-class TipoComprador(models.TextChoices):
-    ESTRATEGICO = 'Estratégico', 'Estratégico'
-    PRIVATE_EQUITY = 'Private Equity', 'Private Equity'
-    FAMILY_OFFICE = 'Family Office', 'Family Office'
-    FONDO = 'Fondo de Inversión', 'Fondo de Inversión'
-    OTRO = 'Otro', 'Otro'
-
-
-class Comprador(models.Model):
-    name = models.CharField('Nombre', max_length=200)
-    type = models.CharField('Tipo', max_length=50, choices=TipoComprador.choices, blank=True)
-    country = models.CharField('País', max_length=100, blank=True)
-    sectors = models.CharField('Sectores', max_length=500, blank=True)
-    relation = models.ForeignKey(EtapaRelacion, on_delete=models.SET_NULL, null=True, blank=True, related_name='compradores')
-    notes = models.TextField(blank=True)
-
-    class Meta:
-        verbose_name = 'Comprador'
-        verbose_name_plural = 'Compradores'
-        ordering = ['name']
-
-    def __str__(self):
-        return self.name
-
-
-class CompradorContacto(models.Model):
-    comprador = models.ForeignKey(Comprador, on_delete=models.CASCADE, related_name='contacts')
-    name = models.CharField(max_length=150)
-    role = models.CharField(max_length=120, blank=True)
-    email = models.EmailField(blank=True)
-    phone = models.CharField(max_length=50, blank=True)
-
-    def __str__(self):
-        return f'{self.name} ({self.comprador})'
+class FaseMA(Catalogo):
+    pass
 
 
 class ProcesoMA(models.Model):
     company = models.ForeignKey(Company, on_delete=models.CASCADE, related_name='procesos_ma')
     nombre = models.CharField('Nombre del proceso', max_length=200)
+    fase = models.ForeignKey(FaseMA, on_delete=models.SET_NULL, null=True, blank=True, related_name='procesos')
     precio_pedido = models.DecimalField('Precio pedido (€)', max_digits=14, decimal_places=2, null=True, blank=True)
     cerrado = models.BooleanField('Proceso cerrado', default=False)
     start = models.DateField('Inicio', null=True, blank=True)
@@ -415,7 +449,8 @@ class ProcesoMA(models.Model):
 
 class ContactoMA(models.Model):
     proceso = models.ForeignKey(ProcesoMA, on_delete=models.CASCADE, related_name='contactos')
-    comprador = models.ForeignKey(Comprador, on_delete=models.CASCADE, related_name='contactos_ma')
+    comprador = models.ForeignKey('Colaborador', on_delete=models.SET_NULL, null=True, blank=True, related_name='contactos_ma')
+    investor = models.ForeignKey('Investor', on_delete=models.SET_NULL, null=True, blank=True, related_name='contactos_ma')
     status = models.ForeignKey(EstadoMA, on_delete=models.SET_NULL, null=True, blank=True, related_name='contactos')
     oferta_precio = models.DecimalField('Oferta (€)', max_digits=14, decimal_places=2, null=True, blank=True)
     nda_firmado = models.BooleanField('NDA firmado', default=False)
@@ -431,8 +466,12 @@ class ContactoMA(models.Model):
         verbose_name_plural = 'Contactos M&A'
         ordering = ['-date']
 
+    @property
+    def contact(self):
+        return self.comprador or self.investor
+
     def __str__(self):
-        return f'{self.comprador} → {self.proceso}'
+        return f'{self.contact} → {self.proceso}'
 
 
 class InteraccionMA(models.Model):
@@ -454,19 +493,18 @@ class EstadoColaboracion(Catalogo):
     pass
 
 
-class TipoColaborador(models.TextChoices):
-    CLIENTE = 'Cliente potencial', 'Cliente potencial'
-    PROVEEDOR = 'Proveedor potencial', 'Proveedor potencial'
-    PARTNER_TECH = 'Partner tecnológico', 'Partner tecnológico'
-    PARTNER_COM = 'Partner comercial', 'Partner comercial'
-    OTRO = 'Otro', 'Otro'
-
-
 class Colaborador(models.Model):
     name = models.CharField('Nombre', max_length=200)
-    type = models.CharField('Tipo', max_length=50, choices=TipoColaborador.choices, blank=True)
     country = models.CharField('País', max_length=100, blank=True)
     sectors = models.CharField('Sectores', max_length=500, blank=True)
+    relation = models.ForeignKey(EtapaRelacionColaborador, on_delete=models.SET_NULL, null=True, blank=True,
+                                 related_name='colaboradores')
+    # Tipo de contacto (múltiple selección)
+    es_comprador          = models.BooleanField('Comprador',           default=False)
+    es_colaborador        = models.BooleanField('Colaborador',         default=False)
+    es_cliente            = models.BooleanField('Cliente',             default=False)
+    es_proveedor          = models.BooleanField('Proveedor',           default=False)
+    es_inversor_esporadico = models.BooleanField('Inversor esporádico', default=False)
     notes = models.TextField(blank=True)
 
     class Meta:
@@ -491,10 +529,18 @@ class ColaboradorContacto(models.Model):
 
 class Colaboracion(models.Model):
     company = models.ForeignKey(Company, on_delete=models.CASCADE, related_name='colaboraciones')
-    colaborador = models.ForeignKey(Colaborador, on_delete=models.CASCADE, related_name='colaboraciones')
+    colaborador = models.ForeignKey(Colaborador, on_delete=models.SET_NULL, null=True, blank=True, related_name='colaboraciones')
+    investor = models.ForeignKey('Investor', on_delete=models.SET_NULL, null=True, blank=True, related_name='colaboraciones')
     status = models.ForeignKey(EstadoColaboracion, on_delete=models.SET_NULL, null=True, blank=True, related_name='colaboraciones')
-    tipo_relacion = models.CharField('Tipo de relación', max_length=50, choices=TipoColaborador.choices, blank=True)
-    descripcion = models.CharField('Descripción', max_length=255, blank=True)
+    TIPO_RELACION_CHOICES = [
+        ('Colaborador', 'Colaborador'),
+        ('Cliente',     'Cliente'),
+        ('Proveedor',   'Proveedor'),
+        ('Otro',        'Otro'),
+    ]
+    tipo_relacion = models.CharField('Tipo de relación', max_length=50,
+                                     choices=TIPO_RELACION_CHOICES, blank=True)
+    descripcion = models.TextField('Descripción', blank=True)
     date = models.DateField('Fecha inicio', null=True, blank=True)
     intro_by = models.CharField('Presentado por', max_length=150, blank=True)
     next_action = models.CharField('Próximo paso', max_length=255, blank=True)
@@ -506,8 +552,12 @@ class Colaboracion(models.Model):
         verbose_name_plural = 'Colaboraciones'
         ordering = ['-date']
 
+    @property
+    def contact(self):
+        return self.colaborador or self.investor
+
     def __str__(self):
-        return f'{self.colaborador} ↔ {self.company}'
+        return f'{self.contact} ↔ {self.company}'
 
 
 class InteraccionColaboracion(models.Model):
@@ -523,6 +573,34 @@ class InteraccionColaboracion(models.Model):
         return f'{self.colaboracion} — {self.date}'
 
 
+# ─── Logs de fase/estado de proceso ──────────────────────────────────────────
+
+class ProcesoMAFaseLog(models.Model):
+    proceso    = models.ForeignKey(ProcesoMA, on_delete=models.CASCADE, related_name='fase_logs')
+    fase       = models.ForeignKey(FaseMA, on_delete=models.SET_NULL, null=True, related_name='proceso_logs')
+    date       = models.DateField()
+    created_by = models.CharField(max_length=150, blank=True)
+
+    class Meta:
+        ordering = ['date', 'pk']
+
+    def __str__(self):
+        return f'{self.proceso} → {self.fase} ({self.date})'
+
+
+class RoundFaseLog(models.Model):
+    round      = models.ForeignKey(Round, on_delete=models.CASCADE, related_name='fase_logs')
+    fase       = models.ForeignKey(FaseRonda, on_delete=models.SET_NULL, null=True, related_name='round_logs')
+    date       = models.DateField()
+    created_by = models.CharField(max_length=150, blank=True)
+
+    class Meta:
+        ordering = ['date', 'pk']
+
+    def __str__(self):
+        return f'{self.round} → {self.fase} ({self.date})'
+
+
 # ─── Bandeja ──────────────────────────────────────────────────────────────────
 
 class InboxMessage(models.Model):
@@ -533,8 +611,10 @@ class InboxMessage(models.Model):
     date = models.DateField(null=True, blank=True)
     unread = models.BooleanField(default=True)
     saved = models.BooleanField(default=False)
-    investor = models.ForeignKey(Investor, on_delete=models.SET_NULL, null=True, blank=True, related_name='inbox_messages')
-    round = models.ForeignKey(Round, on_delete=models.SET_NULL, null=True, blank=True, related_name='inbox_messages')
+    investor    = models.ForeignKey(Investor,     on_delete=models.SET_NULL, null=True, blank=True, related_name='inbox_messages')
+    colaborador = models.ForeignKey('Colaborador', on_delete=models.SET_NULL, null=True, blank=True, related_name='inbox_messages')
+    round       = models.ForeignKey(Round,        on_delete=models.SET_NULL, null=True, blank=True, related_name='inbox_messages')
+    proceso_ma  = models.ForeignKey(ProcesoMA,    on_delete=models.SET_NULL, null=True, blank=True, related_name='inbox_messages')
 
     class Meta:
         verbose_name = 'Mensaje de bandeja'
@@ -543,3 +623,57 @@ class InboxMessage(models.Model):
 
     def __str__(self):
         return self.subject or f'Mensaje de {self.from_name}'
+
+
+# ─── Documentación ────────────────────────────────────────────────────────────
+
+import os, re
+
+def _slug(text):
+    return re.sub(r'[^\w]+', '_', text.strip(), flags=re.ASCII).strip('_') or 'doc'
+
+def documento_upload_path(instance, filename):
+    company_slug = _slug(instance.company.name)
+    if instance.round_id:
+        sub = f'Ronda_{_slug(instance.round.type)}'
+    elif instance.proceso_ma_id:
+        sub = f'MA_{_slug(instance.proceso_ma.nombre)}'
+    elif instance.carpeta and instance.carpeta != 'general':
+        sub = instance.carpeta.capitalize()
+    else:
+        sub = 'General'
+    return f'docs/{company_slug}/{sub}/{filename}'
+
+
+class Documento(models.Model):
+    CARPETA_CHOICES = [
+        ('general',   'General'),
+        ('emails',    'Emails'),
+        ('reuniones', 'Reuniones'),
+        ('notas',     'Notas'),
+    ]
+    company    = models.ForeignKey(Company, on_delete=models.CASCADE, related_name='documentos')
+    round      = models.ForeignKey(Round, null=True, blank=True, on_delete=models.SET_NULL, related_name='documentos')
+    proceso_ma = models.ForeignKey(ProcesoMA, null=True, blank=True, on_delete=models.SET_NULL, related_name='documentos')
+    carpeta    = models.CharField(max_length=20, choices=CARPETA_CHOICES, default='general')
+    file       = models.FileField(upload_to=documento_upload_path)
+    name       = models.CharField('Nombre', max_length=255, blank=True)
+    description = models.TextField('Descripción', blank=True)
+    uploaded_by = models.ForeignKey('accounts.User', on_delete=models.SET_NULL, null=True, blank=True)
+    uploaded_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = 'Documento'
+        verbose_name_plural = 'Documentos'
+        ordering = ['-uploaded_at']
+
+    def __str__(self):
+        return self.name or os.path.basename(self.file.name)
+
+    @property
+    def carpeta_label(self):
+        if self.round_id:
+            return self.round.type
+        if self.proceso_ma_id:
+            return self.proceso_ma.nombre
+        return self.get_carpeta_display()

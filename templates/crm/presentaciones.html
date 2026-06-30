@@ -1,39 +1,236 @@
 {% extends "base.html" %}
-{% load crm_filters %}
+{% load crm_filters django_bootstrap5 %}
 {% block title %}Presentaciones — CRM Gestora{% endblock %}
 {% block topbar_title %}Presentaciones{% endblock %}
+{% block topbar_actions %}
+  {% if can_edit %}
+    <button class="btn-accent" data-bs-toggle="modal" data-bs-target="#introModal">
+      <i class="bi bi-plus-lg"></i> Nueva presentación
+    </button>
+  {% endif %}
+{% endblock %}
 {% block content %}
-<form method="get" class="d-flex gap-2 mb-3">
-  <input type="text" name="q" value="{{ q }}" class="form-control" style="max-width:280px" placeholder="Buscar participada, ronda, inversor…">
-  <select name="estado" class="form-select" style="max-width:220px" onchange="this.form.submit()">
+
+{# ── Barra de filtros + agrupación ───────────────────────────────────────── #}
+<form method="get" class="d-flex gap-2 mb-4 flex-wrap align-items-center">
+  <input type="text" name="q" value="{{ q }}" class="form-control" style="max-width:220px" placeholder="Buscar…">
+
+  <select name="estado" class="form-select" style="max-width:190px" onchange="this.form.submit()">
     <option value="">Todos los estados</option>
     {% for e in estados %}
       <option value="{{ e.id }}" {% if estado_id == e.id|stringformat:"s" %}selected{% endif %}>{{ e.nombre }}</option>
     {% endfor %}
   </select>
-  <button type="submit" class="btn btn-outline-secondary">Buscar</button>
+
+  {# Nivel 1 #}
+  <select name="group1" class="form-select" style="max-width:190px" onchange="this.form.submit()">
+    <option value="">Sin agrupar</option>
+    {% for val, lbl in group_labels %}
+      <option value="{{ val }}" {% if group1 == val %}selected{% endif %}>Agrupar: {{ lbl }}</option>
+    {% endfor %}
+  </select>
+
+  {# Nivel 2 — solo si hay nivel 1 #}
+  {% if group1 %}
+  <select name="group2" class="form-select" style="max-width:190px" onchange="this.form.submit()">
+    <option value="">— 2ª agrupación —</option>
+    {% for val, lbl in group_labels %}
+      {% if val != group1 %}
+        <option value="{{ val }}" {% if group2 == val %}selected{% endif %}>{{ lbl }}</option>
+      {% endif %}
+    {% endfor %}
+  </select>
+  {% endif %}
+
+  {# Nivel 3 — solo si hay nivel 1 y 2 #}
+  {% if group1 and group2 %}
+  <select name="group3" class="form-select" style="max-width:190px" onchange="this.form.submit()">
+    <option value="">— 3ª agrupación —</option>
+    {% for val, lbl in group_labels %}
+      {% if val != group1 and val != group2 %}
+        <option value="{{ val }}" {% if group3 == val %}selected{% endif %}>{{ lbl }}</option>
+      {% endif %}
+    {% endfor %}
+  </select>
+  {% endif %}
+
+  <button type="submit" class="btn-ghost" style="height:38px;align-self:center">Buscar</button>
+  {% if q or estado_id or group1 %}
+    <a href="{% url 'crm:presentaciones' %}" class="btn-ghost" style="color:var(--dc-danger);border-color:rgba(239,68,68,.3)">
+      <i class="bi bi-x"></i> Limpiar
+    </a>
+  {% endif %}
 </form>
 
-<div class="card">
-  <table class="table mb-0">
-    <thead>
-      <tr><th>Participada</th><th>Ronda</th><th>Inversor</th><th>Estado</th><th>Ticket</th><th>Intro por</th><th>Próximo paso</th></tr>
-    </thead>
-    <tbody>
-      {% for it in intros %}
-      <tr style="cursor:pointer" onclick="location.href='{% url 'crm:round_detail' it.round_id %}'">
-        <td><b>{{ it.company.name }}</b></td>
-        <td class="text-muted">{{ it.round.type }}</td>
-        <td>{{ it.investor.name }}</td>
-        <td><span class="badge text-bg-info">{{ it.status.nombre|default:"—" }}</span></td>
-        <td class="fw-semibold">{{ it.ticket|euros }} €</td>
-        <td class="text-muted">{{ it.intro_by|default:"—" }}</td>
-        <td>{{ it.next_action|default:"—" }}{% if it.next_date %} · <span class="text-warning">{{ it.next_date|date:"d M Y" }}</span>{% endif %}</td>
-      </tr>
-      {% empty %}
-      <tr><td colspan="7" class="text-muted text-center py-4">Sin presentaciones que coincidan.</td></tr>
-      {% endfor %}
-    </tbody>
-  </table>
+{# ── Resultados ──────────────────────────────────────────────────────────── #}
+{% if groups %}
+  {# Nivel 1 #}
+  {% for k1, v1 in groups.items %}
+  <div class="dc-card mb-2">
+    <button class="dc-card__header w-100 text-start" style="background:none;border:none;cursor:pointer"
+            type="button" data-bs-toggle="collapse" data-bs-target="#g1-{{ forloop.counter }}"
+            aria-expanded="false">
+      <h2 class="dc-card__title d-flex align-items-center gap-2 mb-0">
+        {{ k1 }}
+        <span class="dc-badge dc-badge--grey ms-1">{{ v1|count_items }}</span>
+      </h2>
+      <i class="bi bi-chevron-right grp-chevron"></i>
+    </button>
+    <div class="collapse" id="g1-{{ forloop.counter }}">
+      {% if group2 %}
+        {# Nivel 2 #}
+        {% for k2, v2 in v1.items %}
+        <div class="grp-l2-wrap">
+          <button class="grp-l2-header" type="button"
+                  data-bs-toggle="collapse" data-bs-target="#g2-{{ forloop.parentloop.counter }}-{{ forloop.counter }}"
+                  aria-expanded="false">
+            <span class="d-flex align-items-center gap-2">
+              {{ k2 }}
+              <span class="dc-badge dc-badge--grey">{{ v2|count_items }}</span>
+            </span>
+            <i class="bi bi-chevron-right grp-chevron"></i>
+          </button>
+          <div class="collapse" id="g2-{{ forloop.parentloop.counter }}-{{ forloop.counter }}">
+            {% if group3 %}
+              {# Nivel 3 #}
+              {% for k3, v3 in v2.items %}
+              <div class="grp-l3-wrap">
+                <button class="grp-l3-header" type="button"
+                        data-bs-toggle="collapse" data-bs-target="#g3-{{ forloop.parentloop.parentloop.counter }}-{{ forloop.parentloop.counter }}-{{ forloop.counter }}"
+                        aria-expanded="false">
+                  <span class="d-flex align-items-center gap-2">
+                    {{ k3 }}
+                    <span class="dc-badge dc-badge--grey">{{ v3|length }}</span>
+                  </span>
+                  <i class="bi bi-chevron-right grp-chevron"></i>
+                </button>
+                <div class="collapse dc-table-wrap" id="g3-{{ forloop.parentloop.parentloop.counter }}-{{ forloop.parentloop.counter }}-{{ forloop.counter }}">
+                  {% include "crm/_intro_table_body.html" with intros=v3 %}
+                </div>
+              </div>
+              {% endfor %}
+            {% else %}
+              <div class="dc-table-wrap">
+                {% include "crm/_intro_table_body.html" with intros=v2 %}
+              </div>
+            {% endif %}
+          </div>
+        </div>
+        {% endfor %}
+      {% else %}
+        <div class="dc-table-wrap">
+          {% include "crm/_intro_table_body.html" with intros=v1 %}
+        </div>
+      {% endif %}
+    </div>
+  </div>
+  {% empty %}
+  <div style="text-align:center;padding:48px;color:var(--dc-text-muted)">Sin presentaciones que coincidan.</div>
+  {% endfor %}
+
+{% else %}
+  <div class="dc-card">
+    <div class="dc-table-wrap">
+      {% include "crm/_intro_table_body.html" with intros=intros %}
+    </div>
+  </div>
+{% endif %}
+
+{# ── Modal nueva presentación ─────────────────────────────────────────────── #}
+{% if can_edit %}
+<div class="modal fade" id="introModal" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <form method="post" class="modal-content dc-form">
+      {% csrf_token %}
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="bi bi-arrow-left-right me-2" style="color:var(--dc-accent)"></i>Nueva presentación</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="row g-3">
+          <div class="col-md-6">
+            <label class="form-label">Ronda <span style="color:var(--dc-danger)">*</span></label>
+            <select name="round" class="form-select" required>
+              <option value="">— Seleccionar ronda —</option>
+              {% for r in form.round.field.queryset %}
+                <option value="{{ r.id }}" {% if form.round.value == r.id|stringformat:"s" %}selected{% endif %}>
+                  {{ r.company.name }} — {{ r.type }}
+                </option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Inversor <span style="color:var(--dc-danger)">*</span></label>
+            <select name="investor" class="form-select" required>
+              <option value="">— Seleccionar inversor —</option>
+              {% for inv in form.investor.field.queryset %}
+                <option value="{{ inv.id }}" {% if form.investor.value == inv.id|stringformat:"s" %}selected{% endif %}>
+                  {{ inv.name }}
+                </option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="col-md-4">
+            <label class="form-label">Estado inicial</label>
+            <select name="status" class="form-select">
+              <option value="">— Sin estado —</option>
+              {% for e in estados %}<option value="{{ e.id }}">{{ e.nombre }}</option>{% endfor %}
+            </select>
+          </div>
+          <div class="col-md-4">
+            <label class="form-label">Ticket (€)</label>
+            <input type="number" name="ticket" class="form-control" placeholder="0" min="0" step="1000">
+          </div>
+          <div class="col-md-4">
+            <label class="form-label">Fecha de intro</label>
+            <input type="date" name="date" class="form-control">
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Presentado por</label>
+            <input type="text" name="intro_by" class="form-control" placeholder="Nombre de quien presenta">
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Próximo paso</label>
+            <input type="text" name="next_action" class="form-control" placeholder="Ej: Enviar teaser">
+          </div>
+          <div class="col-md-4">
+            <label class="form-label">Fecha próximo paso</label>
+            <input type="date" name="next_date" class="form-control">
+          </div>
+          <div class="col-md-8">
+            <label class="form-label">Notas</label>
+            <textarea name="notes" class="form-control" rows="2"></textarea>
+          </div>
+        </div>
+        {% if form.errors %}
+          <div class="dc-alert dc-alert--danger mt-3">
+            <i class="bi bi-exclamation-triangle"></i>
+            {% for field, errors in form.errors.items %}{{ errors|join:", " }} {% endfor %}
+          </div>
+        {% endif %}
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn-ghost" data-bs-dismiss="modal">Cancelar</button>
+        <button type="submit" class="btn-accent">Guardar presentación</button>
+      </div>
+    </form>
+  </div>
 </div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  {% if form.errors %}
+  new bootstrap.Modal(document.getElementById('introModal')).show();
+  {% endif %}
+  document.querySelectorAll('.collapse').forEach(el => {
+    const btn = document.querySelector(`[data-bs-target="#${el.id}"]`);
+    if (!btn) return;
+    el.addEventListener('show.bs.collapse', () => btn.querySelector('.grp-chevron')?.classList.add('rotated'));
+    el.addEventListener('hide.bs.collapse', () => btn.querySelector('.grp-chevron')?.classList.remove('rotated'));
+  });
+});
+</script>
 {% endblock %}

@@ -1,40 +1,148 @@
 {% extends "base.html" %}
-{% load crm_filters %}
-{% block title %}Inicio — CRM Gestora{% endblock %}
+{% block title %}Inicio — CRM Beable Capital{% endblock %}
 {% block topbar_title %}Inicio{% endblock %}
-{% block topbar_sub %}Resumen del fundraising de tus participadas{% endblock %}
+{% block topbar_sub %}Panel de control{% endblock %}
+
 {% block content %}
-<h6 class="text-muted text-uppercase small mb-2">Rondas cerradas — agregado</h6>
-<div class="row g-3 mb-4">
-  <div class="col-md-6"><div class="card card-body"><div class="text-muted small">Rondas cerradas</div><div class="h4 mb-0">{{ closed_kpis.count }}</div></div></div>
-  <div class="col-md-6"><div class="card card-body"><div class="text-muted small">Total invertido</div><div class="h4 mb-0">{{ closed_kpis.total|euros }} €</div></div></div>
+
+{# ── Cabecera con logo + título corporativo ──────────────────────────────── #}
+<div class="dc-card mb-4" style="
+  background: linear-gradient(135deg, var(--dc-surface) 0%, color-mix(in srgb, var(--dc-accent) 6%, var(--dc-surface)) 100%);
+  border: 1px solid color-mix(in srgb, var(--dc-accent) 20%, var(--dc-border));
+  padding: 32px 36px;
+  display: flex;
+  align-items: center;
+  gap: 28px;
+">
+  <img src="/media/logos/AF_LOGO_BAC_v1-03.jpg"
+       alt="Beable Capital"
+       style="height:72px;width:auto;object-fit:contain;border-radius:6px;flex-shrink:0">
+  <div>
+    <div style="font-size:.7rem;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--dc-accent);margin-bottom:4px">
+      Beable Capital
+    </div>
+    <div style="font-size:1.55rem;font-weight:800;color:var(--dc-text);line-height:1.15;letter-spacing:-.02em">
+      CRM de Beable Capital
+    </div>
+    <div style="font-size:.88rem;color:var(--dc-text-muted);margin-top:6px">
+      Bienvenido{% if user_name %}, <strong>{{ user_name }}</strong>{% endif %} — acceso rápido a todas las secciones
+    </div>
+  </div>
 </div>
 
-<h6 class="text-muted text-uppercase small mb-2">Rondas abiertas — agregado</h6>
-<div class="row g-3 mb-4">
-  <div class="col-md-3"><div class="card card-body"><div class="text-muted small">Rondas abiertas</div><div class="h4 mb-0">{{ open_kpis.count }}</div></div></div>
-  <div class="col-md-3"><div class="card card-body"><div class="text-muted small">Objetivo</div><div class="h4 mb-0">{{ open_kpis.target|euros }} €</div></div></div>
-  <div class="col-md-3"><div class="card card-body"><div class="text-muted small">Invertido</div><div class="h4 mb-0">{{ open_kpis.invertido|euros }} €</div></div></div>
-  <div class="col-md-3"><div class="card card-body"><div class="text-muted small">Pipeline ponderado</div><div class="h4 mb-0">{{ open_kpis.weighted|euros }} €</div></div></div>
+{# ── KPIs de acceso rápido ────────────────────────────────────────────────── #}
+{# ── Fila 1: Participadas · Inversores · Colaboradores ───────────────────── #}
+<div class="row g-3 mb-3">
+  <div class="col-4">
+    <a href="{% url 'crm:companies' %}" class="text-decoration-none">
+      <div class="dc-card dc-card__body h-100" style="cursor:pointer;transition:transform .15s,box-shadow .15s"
+           onmouseenter="this.style.transform='translateY(-3px)';this.style.boxShadow='0 6px 20px rgba(0,0,0,.12)'"
+           onmouseleave="this.style.transform='';this.style.boxShadow=''">
+        <div class="d-flex align-items-center justify-content-between mb-2">
+          <span style="font-size:.75rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--dc-text-muted)">Participadas</span>
+          <i class="bi bi-building" style="font-size:1.1rem;color:var(--dc-accent)"></i>
+        </div>
+        <div style="font-size:2rem;font-weight:800;color:var(--dc-text);line-height:1">{{ kpis.participadas }}</div>
+        <div style="font-size:.75rem;color:var(--dc-text-muted);margin-top:4px">empresas registradas</div>
+      </div>
+    </a>
+  </div>
+  <div class="col-4">
+    <a href="{% url 'crm:investors' %}" class="text-decoration-none">
+      <div class="dc-card dc-card__body h-100" style="cursor:pointer;transition:transform .15s,box-shadow .15s"
+           onmouseenter="this.style.transform='translateY(-3px)';this.style.boxShadow='0 6px 20px rgba(0,0,0,.12)'"
+           onmouseleave="this.style.transform='';this.style.boxShadow=''">
+        <div class="d-flex align-items-center justify-content-between mb-2">
+          <span style="font-size:.75rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--dc-text-muted)">Inversores</span>
+          <i class="bi bi-person-badge" style="font-size:1.1rem;color:var(--dc-accent)"></i>
+        </div>
+        <div style="font-size:2rem;font-weight:800;color:var(--dc-text);line-height:1">{{ kpis.inversores }}</div>
+        <div style="font-size:.75rem;color:var(--dc-text-muted);margin-top:4px">inversores registrados</div>
+      </div>
+    </a>
+  </div>
+  <div class="col-4">
+    <a href="{% url 'crm:colaboradores' %}" class="text-decoration-none">
+      <div class="dc-card dc-card__body h-100" style="cursor:pointer;transition:transform .15s,box-shadow .15s"
+           onmouseenter="this.style.transform='translateY(-3px)';this.style.boxShadow='0 6px 20px rgba(0,0,0,.12)'"
+           onmouseleave="this.style.transform='';this.style.boxShadow=''">
+        <div class="d-flex align-items-center justify-content-between mb-2">
+          <span style="font-size:.75rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--dc-text-muted)">Colaboradores</span>
+          <i class="bi bi-people" style="font-size:1.1rem;color:var(--dc-accent)"></i>
+        </div>
+        <div style="font-size:2rem;font-weight:800;color:var(--dc-text);line-height:1">{{ kpis.colaboradores }}</div>
+        <div style="font-size:.75rem;color:var(--dc-text-muted);margin-top:4px">colaboradores registrados</div>
+      </div>
+    </a>
+  </div>
 </div>
 
-<h6 class="text-muted text-uppercase small mb-2">Rondas activas</h6>
-<div class="card">
-  <table class="table mb-0">
-    <thead><tr><th>Participada</th><th>Ronda</th><th>Estado</th><th>Objetivo</th><th>Cierre</th></tr></thead>
-    <tbody>
-      {% for r in open_rounds %}
-      <tr style="cursor:pointer" onclick="location.href='{% url 'crm:round_detail' r.pk %}'">
-        <td>{{ r.company.name }}</td>
-        <td>{{ r.type }}</td>
-        <td><span class="badge text-bg-info">{{ r.status.nombre|default:"—" }}</span></td>
-        <td>{{ r.target|euros }} €</td>
-        <td>{{ r.close|date:"d M Y" }}</td>
-      </tr>
-      {% empty %}
-      <tr><td colspan="5" class="text-muted text-center py-4">Sin rondas abiertas.</td></tr>
-      {% endfor %}
-    </tbody>
-  </table>
+{# ── Fila 2: Rondas · M&A · Colaboraciones ───────────────────────────────── #}
+<div class="row g-3 mb-3">
+  <div class="col-4">
+    <a href="{% url 'crm:presentaciones_pipeline' %}" class="text-decoration-none">
+      <div class="dc-card dc-card__body h-100" style="cursor:pointer;transition:transform .15s,box-shadow .15s"
+           onmouseenter="this.style.transform='translateY(-3px)';this.style.boxShadow='0 6px 20px rgba(0,0,0,.12)'"
+           onmouseleave="this.style.transform='';this.style.boxShadow=''">
+        <div class="d-flex align-items-center justify-content-between mb-2">
+          <span style="font-size:.75rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--dc-text-muted)">Rondas activas</span>
+          <i class="bi bi-graph-up-arrow" style="font-size:1.1rem;color:#22c55e"></i>
+        </div>
+        <div style="font-size:2rem;font-weight:800;color:var(--dc-text);line-height:1">{{ kpis.rondas_activas }}</div>
+        <div style="font-size:.75rem;color:var(--dc-text-muted);margin-top:4px">rondas en marcha</div>
+      </div>
+    </a>
+  </div>
+  <div class="col-4">
+    <a href="{% url 'crm:procesos_ma_global' %}" class="text-decoration-none">
+      <div class="dc-card dc-card__body h-100" style="cursor:pointer;transition:transform .15s,box-shadow .15s"
+           onmouseenter="this.style.transform='translateY(-3px)';this.style.boxShadow='0 6px 20px rgba(0,0,0,.12)'"
+           onmouseleave="this.style.transform='';this.style.boxShadow=''">
+        <div class="d-flex align-items-center justify-content-between mb-2">
+          <span style="font-size:.75rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--dc-text-muted)">Procesos M&amp;A</span>
+          <i class="bi bi-briefcase" style="font-size:1.1rem;color:#f59e0b"></i>
+        </div>
+        <div style="font-size:2rem;font-weight:800;color:var(--dc-text);line-height:1">{{ kpis.ma_activos }}</div>
+        <div style="font-size:.75rem;color:var(--dc-text-muted);margin-top:4px">procesos en curso</div>
+      </div>
+    </a>
+  </div>
+  <div class="col-4">
+    <a href="{% url 'crm:colaboraciones' %}" class="text-decoration-none">
+      <div class="dc-card dc-card__body h-100" style="cursor:pointer;transition:transform .15s,box-shadow .15s"
+           onmouseenter="this.style.transform='translateY(-3px)';this.style.boxShadow='0 6px 20px rgba(0,0,0,.12)'"
+           onmouseleave="this.style.transform='';this.style.boxShadow=''">
+        <div class="d-flex align-items-center justify-content-between mb-2">
+          <span style="font-size:.75rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--dc-text-muted)">Colaboraciones</span>
+          <i class="bi bi-diagram-3" style="font-size:1.1rem;color:#8b5cf6"></i>
+        </div>
+        <div style="font-size:2rem;font-weight:800;color:var(--dc-text);line-height:1">{{ kpis.colaboraciones_activas }}</div>
+        <div style="font-size:.75rem;color:var(--dc-text-muted);margin-top:4px">colaboraciones activas</div>
+      </div>
+    </a>
+  </div>
 </div>
+
+{# ── Fila 3: Tareas pendientes ────────────────────────────────────────────── #}
+<div class="row g-3">
+  <div class="col-12">
+    <a href="{% url 'crm:tareas' %}" class="text-decoration-none">
+      <div class="dc-card dc-card__body" style="cursor:pointer;transition:transform .15s,box-shadow .15s;
+        {% if kpis.tareas_pendientes %}border-color:color-mix(in srgb,#f59e0b 40%,var(--dc-border)){% endif %}"
+           onmouseenter="this.style.transform='translateY(-3px)';this.style.boxShadow='0 6px 20px rgba(0,0,0,.12)'"
+           onmouseleave="this.style.transform='';this.style.boxShadow=''">
+        <div class="d-flex align-items-center gap-4">
+          <i class="bi bi-check2-square" style="font-size:2rem;color:{% if kpis.tareas_pendientes %}#f59e0b{% else %}var(--dc-text-muted){% endif %}"></i>
+          <div>
+            <div style="font-size:.75rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--dc-text-muted)">Tareas pendientes</div>
+            <div style="font-size:2rem;font-weight:800;color:{% if kpis.tareas_pendientes %}#f59e0b{% else %}var(--dc-text){% endif %};line-height:1">
+              {{ kpis.tareas_pendientes }} <span style="font-size:.95rem;font-weight:400;color:var(--dc-text-muted)">próximas acciones registradas</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </a>
+  </div>
+</div>
+
 {% endblock %}

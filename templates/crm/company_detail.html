@@ -1,17 +1,82 @@
 {% extends "base.html" %}
 {% load crm_filters %}
 {% block title %}{{ company.name }} — CRM Gestora{% endblock %}
-{% block topbar_title %}{{ company.name }}{% endblock %}
+{% block topbar_title %}
+  {% if company.logo %}
+    <img src="{{ company.logo.url }}" alt="{{ company.name }}"
+         style="width:32px;height:32px;object-fit:contain;border-radius:6px;
+                background:#fff;border:1px solid var(--dc-border);margin-right:8px;vertical-align:middle">
+  {% endif %}
+  {{ company.name }}
+{% endblock %}
 {% block topbar_sub %}{{ company.country }}{% endblock %}
 {% block topbar_actions %}
+  <a class="btn-ghost" href="{% url 'crm:docs_company' company.pk %}"><i class="bi bi-folder2"></i> Documentos</a>
   {% if can_edit %}
-    <a class="btn btn-outline-secondary" href="{% url 'crm:company_edit' company.pk %}"><i class="bi bi-pencil"></i> Editar</a>
-    <a class="btn btn-warning" href="{% url 'crm:round_create' company.pk %}"><i class="bi bi-plus-lg"></i> Nueva ronda</a>
+    <a class="btn-ghost" href="{% url 'crm:company_edit' company.pk %}"><i class="bi bi-pencil"></i> Editar</a>
   {% endif %}
 {% endblock %}
+
+{% block extra_js %}
+<script>
+document.querySelectorAll('.kanban-card[data-colab-id]').forEach(card => {
+  card.addEventListener('dragstart', e => {
+    e.dataTransfer.setData('text/plain', card.dataset.colabId);
+    card.classList.add('dragging');
+    e.stopPropagation();
+  });
+  card.addEventListener('dragend', () => card.classList.remove('dragging'));
+});
+document.querySelectorAll('.colab-kanban-body').forEach(col => {
+  col.addEventListener('dragover', e => { e.preventDefault(); col.classList.add('drag-over'); });
+  col.addEventListener('dragleave', () => col.classList.remove('drag-over'));
+  col.addEventListener('drop', e => {
+    e.preventDefault();
+    col.classList.remove('drag-over');
+    const colabId = e.dataTransfer.getData('text/plain');
+    const estadoId = col.dataset.estadoId;
+    const form = document.getElementById('colab-status-form');
+    form.action = `/colaboraciones/${colabId}/estado/`;
+    form.querySelector('[name=estado_id]').value = estadoId;
+    form.submit();
+  });
+});
+
+// ── Context menu clic derecho colaboraciones ──────────────────────────────
+(function () {
+  const ctx = document.getElementById('ctx-colab-det');
+  if (!ctx) return;
+  let targetEstadoId = null;
+
+  document.querySelectorAll('.colab-kanban-body').forEach(col => {
+    col.addEventListener('contextmenu', e => {
+      e.preventDefault();
+      targetEstadoId = col.dataset.estadoId;
+      ctx.style.left = Math.min(e.clientX, window.innerWidth - 210) + 'px';
+      ctx.style.top  = Math.min(e.clientY, window.innerHeight - 60) + 'px';
+      ctx.style.display = 'block';
+    });
+  });
+
+  document.addEventListener('click', () => { ctx.style.display = 'none'; });
+  ctx.addEventListener('click', e => e.stopPropagation());
+
+  document.getElementById('ctx-colab-det-nueva').addEventListener('click', () => {
+    ctx.style.display = 'none';
+    if (targetEstadoId) {
+      const sel = document.querySelector('#newColabModal select[name=status]');
+      if (sel) sel.value = targetEstadoId;
+    }
+    bootstrap.Modal.getOrCreateInstance(document.getElementById('newColabModal')).show();
+  });
+})();
+</script>
+{% endblock %}
 {% block content %}
-<div class="card card-body mb-4">
-  <div class="row g-2 small">
+
+{# ── Ficha general ────────────────────────────────────────────────────────── #}
+<div class="dc-card dc-card__body mb-4">
+  <div class="row g-2" style="font-size:.855rem">
     <div class="col-md-3">Código interno <b>{{ company.int_code|default:"—" }}</b></div>
     <div class="col-md-3">Provincia <b>{{ company.provincia|default:"—" }}</b></div>
     <div class="col-md-3">TRL <b>{{ company.trl|default:"—" }}</b></div>
@@ -22,89 +87,258 @@
     <div class="col-md-3">Fecha valoración <b>{{ company.valuation_date|date:"d M Y"|default:"—" }}</b></div>
   </div>
   {% if company.sectors %}
-    <div class="mt-2 text-muted small">Sectores: {{ company.sectors }}</div>
+    <div class="mt-2" style="font-size:.8rem;color:var(--dc-text-muted)">Sectores: {{ company.sectors }}</div>
   {% endif %}
 </div>
 
-<div class="row g-3 mb-4">
-  <div class="col-md-3"><div class="card card-body"><div class="text-muted small">Objetivo rondas activas</div><div class="h5 mb-0">{{ kpis.target|euros }} €</div></div></div>
-  <div class="col-md-3"><div class="card card-body"><div class="text-muted small">Captado (invertido)</div><div class="h5 mb-0">{{ kpis.invertido|euros }} €</div></div></div>
-  <div class="col-md-3"><div class="card card-body"><div class="text-muted small">Pipeline ponderado</div><div class="h5 mb-0">{{ kpis.weighted|euros }} €</div></div></div>
-  <div class="col-md-3"><div class="card card-body"><div class="text-muted small">Presentaciones activas</div><div class="h5 mb-0">{{ kpis.presentaciones_activas }}</div></div></div>
+{# ── KPIs globales ────────────────────────────────────────────────────────── #}
+<div class="row g-2 mb-4">
+  <div class="col-md-3"><div class="dc-card" style="padding:10px 14px"><div style="font-size:.72rem;color:var(--dc-text-muted)">Objetivo rondas activas</div><div class="fw-bold" style="font-size:1.1rem;margin-top:2px">{{ kpis.target|euros }} €</div></div></div>
+  <div class="col-md-3"><div class="dc-card" style="padding:10px 14px"><div style="font-size:.72rem;color:var(--dc-text-muted)">Captado (invertido)</div><div class="fw-bold" style="font-size:1.1rem;color:#065f46;margin-top:2px">{{ kpis.invertido|euros }} €</div></div></div>
+  <div class="col-md-3"><div class="dc-card" style="padding:10px 14px"><div style="font-size:.72rem;color:var(--dc-text-muted)">Pipeline ponderado</div><div class="fw-bold" style="font-size:1.1rem;margin-top:2px">{{ kpis.weighted|euros }} €</div></div></div>
+  <div class="col-md-3"><div class="dc-card" style="padding:10px 14px"><div style="font-size:.72rem;color:var(--dc-text-muted)">Presentaciones activas</div><div class="fw-bold" style="font-size:1.1rem;color:var(--dc-accent);margin-top:2px">{{ kpis.presentaciones_activas }}</div></div></div>
 </div>
 
-<h6 class="text-muted text-uppercase small mb-2">Rondas de Inversión</h6>
-<div class="row g-3">
-  {% for rd in rounds_data %}
-  <div class="col-md-6">
-    <div class="card h-100" style="cursor:pointer" onclick="location.href='{% url 'crm:round_detail' rd.round.pk %}'">
-      <div class="card-body">
-        <div class="d-flex justify-content-between">
-          <div class="fw-semibold">{{ rd.round.type }}</div>
-          <span class="badge {% if rd.round.status.nombre == 'Cerrada' %}text-bg-success{% else %}text-bg-info{% endif %}">{{ rd.round.status.nombre|default:"—" }}</span>
-        </div>
-        <div class="text-muted small">{{ rd.count }} inversor{{ rd.count|pluralize:"es" }} · {{ rd.round.start|date:"d M Y" }} → {{ rd.round.close|date:"d M Y" }}</div>
-        <div class="d-flex justify-content-between small mt-2">
-          <span>{{ rd.invertido|euros }} € / {{ rd.round.target|euros }} €</span>
-          <span>{{ rd.pct }}%</span>
-        </div>
-        <div class="progress" style="height:6px"><div class="progress-bar bg-warning" style="width:{{ rd.pct }}%"></div></div>
-      </div>
-    </div>
+{# ═══════════════════════════════════════════════════════════════════════════ #}
+{# BLOQUE 1 — RONDA DE INVERSIÓN                                              #}
+{# ═══════════════════════════════════════════════════════════════════════════ #}
+<div class="dc-card mb-4">
+  <div class="dc-card__header" style="padding:8px 16px;border-left:4px solid var(--dc-accent);background:linear-gradient(90deg,rgba(16,185,129,.13) 0%,transparent 70%);border-bottom:2px solid var(--dc-accent)">
+    <h2 class="dc-card__title" style="font-size:.88rem;font-weight:700;letter-spacing:.01em">
+      <i class="bi bi-graph-up-arrow me-2" style="color:var(--dc-accent)"></i>Ronda de Inversión
+    </h2>
+    {% if can_edit %}
+      <a class="btn-accent" href="{% url 'crm:round_create' company.pk %}">
+        <i class="bi bi-plus-lg"></i> Nueva ronda
+      </a>
+    {% endif %}
   </div>
-  {% empty %}
-  <div class="text-muted">Sin rondas. Crea la primera.</div>
-  {% endfor %}
-</div>
-
-{# ── M&A ─────────────────────────────────────────────────────────────────── #}
-<div class="d-flex justify-content-between align-items-center mt-4 mb-2">
-  <h6 class="text-muted text-uppercase small mb-0">M&amp;A — Pipeline de venta</h6>
-  {% if can_edit %}<a class="btn btn-sm btn-outline-secondary" href="{% url 'crm:proceso_ma_create' company.pk %}"><i class="bi bi-plus-lg"></i> Nuevo proceso</a>{% endif %}
-</div>
-<div class="row g-3">
-  {% for p in procesos_ma %}
-  <div class="col-md-6">
-    <div class="card h-100" style="cursor:pointer" onclick="location.href='{% url 'crm:proceso_ma_detail' p.pk %}'">
-      <div class="card-body">
-        <div class="d-flex justify-content-between align-items-start">
-          <div class="fw-semibold">{{ p.nombre }}</div>
-          <span class="badge {% if p.cerrado %}text-bg-success{% else %}text-bg-warning{% endif %}">{% if p.cerrado %}Cerrado{% else %}Activo{% endif %}</span>
-        </div>
-        <div class="text-muted small">{{ p.start|date:"d M Y"|default:"—" }} → {{ p.close|date:"d M Y"|default:"—" }}</div>
-        <div class="d-flex justify-content-between small mt-2">
-          <span>Precio pedido: <b>{{ p.precio_pedido|euros|default:"—" }} €</b></span>
-          <span class="text-muted">{{ p.contactos.count }} comprador{{ p.contactos.count|pluralize:"es" }}</span>
+  <div class="dc-card__body">
+    <div class="row g-3">
+      {% for rd in rounds_data %}
+      <div class="col-md-6">
+        <div class="dc-card h-100" style="cursor:pointer;border:1px solid var(--dc-border)" onclick="location.href='{% url 'crm:round_detail' rd.round.pk %}'">
+          <div class="dc-card__body">
+            <div class="d-flex justify-content-between">
+              <div class="fw-semibold">{{ rd.round.type }}</div>
+              <span class="dc-badge {% if rd.round.status.nombre == 'Cerrada' %}dc-badge--green{% else %}dc-badge--blue{% endif %}">{{ rd.round.status.nombre|default:"—" }}</span>
+            </div>
+            <div style="font-size:.8rem;color:var(--dc-text-muted)">{{ rd.count }} inversor{{ rd.count|pluralize:"es" }} · {{ rd.round.start|date:"d M Y" }} → {{ rd.round.close|date:"d M Y" }}</div>
+            <div class="d-flex justify-content-between mt-2" style="font-size:.8rem">
+              <span>{{ rd.invertido|euros }} € / {{ rd.round.target|euros }} €</span>
+              <span>{{ rd.pct }}%</span>
+            </div>
+            <div class="progress mt-1" style="height:5px"><div class="progress-bar progress-bar-accent" style="width:{{ rd.pct }}%"></div></div>
+          </div>
         </div>
       </div>
-    </div>
-  </div>
-  {% empty %}
-  <div class="col text-muted small">Sin procesos M&amp;A. {% if can_edit %}<a href="{% url 'crm:proceso_ma_create' company.pk %}">Crear el primero.</a>{% endif %}</div>
-  {% endfor %}
-</div>
-
-{# ── Colaboraciones ───────────────────────────────────────────────────────── #}
-<div class="d-flex justify-content-between align-items-center mt-4 mb-2">
-  <h6 class="text-muted text-uppercase small mb-0">Colaboraciones</h6>
-  {% if can_edit %}<a class="btn btn-sm btn-outline-secondary" href="{% url 'crm:colaboracion_create' company.pk %}"><i class="bi bi-plus-lg"></i> Nueva colaboración</a>{% endif %}
-</div>
-<div class="card">
-  <table class="table mb-0">
-    <thead><tr><th>Colaborador</th><th>Tipo</th><th>Estado</th><th>Descripción</th><th>Próximo paso</th></tr></thead>
-    <tbody>
-      {% for col in colaboraciones %}
-      <tr style="cursor:pointer" onclick="location.href='{% url 'crm:colaboracion_detail' col.pk %}'">
-        <td><b>{{ col.colaborador.name }}</b><div class="text-muted small">{{ col.colaborador.country }}</div></td>
-        <td class="text-muted small">{{ col.tipo_relacion|default:"—" }}</td>
-        <td><span class="badge text-bg-info">{{ col.status.nombre|default:"—" }}</span></td>
-        <td class="text-muted small">{{ col.descripcion|default:"—" }}</td>
-        <td class="small">{{ col.next_action|default:"—" }}{% if col.next_date %} · <span class="text-warning">{{ col.next_date|date:"d M Y" }}</span>{% endif %}</td>
-      </tr>
       {% empty %}
-      <tr><td colspan="5" class="text-muted text-center py-3">Sin colaboraciones. {% if can_edit %}<a href="{% url 'crm:colaboracion_create' company.pk %}">Crear la primera.</a>{% endif %}</td></tr>
+      <div class="col-12" style="color:var(--dc-text-muted);font-size:.875rem;padding:8px 0">
+        Sin rondas registradas.
+        {% if can_edit %}<a href="{% url 'crm:round_create' company.pk %}">Crear la primera.</a>{% endif %}
+      </div>
       {% endfor %}
-    </tbody>
-  </table>
+    </div>
+  </div>
 </div>
+
+{# ═══════════════════════════════════════════════════════════════════════════ #}
+{# BLOQUE 2 — M&A                                                             #}
+{# ═══════════════════════════════════════════════════════════════════════════ #}
+<div class="dc-card mb-4">
+  <div class="dc-card__header" style="padding:8px 16px;border-left:4px solid #f59e0b;background:linear-gradient(90deg,rgba(245,158,11,.13) 0%,transparent 70%);border-bottom:2px solid #f59e0b">
+    <h2 class="dc-card__title" style="font-size:.88rem;font-weight:700;letter-spacing:.01em">
+      <i class="bi bi-building-check me-2" style="color:#f59e0b"></i>M&amp;A — Pipeline de venta
+    </h2>
+    {% if can_edit %}
+      <a class="btn-ghost" href="{% url 'crm:proceso_ma_create' company.pk %}">
+        <i class="bi bi-plus-lg"></i> Nuevo proceso
+      </a>
+    {% endif %}
+  </div>
+  <div class="dc-card__body">
+    <div class="row g-3">
+      {% for p in procesos_ma %}
+      <div class="col-md-6">
+        <div class="dc-card h-100" style="cursor:pointer;border:1px solid var(--dc-border)" onclick="location.href='{% url 'crm:proceso_ma_detail' p.pk %}'">
+          <div class="dc-card__body">
+            <div class="d-flex justify-content-between align-items-start">
+              <div class="fw-semibold">{{ p.nombre }}</div>
+              <span class="dc-badge {% if p.cerrado %}dc-badge--green{% else %}dc-badge--amber{% endif %}">{% if p.cerrado %}Cerrado{% else %}Activo{% endif %}</span>
+            </div>
+            <div style="font-size:.8rem;color:var(--dc-text-muted)">{{ p.start|date:"d M Y"|default:"—" }} → {{ p.close|date:"d M Y"|default:"—" }}</div>
+            <div class="d-flex justify-content-between mt-2" style="font-size:.8rem">
+              <span>Precio pedido: <b>{{ p.precio_pedido|euros|default:"—" }} €</b></span>
+              <span style="color:var(--dc-text-muted)">{{ p.contactos.count }} comprador{{ p.contactos.count|pluralize:"es" }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      {% empty %}
+      <div class="col-12" style="color:var(--dc-text-muted);font-size:.875rem;padding:8px 0">
+        Sin procesos M&amp;A registrados.
+        {% if can_edit %}<a href="{% url 'crm:proceso_ma_create' company.pk %}">Crear el primero.</a>{% endif %}
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+
+{# ═══════════════════════════════════════════════════════════════════════════ #}
+{# BLOQUE 3 — COLABORACIONES                                                  #}
+{# ═══════════════════════════════════════════════════════════════════════════ #}
+<div class="dc-card mb-4">
+  <div class="dc-card__header" style="padding:8px 16px;border-left:4px solid #3b82f6;background:linear-gradient(90deg,rgba(59,130,246,.13) 0%,transparent 70%);border-bottom:2px solid #3b82f6">
+    <h2 class="dc-card__title" style="font-size:.88rem;font-weight:700;letter-spacing:.01em">
+      <i class="bi bi-diagram-3 me-2" style="color:#3b82f6"></i>Colaboraciones
+      <span class="dc-badge dc-badge--grey ms-2">{{ colaboraciones|length }}</span>
+    </h2>
+    {% if can_edit %}
+      <button class="btn-ghost" data-bs-toggle="modal" data-bs-target="#newColabModal">
+        <i class="bi bi-plus-lg"></i> Nueva colaboración
+      </button>
+    {% endif %}
+  </div>
+
+  {% if not pipe_stages_colab and not end_stages_colab %}
+    <div class="dc-card__body" style="color:var(--dc-text-muted);font-size:.875rem">
+      No hay estados de colaboración configurados. Ve a <a href="{% url 'crm:settings' %}">Ajustes</a> y añade los estados del pipeline de colaboración (p.ej.: Contactado, Reunión inicial, PoC, Acuerdo firmado, Activo, Descartado).
+    </div>
+  {% else %}
+    <div style="font-size:.8rem;color:var(--dc-text-muted);padding:8px 16px"><i class="bi bi-hand-index"></i> Arrastra las tarjetas para cambiar el estado de cada colaboración.</div>
+    <div class="d-flex gap-3 align-items-start overflow-auto pb-3 px-3 kanban-board">
+
+      {% for stage in pipe_stages_colab %}
+      <div class="kanban-col" data-col-id="{{ stage.estado.id }}">
+        <div class="kanban-col-header">
+          <span class="fw-semibold" style="font-size:.855rem">
+            {{ stage.estado.nombre }}
+            <span class="dc-badge dc-badge--grey ms-1">{{ stage.items|length }}</span>
+          </span>
+        </div>
+        <div class="kanban-body colab-kanban-body" data-estado-id="{{ stage.estado.id }}">
+          {% for col in stage.items %}
+          <div class="kanban-card" draggable="true" data-colab-id="{{ col.pk }}"
+               onclick="location.href='{% url 'crm:colaboracion_detail' col.pk %}'">
+            <b style="font-size:.855rem">{{ col.contact.name|default:"—" }}</b>
+            <div style="font-size:.78rem;color:var(--dc-text-muted)">{{ col.tipo_relacion|default:"—" }}</div>
+            {% if col.next_date %}<div style="font-size:.75rem;color:var(--dc-accent)" class="fw-semibold">{{ col.next_date|date:"d M" }}</div>{% endif %}
+          </div>
+          {% empty %}
+          <div class="kanban-empty">Sin colaboraciones</div>
+          {% endfor %}
+        </div>
+      </div>
+      {% endfor %}
+
+      {% if end_stages_colab %}
+      <div class="kanban-divider"></div>
+      {% for stage in end_stages_colab %}
+      <div class="kanban-col" data-col-id="{{ stage.estado.id }}">
+        <div class="kanban-col-header">
+          <span class="fw-semibold" style="font-size:.855rem">
+            {{ stage.estado.nombre }}
+            <span class="dc-badge dc-badge--grey ms-1">{{ stage.items|length }}</span>
+          </span>
+        </div>
+        <div class="kanban-body colab-kanban-body" data-estado-id="{{ stage.estado.id }}">
+          {% for col in stage.items %}
+          <div class="kanban-card" draggable="true" data-colab-id="{{ col.pk }}"
+               onclick="location.href='{% url 'crm:colaboracion_detail' col.pk %}'">
+            <b style="font-size:.855rem">{{ col.contact.name|default:"—" }}</b>
+            <div style="font-size:.78rem;color:var(--dc-text-muted)">{{ col.tipo_relacion|default:"—" }}</div>
+          </div>
+          {% empty %}
+          <div class="kanban-empty">Sin colaboraciones</div>
+          {% endfor %}
+        </div>
+      </div>
+      {% endfor %}
+      {% endif %}
+
+    </div>
+    <form id="colab-status-form" method="post" style="display:none">
+      {% csrf_token %}<input type="hidden" name="estado_id">
+    </form>
+  {% endif %}
+</div>
+
+{# Modal nueva colaboración #}
+{% if can_edit %}
+<div class="modal fade" id="newColabModal" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <form method="post" class="modal-content dc-form">
+      {% csrf_token %}
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="bi bi-diagram-3 me-2" style="color:#3b82f6"></i>Nueva colaboración</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="row g-3">
+          <div class="col-md-6">
+            <label class="form-label">Colaborador <span style="color:var(--dc-danger)">*</span></label>
+            <select name="colaborador" class="form-select" required>
+              <option value="">— Seleccionar —</option>
+              {% for c in all_colaboradores %}<option value="{{ c.pk }}">{{ c.name }}</option>{% endfor %}
+            </select>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Estado inicial</label>
+            <select name="status" class="form-select">
+              <option value="">— Sin estado —</option>
+              {% for e in estados_colab %}<option value="{{ e.id }}">{{ e.nombre }}</option>{% endfor %}
+            </select>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Tipo de relación</label>
+            <select name="tipo_relacion" class="form-select">
+              <option value="">— Sin especificar —</option>
+              <option value="Colaborador">Colaborador</option>
+              <option value="Cliente">Cliente</option>
+              <option value="Proveedor">Proveedor</option>
+              <option value="Otro">Otro</option>
+            </select>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Presentado por</label>
+            <input type="text" name="intro_by" class="form-control">
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Fecha de inicio</label>
+            <input type="date" name="date" class="form-control">
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Próximo paso</label>
+            <input type="text" name="next_action" class="form-control">
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Fecha próximo paso</label>
+            <input type="date" name="next_date" class="form-control">
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Descripción</label>
+            <input type="text" name="descripcion" class="form-control">
+          </div>
+          <div class="col-12">
+            <label class="form-label">Notas</label>
+            <textarea name="notes" class="form-control" rows="2"></textarea>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn-ghost" data-bs-dismiss="modal">Cancelar</button>
+        <button type="submit" class="btn-accent">Guardar colaboración</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endif %}
+
+{# Menú contextual kanban colaboraciones #}
+<div id="ctx-colab-det" style="display:none;position:fixed;z-index:9999;background:var(--dc-surface);border:1px solid var(--dc-border);border-radius:8px;box-shadow:0 4px 16px rgba(0,0,0,.2);padding:6px 0;min-width:190px">
+  <button id="ctx-colab-det-nueva" style="padding:8px 16px;font-size:.875rem;background:none;border:none;cursor:pointer;width:100%;text-align:left;color:var(--dc-text)">
+    <i class="bi bi-diagram-3 me-2" style="color:#3b82f6"></i> Nueva colaboración
+  </button>
+</div>
+
 {% endblock %}

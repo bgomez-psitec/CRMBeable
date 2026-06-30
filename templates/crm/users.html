@@ -2,32 +2,34 @@
 {% block title %}Usuarios — CRM Gestora{% endblock %}
 {% block topbar_title %}Usuarios{% endblock %}
 {% block topbar_actions %}
-<button class="btn btn-warning" data-bs-toggle="modal" data-bs-target="#userModal" onclick="newUser()"><i class="bi bi-plus-lg"></i> Nuevo usuario</button>
+<button class="btn-accent" data-bs-toggle="modal" data-bs-target="#userModal" onclick="newUser()"><i class="bi bi-plus-lg"></i> Nuevo usuario</button>
 {% endblock %}
 {% block content %}
-<div class="card">
-  <table class="table mb-0">
-    <thead><tr><th>Usuario</th><th>Email</th><th>Rol</th><th>MFA</th><th>Activo</th><th></th></tr></thead>
-    <tbody>
-      {% for u in users %}
-      <tr>
-        <td><b>{{ u.get_full_name|default:u.username }}</b></td>
-        <td class="text-muted">{{ u.email }}</td>
-        <td><span class="badge text-bg-secondary">{{ u.get_role_display }}</span></td>
-        <td>{% if u.mfa_enabled %}<i class="bi bi-check-circle text-success"></i>{% else %}<i class="bi bi-x-circle text-muted"></i>{% endif %}</td>
-        <td>{% if u.is_active %}<i class="bi bi-check-circle text-success"></i>{% else %}<i class="bi bi-x-circle text-danger"></i>{% endif %}</td>
-        <td class="text-end">
-          <button class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#userModal"
-            onclick='editUser({{ u.id }}, "{{ u.username }}", "{{ u.first_name }}", "{{ u.last_name }}", "{{ u.email }}", "{{ u.role }}")'>
-            <i class="bi bi-pencil"></i>
-          </button>
-        </td>
-      </tr>
-      {% empty %}
-      <tr><td colspan="6" class="text-muted text-center py-4">Sin usuarios.</td></tr>
-      {% endfor %}
-    </tbody>
-  </table>
+<div class="dc-card">
+  <div class="dc-table-wrap">
+    <table class="dc-table">
+      <thead><tr><th>Usuario</th><th>Email</th><th>Rol</th><th>MFA</th><th>Activo</th><th></th></tr></thead>
+      <tbody>
+        {% for u in users %}
+        <tr>
+          <td><b>{{ u.get_full_name|default:u.username }}</b></td>
+          <td style="color:var(--dc-text-muted)">{{ u.email }}</td>
+          <td><span class="dc-badge dc-badge--grey">{{ u.get_role_display }}</span></td>
+          <td>{% if u.mfa_enabled %}<i class="bi bi-check-circle" style="color:var(--dc-accent)"></i>{% else %}<i class="bi bi-x-circle" style="color:var(--dc-text-muted)"></i>{% endif %}</td>
+          <td>{% if u.is_active %}<i class="bi bi-check-circle" style="color:var(--dc-accent)"></i>{% else %}<i class="bi bi-x-circle" style="color:var(--dc-danger)"></i>{% endif %}</td>
+          <td style="text-align:right">
+            <button class="btn-icon" data-bs-toggle="modal" data-bs-target="#userModal"
+              onclick='editUser({{ u.id }}, "{{ u.username }}", "{{ u.first_name }}", "{{ u.last_name }}", "{{ u.email }}", "{{ u.role }}")'>
+              <i class="bi bi-pencil"></i>
+            </button>
+          </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="6" style="text-align:center;padding:32px;color:var(--dc-text-muted)">Sin usuarios.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
 </div>
 
 <div class="modal fade" id="userModal" tabindex="-1">
@@ -55,7 +57,7 @@
         <div class="form-check mb-2"><input type="checkbox" name="mfa_enabled" id="user-mfa" class="form-check-input"><label class="form-check-label" for="user-mfa">MFA activado</label></div>
         <div class="form-check"><input type="checkbox" name="is_active" id="user-active" class="form-check-input" checked><label class="form-check-label" for="user-active">Activo</label></div>
       </div>
-      <div class="modal-footer"><button type="submit" class="btn btn-warning">Guardar</button></div>
+      <div class="modal-footer"><button type="submit" class="btn-accent">Guardar</button></div>
     </form>
   </div>
 </div>

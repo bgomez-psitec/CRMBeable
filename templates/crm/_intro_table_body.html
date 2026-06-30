@@ -1,0 +1,29 @@
+{% load crm_filters %}
+<table class="dc-table">
+  <thead>
+    <tr>
+      {% if group != 'company' and group != 'round' %}<th>Participada</th>{% endif %}
+      {% if group != 'round' %}<th>Ronda</th>{% endif %}
+      {% if group != 'investor' %}<th>Inversor</th>{% endif %}
+      <th>Estado</th>
+      <th>Ticket</th>
+      <th>Intro por</th>
+      <th>Próximo paso</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for it in intros %}
+    <tr style="cursor:pointer" onclick="location.href='{% url 'crm:round_detail' it.round_id %}'">
+      {% if group != 'company' and group != 'round' %}<td><b>{{ it.company.name }}</b></td>{% endif %}
+      {% if group != 'round' %}<td style="color:var(--dc-text-muted)">{{ it.round.type }}</td>{% endif %}
+      {% if group != 'investor' %}<td>{{ it.investor.name }}</td>{% endif %}
+      <td><span class="dc-badge dc-badge--blue">{{ it.status.nombre|default:"—" }}</span></td>
+      <td class="fw-semibold">{{ it.ticket|euros }} €</td>
+      <td style="color:var(--dc-text-muted)">{{ it.intro_by|default:"—" }}</td>
+      <td>{{ it.next_action|default:"—" }}{% if it.next_date %} · <span class="text-accent fw-semibold">{{ it.next_date|date:"d M Y" }}</span>{% endif %}</td>
+    </tr>
+    {% empty %}
+    <tr><td colspan="7" style="text-align:center;padding:32px;color:var(--dc-text-muted)">Sin presentaciones que coincidan.</td></tr>
+    {% endfor %}
+  </tbody>
+</table>

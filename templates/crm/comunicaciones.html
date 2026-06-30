@@ -1,0 +1,137 @@
+{% extends "base.html" %}
+{% load crm_filters %}
+{% block title %}Comunicaciones — CRM Gestora{% endblock %}
+{% block topbar_title %}Comunicaciones{% endblock %}
+{% block topbar_sub %}Historial de contacto por módulo{% endblock %}
+
+{% block content %}
+
+{# ── Submódulo ─────────────────────────────────────────────────────────── #}
+<div class="d-flex gap-2 mb-4 flex-wrap">
+  <a href="?modulo=inversion"
+     class="dc-badge {% if modulo == 'inversion' %}dc-badge--blue{% else %}dc-badge--grey{% endif %}"
+     style="font-size:.8rem;padding:6px 14px;text-decoration:none;cursor:pointer">
+    <i class="bi bi-graph-up-arrow me-1"></i>Ronda de Inversión
+  </a>
+  <a href="?modulo=ma"
+     class="dc-badge {% if modulo == 'ma' %}dc-badge--blue{% else %}dc-badge--grey{% endif %}"
+     style="font-size:.8rem;padding:6px 14px;text-decoration:none;cursor:pointer">
+    <i class="bi bi-briefcase me-1"></i>M&amp;A
+  </a>
+  <a href="?modulo=colaboraciones"
+     class="dc-badge {% if modulo == 'colaboraciones' %}dc-badge--blue{% else %}dc-badge--grey{% endif %}"
+     style="font-size:.8rem;padding:6px 14px;text-decoration:none;cursor:pointer">
+    <i class="bi bi-diagram-3 me-1"></i>Colaboraciones
+  </a>
+</div>
+
+{# ── Selector de entidad ───────────────────────────────────────────────── #}
+<form method="get" class="d-flex gap-2 align-items-center mb-4 flex-wrap">
+  <input type="hidden" name="modulo" value="{{ modulo }}">
+  <select name="entity" class="form-select" style="width:360px;flex-shrink:0" onchange="this.form.submit()">
+    <option value="">— Selecciona —</option>
+    {% for entity, label in entities %}
+      <option value="{{ entity.pk }}" {% if selected_pk == entity.pk|stringformat:"s" %}selected{% endif %}>
+        {{ label }}
+      </option>
+    {% endfor %}
+  </select>
+</form>
+
+{% if not selected_entity %}
+  <div class="dc-card">
+    <div class="dc-card__body text-center py-5" style="color:var(--dc-text-muted)">
+      Selecciona una entrada para ver las comunicaciones.
+    </div>
+  </div>
+{% else %}
+
+{% for item in comms %}
+<div class="dc-card mb-3">
+  <div class="dc-card__header" style="padding:14px 20px">
+    <div class="d-flex align-items-center gap-3">
+      <div style="width:36px;height:36px;border-radius:50%;background:var(--dc-accent);
+                  display:flex;align-items:center;justify-content:center;
+                  font-size:.75rem;font-weight:700;color:#fff;flex-shrink:0">
+        {% if item.contact %}{{ item.contact.name|slice:":2"|upper }}{% else %}—{% endif %}
+      </div>
+      <div style="flex:1">
+        {% if item.contact %}
+          {% if modulo == 'inversion' %}
+            <a href="{% url 'crm:investor_detail' item.contact.pk %}"
+               class="fw-semibold" style="font-size:.9rem;color:var(--dc-text);text-decoration:none">
+              {{ item.contact.name }}
+            </a>
+          {% elif modulo == 'ma' %}
+            <a href="{% url 'crm:comprador_detail' item.contact.pk %}"
+               class="fw-semibold" style="font-size:.9rem;color:var(--dc-text);text-decoration:none">
+              {{ item.contact.name }}
+            </a>
+          {% else %}
+            <a href="{% url 'crm:colaborador_detail' item.contact.pk %}"
+               class="fw-semibold" style="font-size:.9rem;color:var(--dc-text);text-decoration:none">
+              {{ item.contact.name }}
+            </a>
+          {% endif %}
+          {% if item.contact_type %}
+          <div style="font-size:.75rem;color:var(--dc-text-muted)">{{ item.contact_type }}</div>
+          {% endif %}
+        {% else %}
+          <span class="fw-semibold" style="font-size:.9rem">—</span>
+        {% endif %}
+      </div>
+      {% if item.status %}
+      <span class="dc-badge" style="font-size:.72rem;
+        {% if item.status.nombre == 'Invertido' or item.status.nombre == 'Vendido' or item.status.nombre == 'Activo' %}background:rgba(34,197,94,.15);color:#22c55e
+        {% elif item.status.nombre == 'Descartado' %}background:rgba(239,68,68,.15);color:#ef4444
+        {% elif item.status.nombre == 'Due diligence' or item.status.nombre == 'Due Diligence' %}background:rgba(59,130,246,.15);color:#3b82f6
+        {% elif item.status.nombre == 'Term sheet' %}background:rgba(168,85,247,.15);color:#a855f7
+        {% elif item.status.nombre == 'Interés' %}background:rgba(245,158,11,.15);color:#f59e0b
+        {% else %}background:rgba(100,116,139,.15);color:#64748b{% endif %}">
+        {{ item.status.nombre }}
+      </span>
+      {% endif %}
+    </div>
+  </div>
+
+  {% if item.timeline %}
+  <div style="padding:0 20px 12px">
+    {% for entry in item.timeline %}
+    <div class="d-flex gap-3 py-2" style="border-top:1px solid var(--dc-border)">
+      <div style="flex-shrink:0;margin-top:2px">
+        {% if entry.type == 'Email' %}
+          <i class="bi bi-envelope" style="color:var(--dc-accent);font-size:.85rem"></i>
+        {% elif entry.type == 'Llamada' %}
+          <i class="bi bi-telephone" style="color:#22c55e;font-size:.85rem"></i>
+        {% elif entry.type == 'Reunión' %}
+          <i class="bi bi-people" style="color:#f59e0b;font-size:.85rem"></i>
+        {% else %}
+          <i class="bi bi-sticky" style="color:#94a3b8;font-size:.85rem"></i>
+        {% endif %}
+      </div>
+      <div style="flex:1">
+        <div style="font-size:.75rem;color:var(--dc-accent);font-weight:600;margin-bottom:2px">
+          {% if entry.date %}{{ entry.date|date:"j M Y" }}{% else %}—{% endif %}
+          — {{ entry.type|default:"Nota" }}
+        </div>
+        <div style="font-size:.82rem;color:var(--dc-text)">{{ entry.summary }}</div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="px-4 pb-3" style="font-size:.82rem;color:var(--dc-text-muted)">
+    Sin comunicaciones registradas.
+  </div>
+  {% endif %}
+</div>
+{% empty %}
+<div class="dc-card">
+  <div class="dc-card__body text-center py-5" style="color:var(--dc-text-muted)">
+    No hay contactos en esta entrada.
+  </div>
+</div>
+{% endfor %}
+
+{% endif %}
+{% endblock %}
