@@ -36,6 +36,9 @@
       <div class="d-flex gap-3 flex-wrap" style="font-size:.78rem;color:var(--dc-text-muted)">
         {% if colaborador.country %}<span>País <b style="color:var(--dc-text)">{{ colaborador.country }}</b></span>{% endif %}
         {% if colaborador.sectors %}<span>Sectores <b style="color:var(--dc-text)">{{ colaborador.sectors }}</b></span>{% endif %}
+        {% if colaborador.phone %}<span><i class="bi bi-telephone"></i> <a href="tel:{{ colaborador.phone }}" style="color:inherit">{{ colaborador.phone }}</a></span>{% endif %}
+        {% if colaborador.website %}<span><i class="bi bi-globe"></i> <a href="{{ colaborador.website }}" target="_blank" rel="noopener" style="color:var(--dc-accent)">Web</a></span>{% endif %}
+        {% if colaborador.linkedin %}<span><i class="bi bi-linkedin"></i> <a href="{{ colaborador.linkedin }}" target="_blank" rel="noopener" style="color:var(--dc-accent)">LinkedIn</a></span>{% endif %}
       </div>
     </div>
 
@@ -497,6 +500,18 @@ window.DOC_DROP_CFG = {
                 {% endfor %}
               </div>
             </div>
+          </div>
+          <div class="col-md-4">
+            <label class="form-label">Teléfono</label>
+            <input type="text" name="phone" class="form-control" value="{{ colaborador.phone }}" placeholder="+34 600 000 000">
+          </div>
+          <div class="col-md-4">
+            <label class="form-label">Página web</label>
+            <input type="url" name="website" class="form-control" value="{{ colaborador.website }}" placeholder="https://…">
+          </div>
+          <div class="col-md-4">
+            <label class="form-label">LinkedIn</label>
+            <input type="url" name="linkedin" class="form-control" value="{{ colaborador.linkedin }}" placeholder="https://linkedin.com/company/…">
           </div>
           <div class="col-12">
             <label class="form-label">Relación histórica</label>

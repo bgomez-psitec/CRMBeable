@@ -99,7 +99,8 @@ class CompanyForm(forms.ModelForm):
     class Meta:
         model = Company
         fields = ['name', 'int_code', 'fund', 'country', 'provincia', 'stage',
-                  'trl', 'mrl', 'ttm', 'revenue', 'valuation', 'valuation_date', 'logo']
+                  'trl', 'mrl', 'ttm', 'revenue', 'valuation', 'valuation_date',
+                  'phone', 'website', 'linkedin', 'logo']
         labels = {
             'name': 'Nombre',
             'int_code': 'Codigo_interno',

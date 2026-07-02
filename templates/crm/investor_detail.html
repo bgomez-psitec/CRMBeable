@@ -37,6 +37,9 @@
         {% if investor.aum %}<span>AUM <b style="color:var(--dc-text)">{{ investor.aum }}</b></span>{% endif %}
         {% if investor.pub_status %}<span>Estado <b style="color:var(--dc-text)">{{ investor.pub_status }}</b></span>{% endif %}
         {% if investor.country %}<span>País <b style="color:var(--dc-text)">{{ investor.country }}</b></span>{% endif %}
+        {% if investor.phone %}<span><i class="bi bi-telephone"></i> <a href="tel:{{ investor.phone }}" style="color:inherit">{{ investor.phone }}</a></span>{% endif %}
+        {% if investor.website %}<span><i class="bi bi-globe"></i> <a href="{{ investor.website }}" target="_blank" rel="noopener" style="color:var(--dc-accent)">Web</a></span>{% endif %}
+        {% if investor.linkedin %}<span><i class="bi bi-linkedin"></i> <a href="{{ investor.linkedin }}" target="_blank" rel="noopener" style="color:var(--dc-accent)">LinkedIn</a></span>{% endif %}
         <span>Último contacto <b style="color:var(--dc-accent)">{{ last_contact|date:"d M Y"|default:"—" }}</b></span>
       </div>
     </div>
@@ -561,6 +564,23 @@ document.querySelectorAll('[data-log-action="edit"][data-modal="inv-log-edit-mod
                   <option value="{{ t.id }}" {% if investor.aum_id == t.id %}selected{% endif %}>{{ t.nombre }}</option>
                 {% endfor %}
               </select>
+            </div>
+          </div>
+        </div>
+
+        <div style="border-top:1px solid var(--dc-border);padding:16px 24px">
+          <div class="row g-3">
+            <div class="col-md-4">
+              <label class="form-label">Teléfono</label>
+              <input type="text" name="phone" class="form-control" value="{{ investor.phone }}" placeholder="+34 600 000 000">
+            </div>
+            <div class="col-md-4">
+              <label class="form-label">Página web</label>
+              <input type="url" name="website" class="form-control" value="{{ investor.website }}" placeholder="https://…">
+            </div>
+            <div class="col-md-4">
+              <label class="form-label">LinkedIn</label>
+              <input type="url" name="linkedin" class="form-control" value="{{ investor.linkedin }}" placeholder="https://linkedin.com/company/…">
             </div>
           </div>
         </div>

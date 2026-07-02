@@ -157,3 +157,5 @@ MS_GRAPH_TENANT_ID = env('MS_GRAPH_TENANT_ID', default='')
 AUTH0_DOMAIN = env('AUTH0_DOMAIN', default='')
 AUTH0_CLIENT_ID = env('AUTH0_CLIENT_ID', default='')
 AUTH0_CLIENT_SECRET = env('AUTH0_CLIENT_SECRET', default='')
+
+HUBSPOT_TOKEN = env('HUBSPOT_TOKEN', default='')

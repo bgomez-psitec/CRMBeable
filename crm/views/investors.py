@@ -217,6 +217,9 @@ def investor_edit(request, pk):
         investor.aum_id = request.POST.get('aum') or None
         investor.pub_status = request.POST.get('pub_status', '').strip()
         investor.relation_id = request.POST.get('relation') or None
+        investor.website = request.POST.get('website', '').strip()
+        investor.phone = request.POST.get('phone', '').strip()
+        investor.linkedin = request.POST.get('linkedin', '').strip()
         investor.notes = request.POST.get('notes', '').strip()
         investor.save()
 

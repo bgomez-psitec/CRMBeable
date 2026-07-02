@@ -19,7 +19,8 @@ Construida como port fiel y productivo del prototipo funcional `CRM_Gestora_ES_V
   - Vista global de colaboraciones con filtro por estado.
   - Cronología de contactos del Colaborador con **filtros por contexto** (Todos / Ronda de Inversión / Proceso M&A / Colaboraciones) y eliminación de cualquier entrada.
   - Catálogo de estados de colaboración configurable desde Ajustes.
-- **Inversores**: listado/grid con búsqueda y agrupación (tipo/país); ficha de detalle con cronología combinada de contactos (registros manuales + interacciones ligadas a presentaciones), contactos y presentaciones asociadas. La cronología incluye **filtros por contexto** (Todos / Ronda de Inversión / Proceso M&A / Colaboraciones) y permite eliminar cualquier entrada (incluyendo emails).
+- **Inversores**: listado/grid con búsqueda y agrupación (tipo/país); ficha de detalle con cronología combinada de contactos (registros manuales + interacciones ligadas a presentaciones), contactos y presentaciones asociadas. La cronología incluye **filtros por contexto** (Todos / Ronda de Inversión / Proceso M&A / Colaboraciones) y permite eliminar cualquier entrada (incluyendo emails). Ficha incluye campos **Teléfono, Web y LinkedIn** editables.
+- **Colaboradores**: ficha con los mismos campos de contacto (Teléfono, Web y LinkedIn) y cronología con filtros por contexto.
 - **Presentaciones (introductions)**: vista global con búsqueda y filtro por estado.
 - **Bandeja de entrada**: gestión de emails recibidos con flujo guiado en 3 pasos:
   1. **Detección automática de contacto** — busca el remitente (`from_email`) en la base de datos de contactos de Inversores y Colaboradores. Si se encuentra, se autoselecciona y aparece un banner verde de confirmación. Si no existe, ofrece la opción de crearlo como nuevo contacto de un Inversor o Colaborador sin salir de la pantalla.
@@ -30,10 +31,18 @@ Construida como port fiel y productivo del prototipo funcional `CRM_Gestora_ES_V
 - **Informes**: KPIs agregados de rondas abiertas/cerradas, comunicaciones por ronda y contactados en la última semana.
 - **Usuarios** (solo admin): alta/edición de usuarios, rol, MFA, participadas asignadas.
 - **Centro de documentos**: carpeta de archivos por participada (rondas, procesos M&A), inversor y colaborador. Soporta **drag & drop de archivos .msg** (emails de Outlook) directamente sobre la cronología de contactos — se extrae el remitente, destinatario, asunto y fecha, se pre-rellena el formulario de log y el archivo queda guardado en la carpeta del contacto.
+- **Importación desde HubSpot**: comando de gestión `import_hubspot` que migra todo el CRM de HubSpot a la BD local en un solo paso. Incluye dry-run previo, flush opcional, CSV de revisión manual y mapeos completos:
+  - Empresas HubSpot → Participadas / Inversores / Colaboradores según el campo `type`.
+  - Contactos HubSpot → `InvestorContact` / `ColaboradorContacto`.
+  - Deals por pipeline: `linea_a/b` → Rondas + Presentaciones, `Venta Participadas` → Procesos M&A, `Colaboraciones Participadas` → Colaboraciones.
+  - Actividades (notas, llamadas, reuniones) → `InvestorLog` / `ColaboradorLog`.
+  - Mapeo de `category_of_investor` → `TipoInversor`, `enfoque_de_inversion` (multi-valor) → `Sector`, `dealstage` → `EstadoPresentacion` / `FaseMA` / `EstadoColaboracion`.
+  - Fechas (`createdate`, `closedate`), importes (`amount`) y datos de contacto (`phone`, `website`, `linkedin_company_page`) importados con normalización de URLs.
+  - Matching fuzzy de partners por nombre de deal con filtro de tokens genéricos y umbral configurable.
 - **Ajustes** (solo admin): edición de perfil (nombre, apellidos, usuario, email, MFA) y gestión completa de catálogos configurables, organizados en cinco pestañas:
   - **Ronda Inversión**: Estados de presentación, Fases de ronda, Etapas de relación con inversores.
   - **M&A y Colaboración**: Estados M&A, Fases de proceso M&A, Estados de colaboración, Etapas de relación con colaboradores.
-  - **Participadas**: Fondos, Estados de inversión, Sectores, Niveles (TRL/MRL), Tiempo al mercado, Facturación, Provincias.
+    - **Participadas**: Fondos, Estados de inversión, Sectores, Niveles (TRL/MRL), Tiempo al mercado, Facturación, Provincias.
   - **Inversores**: Tipos de inversor, Etapas de inversión, Rangos de ticket, Rangos AUM, Áreas geográficas.
   - Todos los catálogos permiten **crear, renombrar, reordenar, habilitar/inhabilitar y eliminar** entradas con confirmación. Los campos antes definidos como `TextChoices` son ahora modelos de BD editables desde la interfaz.
 - **Control de acceso por roles (RBAC) aplicado en servidor**, no solo en la interfaz:
@@ -65,6 +74,7 @@ crm/                App principal del dominio (modelos, vistas, permisos, utilid
   templatetags/
     crm_filters.py   Filtro `euros` para formateo numérico español (1.234.567,00)
   management/commands/seed_demo_data.py   Carga de datos demo
+  management/commands/import_hubspot.py  Importación completa desde HubSpot CRM
 templates/           Plantillas Django (layout base + una por pantalla)
 static/              Estáticos del proyecto
 requirements.txt     Dependencias Python
@@ -109,6 +119,12 @@ La lógica vive en `crm/permissions.py` y se aplica filtrando los querysets en c
 4. Cargar datos demo (participadas, inversores, presentaciones, compradores M&A, colaboraciones, usuarios, bandeja de entrada):
    ```bash
    python manage.py seed_demo_data
+   ```
+   O importar desde HubSpot (requiere `HUBSPOT_TOKEN` en `.env`):
+   ```bash
+   python manage.py import_hubspot            # dry-run (sin tocar la BD)
+   python manage.py import_hubspot --execute  # importación real
+   python manage.py import_hubspot --execute --flush  # limpia la BD e importa
    ```
 5. Arrancar el servidor de desarrollo:
    ```bash
@@ -203,6 +219,8 @@ sudo ./scripts/deploy.sh
 - ✅ **Centro de documentos**: carpeta de archivos por participada, inversor y colaborador con drag & drop de `.msg` (emails de Outlook) sobre la cronología; enlace directo a documentos desde la ficha de cada inversor y colaborador.
 - ✅ **Catálogos como modelos de BD**: los 11 campos que eran `TextChoices` (Fondo, Sector, Tipo inversor, Etapa inversión, Rango ticket, Rango AUM, Nivel, Tiempo mercado, Facturación, Estado inversión, Área) son ahora tablas editables desde Ajustes, con orden, habilitación y renombrado en línea.
 - ✅ **Ajustes reorganizado en pestañas**: Perfil / Ronda Inversión / M&A y Colaboración / Participadas / Inversores, con UI uniforme (crear, renombrar, reordenar, habilitar/inhabilitar, eliminar con confirmación).
+- ✅ **Campos de contacto en Inversores, Colaboradores y Participadas**: Teléfono, Web y LinkedIn añadidos a los tres modelos, visibles en ficha y editables en formulario/modal.
+- ✅ **Importación desde HubSpot** (`import_hubspot`): pipeline completo de migración con dry-run, matching fuzzy de partners, mapeo de todos los campos relevantes (type, sectors, dealstage, dates, amounts, contact info) y CSV de revisión manual.
 - ⏳ **Auth0**: pendiente de integrar para sustituir el login demo actual (variables ya previstas en `.env.example`).
 - ⏳ **Microsoft Graph (Outlook)**: pendiente de integrar para sincronizar la bandeja de entrada con buzones reales (variables ya previstas en `.env.example`); actualmente la bandeja se gestiona de forma manual.
 

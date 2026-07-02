@@ -85,6 +85,9 @@ document.querySelectorAll('.colab-kanban-body').forEach(col => {
     <div class="col-md-3">Revenue <b>{{ company.revenue|default:"—" }}</b></div>
     <div class="col-md-3">Última valoración <b>{{ company.valuation|euros }} €</b></div>
     <div class="col-md-3">Fecha valoración <b>{{ company.valuation_date|date:"d M Y"|default:"—" }}</b></div>
+    {% if company.phone %}<div class="col-md-3">Teléfono <b><a href="tel:{{ company.phone }}" style="color:inherit">{{ company.phone }}</a></b></div>{% endif %}
+    {% if company.website %}<div class="col-md-3">Web <b><a href="{{ company.website }}" target="_blank" rel="noopener" style="color:var(--dc-accent)">{{ company.website }}</a></b></div>{% endif %}
+    {% if company.linkedin %}<div class="col-md-3">LinkedIn <b><a href="{{ company.linkedin }}" target="_blank" rel="noopener" style="color:var(--dc-accent)">Ver perfil</a></b></div>{% endif %}
   </div>
   {% if company.sectors %}
     <div class="mt-2" style="font-size:.8rem;color:var(--dc-text-muted)">Sectores: {{ company.sectors }}</div>

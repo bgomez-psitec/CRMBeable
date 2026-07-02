@@ -140,6 +140,9 @@ class Company(models.Model):
     revenue = models.ForeignKey(Facturacion, on_delete=models.SET_NULL, null=True, blank=True, related_name='companies', verbose_name='Facturación')
     valuation = models.DecimalField(max_digits=14, decimal_places=2, null=True, blank=True)
     valuation_date = models.DateField(null=True, blank=True)
+    website = models.URLField(blank=True)
+    phone = models.CharField(max_length=50, blank=True)
+    linkedin = models.URLField(blank=True)
     logo = models.ImageField('Logo', upload_to='logos/', null=True, blank=True)
 
     class Meta:
@@ -192,6 +195,9 @@ class Investor(models.Model):
     aum = models.ForeignKey(RangoAUM, on_delete=models.SET_NULL, null=True, blank=True, related_name='investors', verbose_name='AUM')
     pub_status = models.CharField('Estado público', max_length=100, blank=True)
     relation = models.ForeignKey(EtapaRelacion, on_delete=models.SET_NULL, null=True, blank=True, related_name='investors')
+    website = models.URLField(blank=True)
+    phone = models.CharField(max_length=50, blank=True)
+    linkedin = models.URLField(blank=True)
     notes = models.TextField(blank=True)
 
     class Meta:
@@ -408,6 +414,9 @@ class Colaborador(models.Model):
     es_cliente            = models.BooleanField('Cliente',             default=False)
     es_proveedor          = models.BooleanField('Proveedor',           default=False)
     es_inversor_esporadico = models.BooleanField('Inversor esporádico', default=False)
+    website = models.URLField(blank=True)
+    phone = models.CharField(max_length=50, blank=True)
+    linkedin = models.URLField(blank=True)
     notes = models.TextField(blank=True)
 
     class Meta:
