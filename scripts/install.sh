@@ -11,6 +11,7 @@
 #   5. Valida la conexión a MySQL/MariaDB antes de continuar
 #   6. Aplica migraciones y recolecta estáticos
 #   7. (Opcional) Carga datos demo
+#   8. Configura y arranca Gunicorn como servicio OpenRC
 #
 # Uso:
 #   chmod +x scripts/install.sh
@@ -25,6 +26,11 @@
 #   Variables de BD para modo no-interactivo:
 #   DB_NAME / DB_USER / DB_PASSWORD / DB_HOST / DB_PORT
 #   ALLOWED_HOSTS / SECRET_KEY
+#
+#   Variables de servicio para modo no-interactivo:
+#   GUNICORN_PORT   Puerto donde escucha Gunicorn (por defecto: 8001)
+#   GUNICORN_WORKERS  Número de workers           (por defecto: 3)
+#   APP_USER        Usuario de sistema del servicio (por defecto: crmgestora)
 
 set -eu
 
@@ -293,6 +299,119 @@ fi
 deactivate
 
 # =============================================================================
+#  PASO 7 — Servicio web (Gunicorn + OpenRC)
+# =============================================================================
+header "PASO 7 — Servicio web (Gunicorn + OpenRC)"
+
+SERVICE_NAME="crmgestora"
+APP_USER="${APP_USER:-crmgestora}"
+
+# Preguntar puerto si no está ya definido
+if [ -z "${GUNICORN_PORT:-}" ]; then
+    printf "\n"
+    info "Configuración del servidor web Gunicorn."
+    info "Si hay otra aplicación corriendo con Gunicorn, usa un puerto distinto al que ya usa (ej: 8001).\n"
+
+    # Detectar puertos en uso para orientar al usuario
+    if command -v netstat >/dev/null 2>&1; then
+        PORTS_IN_USE="$(netstat -tln 2>/dev/null | awk '/LISTEN/{print $4}' | grep -oE '[0-9]+$' | sort -n | tr '\n' ' ' || true)"
+        [ -n "$PORTS_IN_USE" ] && info "Puertos ya en uso: $PORTS_IN_USE"
+    fi
+
+    ask "  Puerto para Gunicorn [8001]: "
+    read -r _port
+    GUNICORN_PORT="${_port:-8001}"
+fi
+
+# Validar que el puerto es numérico
+case "$GUNICORN_PORT" in
+    ''|*[!0-9]*) die "Puerto inválido: '$GUNICORN_PORT'. Debe ser un número entre 1024 y 65535." ;;
+esac
+
+# Aviso si el puerto ya está ocupado
+if command -v netstat >/dev/null 2>&1; then
+    if netstat -tln 2>/dev/null | grep -q ":$GUNICORN_PORT "; then
+        warn "¡Atención! El puerto $GUNICORN_PORT ya está en uso por otro proceso."
+        warn "El servicio puede fallar al arrancar. Considera usar otro puerto."
+    fi
+fi
+
+# Preguntar número de workers
+if [ -z "${GUNICORN_WORKERS:-}" ]; then
+    ask "  Número de workers de Gunicorn [3]: "
+    read -r _workers
+    GUNICORN_WORKERS="${_workers:-3}"
+fi
+
+BIND_ADDR="127.0.0.1:$GUNICORN_PORT"
+RUN_SCRIPT="$APP_DIR/scripts/run_gunicorn.sh"
+
+info "Configurando servicio: usuario=$APP_USER, bind=$BIND_ADDR, workers=$GUNICORN_WORKERS"
+
+# 7a. Usuario de sistema dedicado (sin login, sin home interactivo)
+if ! id "$APP_USER" >/dev/null 2>&1; then
+    info "Creando usuario de sistema '$APP_USER'..."
+    addgroup -S "$APP_USER" 2>/dev/null || true
+    adduser -S -D -H -G "$APP_USER" -s /sbin/nologin "$APP_USER"
+    log "Usuario '$APP_USER' creado."
+else
+    log "Usuario '$APP_USER' ya existe."
+fi
+
+# Ajustar propietario del directorio del proyecto
+chown -R "$APP_USER:$APP_USER" "$APP_DIR"
+
+# 7b. Directorio de logs
+mkdir -p "$APP_DIR/logs"
+chown -R "$APP_USER:$APP_USER" "$APP_DIR/logs"
+
+# 7c. Script de arranque de Gunicorn
+cat > "$RUN_SCRIPT" <<RUNEOF
+#!/bin/sh
+cd "$APP_DIR"
+. "$VENV_DIR/bin/activate"
+exec gunicorn crmgestora.wsgi:application \\
+    --bind "$BIND_ADDR" \\
+    --workers $GUNICORN_WORKERS \\
+    --access-logfile "$APP_DIR/logs/gunicorn-access.log" \\
+    --error-logfile "$APP_DIR/logs/gunicorn-error.log"
+RUNEOF
+chmod +x "$RUN_SCRIPT"
+log "Script de arranque escrito en $RUN_SCRIPT"
+
+# 7d. Servicio OpenRC
+INIT_FILE="/etc/init.d/$SERVICE_NAME"
+cat > "$INIT_FILE" <<INITEOF
+#!/sbin/openrc-run
+
+name="$SERVICE_NAME"
+description="CRM Gestora de Fondos (Django + Gunicorn)"
+command="$RUN_SCRIPT"
+command_user="$APP_USER:$APP_USER"
+command_background=true
+pidfile="/run/\${RC_SVCNAME}.pid"
+output_log="$APP_DIR/logs/gunicorn-stdout.log"
+error_log="$APP_DIR/logs/gunicorn-stderr.log"
+
+depend() {
+    need net
+    after firewall
+}
+INITEOF
+chmod +x "$INIT_FILE"
+log "Servicio OpenRC configurado en $INIT_FILE"
+
+# 7e. Habilitar y arrancar el servicio
+info "Habilitando e iniciando el servicio '$SERVICE_NAME'..."
+rc-update add "$SERVICE_NAME" default 2>/dev/null || true
+if rc-service "$SERVICE_NAME" restart 2>/dev/null; then
+    log "Servicio '$SERVICE_NAME' iniciado y escuchando en $BIND_ADDR"
+else
+    warn "No se pudo iniciar el servicio ahora (¿estás en un contenedor sin OpenRC?)."
+    warn "Inicia el servicio manualmente con: rc-service $SERVICE_NAME start"
+fi
+
+# =============================================================================
 #  RESUMEN
 # =============================================================================
 printf "\n"
@@ -302,12 +421,19 @@ printf "${GREEN}${BOLD}╚══════════════════
 
 printf "  ${BOLD}Proyecto:${RESET}    $APP_DIR\n"
 printf "  ${BOLD}Virtualenv:${RESET}  $VENV_DIR\n"
-printf "  ${BOLD}Config BD:${RESET}   $ENV_FILE\n\n"
+printf "  ${BOLD}Config BD:${RESET}   $ENV_FILE\n"
+printf "  ${BOLD}Servicio:${RESET}    $SERVICE_NAME (usuario: $APP_USER)\n"
+printf "  ${BOLD}Gunicorn:${RESET}    $BIND_ADDR  (workers: $GUNICORN_WORKERS)\n\n"
 
-printf "  ${BOLD}Próximos pasos:${RESET}\n\n"
-printf "  1. Arrancar en desarrollo:\n"
-printf "     ${CYAN}cd $APP_DIR && . venv/bin/activate && python manage.py runserver 0.0.0.0:8000${RESET}\n\n"
-printf "  2. Configurar como servicio en producción (Gunicorn + OpenRC):\n"
-printf "     ${CYAN}sudo $SCRIPT_DIR/setup_service.sh${RESET}\n\n"
-printf "  3. Para desplegar cambios futuros desde GitHub:\n"
+printf "  ${BOLD}Comandos útiles:${RESET}\n\n"
+printf "  Estado / reiniciar / parar:\n"
+printf "     ${CYAN}rc-service $SERVICE_NAME status${RESET}\n"
+printf "     ${CYAN}rc-service $SERVICE_NAME restart${RESET}\n"
+printf "     ${CYAN}rc-service $SERVICE_NAME stop${RESET}\n\n"
+printf "  Ver logs en tiempo real:\n"
+printf "     ${CYAN}tail -f $APP_DIR/logs/gunicorn-error.log${RESET}\n\n"
+printf "  Para desplegar cambios futuros desde GitHub:\n"
 printf "     ${CYAN}sudo $SCRIPT_DIR/deploy.sh${RESET}\n\n"
+printf "  ${BOLD}Nota:${RESET} Gunicorn escucha en localhost:$GUNICORN_PORT.\n"
+printf "  Configura Nginx como proxy inverso para exponer el puerto 80/443 con TLS\n"
+printf "  y servir los estáticos desde $APP_DIR/staticfiles.\n\n"

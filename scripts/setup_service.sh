@@ -3,23 +3,24 @@
 # sirviéndolo con Gunicorn detrás (recomendado poner Nginx delante como proxy inverso
 # para TLS y estáticos, no incluido en este script).
 #
+# NOTA: scripts/install.sh ya incluye este paso al final. Usa este script solo
+# si necesitas reconfigurar el servicio sin repetir toda la instalación.
+#
 # Requiere haber ejecutado antes scripts/install.sh.
 #
 # Uso:
 #   chmod +x scripts/setup_service.sh
-#   ./scripts/setup_service.sh
+#   sudo ./scripts/setup_service.sh
 #
 # Variables de entorno opcionales:
 #   APP_DIR   Ruta del proyecto (por defecto: directorio del propio script, un nivel arriba)
 #   VENV_DIR  Ruta del virtualenv (por defecto: $APP_DIR/venv)
 #   APP_USER  Usuario del sistema bajo el que correrá el servicio (por defecto: crmgestora)
-#   BIND_ADDR Dirección:puerto donde escucha Gunicorn (por defecto: 127.0.0.1:8001)
+#   BIND_ADDR Dirección:puerto donde escucha Gunicorn (por defecto: pregunta interactiva)
 #   WORKERS   Número de workers de Gunicorn (por defecto: 3)
 #
 # Nota: si en el servidor ya corre otra aplicación con Gunicorn, este script usa
-# por defecto el puerto 8001 (en vez del 8000 habitual) y un nombre de servicio/usuario
-# propios ("crmgestora") precisamente para no interferir con ella. Ajusta BIND_ADDR
-# si el 8001 también estuviera ocupado.
+# un nombre de servicio/usuario propios ("crmgestora") para no interferir con ella.
 
 set -eu
 
@@ -27,23 +28,36 @@ SCRIPT_DIR="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
 APP_DIR="${APP_DIR:-$(dirname "$SCRIPT_DIR")}"
 VENV_DIR="${VENV_DIR:-$APP_DIR/venv}"
 APP_USER="${APP_USER:-crmgestora}"
-BIND_ADDR="${BIND_ADDR:-127.0.0.1:8001}"
 WORKERS="${WORKERS:-3}"
 SERVICE_NAME="crmgestora"
 
 log()  { printf '\033[1;32m[service]\033[0m %s\n' "$1"; }
 warn() { printf '\033[1;33m[service]\033[0m %s\n' "$1"; }
 die()  { printf '\033[1;31m[service]\033[0m %s\n' "$1" >&2; exit 1; }
+ask()  { printf '\033[1m%s\033[0m' "$1"; }
 
 [ "$(id -u)" -eq 0 ] || die "Este script necesita privilegios de root (creación de usuario y servicio OpenRC)."
 [ -d "$VENV_DIR" ] || die "No existe el virtualenv en $VENV_DIR. Ejecuta antes scripts/install.sh."
 
+# Preguntar puerto si no viene en BIND_ADDR
+if [ -z "${BIND_ADDR:-}" ]; then
+    if command -v netstat >/dev/null 2>&1; then
+        PORTS_IN_USE="$(netstat -tln 2>/dev/null | awk '/LISTEN/{print $4}' | grep -oE '[0-9]+$' | sort -n | tr '\n' ' ' || true)"
+        [ -n "$PORTS_IN_USE" ] && log "Puertos ya en uso: $PORTS_IN_USE"
+    fi
+    ask "Puerto para Gunicorn [8001]: "
+    read -r _port
+    _port="${_port:-8001}"
+    BIND_ADDR="127.0.0.1:$_port"
+fi
+
+PORT="${BIND_ADDR##*:}"
+
 # Aviso (no bloqueante) si el puerto ya está en uso por otro proceso/servicio,
 # para no pisar la aplicación que ya corre con Gunicorn en este servidor.
-PORT="${BIND_ADDR##*:}"
 if command -v netstat >/dev/null 2>&1; then
     if netstat -tln 2>/dev/null | grep -q ":$PORT "; then
-        warn "El puerto $PORT ya está en uso por otro proceso. Cambia BIND_ADDR antes de continuar (ej: BIND_ADDR=127.0.0.1:8002 ./scripts/setup_service.sh)."
+        warn "El puerto $PORT ya está en uso por otro proceso. El servicio puede fallar al arrancar."
     fi
 fi
 
