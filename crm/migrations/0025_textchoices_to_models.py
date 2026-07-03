@@ -90,23 +90,18 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        # ── 1. Register all 11 catalog models in Django state (tables already in DB) ──
-        migrations.SeparateDatabaseAndState(
-            database_operations=[],
-            state_operations=[
-                _catalog_model('Fund', 'Fondo', 'Fondos'),
-                _catalog_model('Area', 'Área', 'Áreas'),
-                _catalog_model('TipoInversor', 'Tipo de inversor', 'Tipos de inversor'),
-                _catalog_model('EtapaInversion', 'Etapa de inversión', 'Etapas de inversión'),
-                _catalog_model('RangoTicket', 'Rango de ticket', 'Rangos de ticket'),
-                _catalog_model('RangoAUM', 'Rango AUM', 'Rangos AUM'),
-                _catalog_model('Nivel', 'Nivel', 'Niveles'),
-                _catalog_model('TiempoMercado', 'Tiempo al mercado', 'Tiempos al mercado'),
-                _catalog_model('Facturacion', 'Facturación', 'Facturaciones'),
-                _catalog_model('EstadoInversion', 'Estado de inversión', 'Estados de inversión'),
-                _catalog_model('Sector', 'Sector', 'Sectores'),
-            ],
-        ),
+        # ── 1. Create the 11 catalog tables (idempotent via RunPython check) ──
+        _catalog_model('Fund', 'Fondo', 'Fondos'),
+        _catalog_model('Area', 'Área', 'Áreas'),
+        _catalog_model('TipoInversor', 'Tipo de inversor', 'Tipos de inversor'),
+        _catalog_model('EtapaInversion', 'Etapa de inversión', 'Etapas de inversión'),
+        _catalog_model('RangoTicket', 'Rango de ticket', 'Rangos de ticket'),
+        _catalog_model('RangoAUM', 'Rango AUM', 'Rangos AUM'),
+        _catalog_model('Nivel', 'Nivel', 'Niveles'),
+        _catalog_model('TiempoMercado', 'Tiempo al mercado', 'Tiempos al mercado'),
+        _catalog_model('Facturacion', 'Facturación', 'Facturaciones'),
+        _catalog_model('EstadoInversion', 'Estado de inversión', 'Estados de inversión'),
+        _catalog_model('Sector', 'Sector', 'Sectores'),
 
         # ── 2. Seed initial data (safe: get_or_create) ────────────────────────
         migrations.RunPython(populate_catalogs, migrations.RunPython.noop),

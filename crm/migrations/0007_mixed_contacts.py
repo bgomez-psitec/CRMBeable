@@ -1,6 +1,41 @@
 from django.db import migrations, models
 import django.db.models.deletion
 
+FK_NAME = 'crm_colaboracion_colaborador_id_43fc6132_fk_crm_colaborador_id'
+
+
+def _fix_colaboracion_fk(apps, schema_editor):
+    """
+    Idempotent: makes colaborador_id nullable and ensures the FK constraint exists
+    exactly once, regardless of whether a previous migration already created it.
+    """
+    conn = schema_editor.connection
+    with conn.cursor() as cursor:
+        # Make column nullable (safe to run even if already nullable)
+        cursor.execute(
+            'ALTER TABLE crm_colaboracion MODIFY colaborador_id bigint DEFAULT NULL'
+        )
+        # Check whether the FK constraint already exists
+        cursor.execute(
+            '''
+            SELECT COUNT(*) FROM information_schema.TABLE_CONSTRAINTS
+            WHERE CONSTRAINT_SCHEMA = DATABASE()
+              AND TABLE_NAME = %s
+              AND CONSTRAINT_NAME = %s
+              AND CONSTRAINT_TYPE = 'FOREIGN KEY'
+            ''',
+            ['crm_colaboracion', FK_NAME],
+        )
+        exists = cursor.fetchone()[0]
+        if exists:
+            cursor.execute(
+                f'ALTER TABLE crm_colaboracion DROP FOREIGN KEY `{FK_NAME}`'
+            )
+        cursor.execute(
+            f'ALTER TABLE crm_colaboracion ADD CONSTRAINT `{FK_NAME}` '
+            f'FOREIGN KEY (colaborador_id) REFERENCES crm_colaborador (id) ON DELETE SET NULL'
+        )
+
 
 class Migration(migrations.Migration):
 
@@ -94,13 +129,9 @@ class Migration(migrations.Migration):
             database_operations=[
                 # FK was dropped in a prior attempt; make column nullable and
                 # recreate the FK constraint.
-                migrations.RunSQL(
-                    sql=[
-                        'ALTER TABLE crm_colaboracion MODIFY colaborador_id bigint DEFAULT NULL;',
-                        'ALTER TABLE crm_colaboracion ADD CONSTRAINT crm_colaboracion_colaborador_id_43fc6132_fk_crm_colaborador_id '
-                        'FOREIGN KEY (colaborador_id) REFERENCES crm_colaborador (id) ON DELETE SET NULL;',
-                    ],
-                    reverse_sql=migrations.RunSQL.noop,
+                migrations.RunPython(
+                    _fix_colaboracion_fk,
+                    reverse_code=migrations.RunPython.noop,
                 ),
             ],
         ),
