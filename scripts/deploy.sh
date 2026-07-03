@@ -59,14 +59,10 @@ fi
 # shellcheck disable=SC1091
 . "$VENV_DIR/bin/activate"
 
-# 3. Reinstalar dependencias solo si requirements.txt cambió en este despliegue
-if [ "$BEFORE_REV" != "$AFTER_REV" ] && git diff --name-only "$BEFORE_REV" "$AFTER_REV" | grep -q '^requirements.txt$'; then
-    log "requirements.txt ha cambiado, actualizando dependencias..."
-    pip install --upgrade pip wheel
-    pip install -r requirements.txt
-else
-    log "Sin cambios en requirements.txt, se omite reinstalación de dependencias."
-fi
+# 3. Sincronizar dependencias Python (siempre, para no dejar paquetes desactualizados)
+log "Sincronizando dependencias Python..."
+pip install --quiet --upgrade pip wheel
+pip install --quiet -r requirements.txt
 
 # 4. Migraciones de base de datos (idempotente: no hace nada si ya están aplicadas)
 log "Aplicando migraciones pendientes..."
