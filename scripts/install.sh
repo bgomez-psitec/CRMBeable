@@ -83,7 +83,13 @@ apk add --no-cache -q \
     pkgconf \
     build-base \
     git \
-    curl
+    curl \
+    jpeg-dev \
+    zlib-dev \
+    libwebp-dev \
+    tiff-dev \
+    freetype-dev \
+    openjpeg-dev
 
 log "Dependencias del sistema instaladas."
 info "Python: $("$PYTHON_BIN" --version 2>&1)"
