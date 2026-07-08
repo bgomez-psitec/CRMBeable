@@ -47,17 +47,44 @@
     {% bootstrap_field form.website %}
     {% bootstrap_field form.linkedin %}
     {% bootstrap_field form.logo %}
+    {% bootstrap_field form.notes %}
 
-    <div class="d-flex gap-2 mt-3">
-      <button type="submit" class="btn-accent">Guardar</button>
-      {% if company %}
-      <a href="{% url 'crm:company_detail' company.pk %}" class="btn-ghost">Cancelar</a>
-      {% else %}
-      <a href="{% url 'crm:companies' %}" class="btn-ghost">Cancelar</a>
+    <div class="d-flex justify-content-between align-items-center mt-3">
+      <div class="d-flex gap-2">
+        <button type="submit" class="btn-accent">Guardar</button>
+        {% if company %}
+        <a href="{% url 'crm:company_detail' company.pk %}" class="btn-ghost">Cancelar</a>
+        {% else %}
+        <a href="{% url 'crm:companies' %}" class="btn-ghost">Cancelar</a>
+        {% endif %}
+      </div>
+      {% if company and request.user.role == 'admin' %}
+      <button type="button" class="btn btn-sm btn-outline-danger"
+              onclick="document.getElementById('co-del-confirm').style.display='flex'">
+        <i class="bi bi-trash"></i> Eliminar participada
+      </button>
       {% endif %}
     </div>
   </form>
 </div>
+
+{% if company and request.user.role == 'admin' %}
+<div id="co-del-confirm" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);
+     z-index:1060;align-items:center;justify-content:center">
+  <div style="background:var(--dc-surface);border-radius:var(--dc-radius);padding:28px 32px;max-width:400px;text-align:center">
+    <p class="fw-semibold mb-1">¿Eliminar {{ company.name }}?</p>
+    <p class="text-muted small mb-4">Se borrarán todas sus rondas, presentaciones, procesos M&A, colaboraciones y documentos. Esta acción no se puede deshacer.</p>
+    <form method="post" action="{% url 'crm:company_delete' company.pk %}">
+      {% csrf_token %}
+      <div class="d-flex gap-2 justify-content-center">
+        <button type="button" class="btn-ghost"
+                onclick="document.getElementById('co-del-confirm').style.display='none'">Cancelar</button>
+        <button type="submit" class="btn btn-danger">Sí, eliminar</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endif %}
 
 {% include 'crm/_country_datalist.html' %}
 <script>

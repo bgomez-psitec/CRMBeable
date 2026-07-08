@@ -6,31 +6,34 @@ from crm.views.docs import _save_contact_doc
 @login_required
 def colaboradores(request):
     qs = Colaborador.objects.select_related('relation').all()
-    q = request.GET.get('q', '').strip()
-    tipo = request.GET.get('tipo', '').strip()
-    view = request.GET.get('view', 'list')
+    q               = request.GET.get('q', '').strip()
+    tipo            = request.GET.get('tipo', '').strip()
+    relacion_filter = request.GET.get('relacion', '').strip()
+    sector_filter   = request.GET.get('sector', '').strip()
+    view            = request.GET.get('view', 'list')
+
     if q:
         qs = qs.filter(name__icontains=q)
-    tipo_field = next((f for slug, f, _ in TIPO_CONTACTO_OPTS if slug == tipo), None)
-    if tipo_field:
-        qs = qs.filter(**{tipo_field: True})
-    group = request.GET.get('group', '')
+    if relacion_filter:
+        qs = qs.filter(relation__nombre=relacion_filter)
+    if sector_filter:
+        qs = qs.filter(sectors__icontains=sector_filter)
+
+    g1, g2, g3 = parse_groups(request.GET, COLAB_GROUP_KEYS.keys())
+
     cards = [
         {
             'colaborador': c,
             'activos_colab': c.colaboraciones.exclude(status__nombre__in=COLLAB_TERMINAL).count(),
-            'activos_ma': c.contactos_ma.exclude(status__nombre__in=MA_TERMINAL).count() if c.es_comprador else 0,
+            'activos_ma': c.contactos_ma.exclude(status__nombre__in=MA_TERMINAL).count(),
         }
         for c in qs
     ]
-    groups = None
-    if group in ('country',):
-        groups = {}
-        for card in cards:
-            key = getattr(card['colaborador'], group) or '—'
-            groups.setdefault(key, []).append(card)
 
-    etapas = list(EtapaRelacionColaborador.objects.all())
+    active_groups = [g for g in (g1, g2, g3) if g]
+    groups = build_groups(cards, [COLAB_GROUP_KEYS[g] for g in active_groups]) if active_groups else None
+
+    etapas = list(EtapaRelacion.objects.all())
     pipe_stages = []
     for etapa in etapas:
         items = [c for c in cards if c['colaborador'].relation_id == etapa.pk]
@@ -41,8 +44,14 @@ def colaboradores(request):
 
     return render(request, 'crm/colaboradores.html', {
         'active_nav': 'colaboradores', 'cards': cards, 'groups': groups,
-        'group': group, 'q': q, 'tipo': tipo,
-        'tipo_opts': TIPO_CONTACTO_OPTS,
+        'group1': g1, 'group2': g2, 'group3': g3,
+        'group_labels': COLAB_GROUP_LABELS,
+        'q': q, 'tipo': tipo,
+        'relacion_filter': relacion_filter,
+        'sector_filter': sector_filter,
+        'etapas_relacion': EtapaRelacion.objects.all(),
+        'grado_actividad_opts': GradoActividad.objects.filter(habilitada=True),
+        'sector_opts': get_sector_opts(),
         'view': view, 'pipe_stages': pipe_stages,
         'can_edit': can_edit(request.user),
     })
@@ -60,10 +69,6 @@ def colaborador_create(request):
                 country=request.POST.get('country', '').strip(),
                 sectors=request.POST.get('sectors', '').strip(),
                 notes=request.POST.get('notes', '').strip(),
-                es_comprador=bool(request.POST.get('es_comprador')),
-                es_colaborador=bool(request.POST.get('es_colaborador')),
-                es_cliente=bool(request.POST.get('es_cliente')),
-                es_proveedor=bool(request.POST.get('es_proveedor')),
             )
             # Contacto persona pre-rellenado desde email (campos opcionales)
             contact_name = request.POST.get('contact_name', '').strip()
@@ -81,6 +86,35 @@ def colaborador_create(request):
 
 
 @login_required
+def colaborador_set_field(request, pk):
+    """AJAX/POST: change a single groupable field on a colaborador."""
+    if request.method != 'POST':
+        return JsonResponse({'ok': False}, status=405)
+    if not (request.user.role in ('admin', 'editor')):
+        return JsonResponse({'ok': False}, status=403)
+    obj = get_object_or_404(Colaborador, pk=pk)
+    field = request.POST.get('field', '')
+    value = request.POST.get('value', '')
+    if field == 'country':
+        obj.country = '' if value == '—' else value
+        obj.save(update_fields=['country'])
+        return JsonResponse({'ok': True})
+    return JsonResponse({'ok': False, 'error': 'campo no permitido'}, status=400)
+
+
+@login_required
+@login_required
+def colaborador_delete(request, pk):
+    if request.user.role != 'admin':
+        return HttpResponseForbidden()
+    obj = get_object_or_404(Colaborador, pk=pk)
+    if request.method == 'POST':
+        obj.delete()
+        messages.success(request, 'Colaborador eliminado.')
+        return redirect('crm:colaboradores')
+    return HttpResponseForbidden()
+
+
 def colaborador_edit(request, pk):
     if not can_edit(request.user):
         return HttpResponseForbidden()
@@ -93,13 +127,10 @@ def colaborador_edit(request, pk):
         obj.phone = request.POST.get('phone', '').strip()
         obj.linkedin = request.POST.get('linkedin', '').strip()
         obj.notes = request.POST.get('notes', '').strip()
-        obj.es_comprador = bool(request.POST.get('es_comprador'))
-        obj.es_colaborador = bool(request.POST.get('es_colaborador'))
-        obj.es_cliente = bool(request.POST.get('es_cliente'))
-        obj.es_proveedor = bool(request.POST.get('es_proveedor'))
-        obj.es_inversor_esporadico = bool(request.POST.get('es_inversor_esporadico'))
         relation_id = request.POST.get('relation')
         obj.relation_id = relation_id or None
+        obj.grado_actividad_id = request.POST.get('grado_actividad') or None
+        obj.pub_status = request.POST.get('pub_status', '').strip()
         obj.save()
         # Guardar contactos
         names  = request.POST.getlist('contact_name')
@@ -213,8 +244,9 @@ def colaborador_detail(request, pk):
         'colab_descartadas': colab_descartadas,
         'chrono': chrono,
         'log_rounds': log_rounds, 'log_ma': log_ma, 'log_colabs': log_colabs,
-        'tipo_opts': TIPO_CONTACTO_OPTS,
-        'etapas_relacion': EtapaRelacionColaborador.objects.all(),
+        'etapas_relacion': EtapaRelacion.objects.all(),
+        'grado_actividad_opts': GradoActividad.objects.filter(habilitada=True),
+        'estado_publico_opts': EstadoPublicoInversor.objects.filter(habilitada=True),
         'sector_opts': get_sector_opts(),
         'can_edit': can_edit(request.user),
     })

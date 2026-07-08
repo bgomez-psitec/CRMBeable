@@ -29,6 +29,21 @@ def round_create(request, company_pk):
 
 
 @login_required
+@login_required
+def round_delete(request, pk):
+    from accounts.models import Role
+    r = get_object_or_404(Round.objects.select_related('company'), pk=pk)
+    if request.user.role != Role.ADMIN or not can_see_company(request.user, r.company_id):
+        return HttpResponseForbidden()
+    if request.method == 'POST':
+        company_pk = r.company_id
+        r.delete()
+        messages.success(request, 'Ronda de inversión eliminada.')
+        return redirect('crm:company_detail', pk=company_pk)
+    return HttpResponseForbidden()
+
+
+@login_required
 def round_edit(request, pk):
     from datetime import date as _date
     r = get_object_or_404(Round.objects.select_related('company'), pk=pk)
@@ -49,11 +64,13 @@ def round_edit(request, pk):
             return redirect('crm:round_detail', pk=r.pk)
     else:
         form = RoundForm(instance=r)
+    from accounts.models import Role
     return render(request, 'crm/round_form.html', {
         'active_nav': 'companies', 'form': form,
         'title': f'Editar ronda — {r.company.name}', 'round': r,
         'fase_logs': list(r.fase_logs.select_related('fase').order_by('date', 'pk')),
         'fases_ronda': list(FaseRonda.objects.order_by('pk')),
+        'is_admin': request.user.role == Role.ADMIN,
     })
 
 
@@ -126,6 +143,9 @@ def round_detail(request, pk):
 
     all_investors = visible_investors(request.user).order_by('name')
     all_colaboradores = Colaborador.objects.order_by('name')
+    all_rounds = Round.objects.filter(
+        company_id__in=allowed_company_ids(request.user)
+    ).select_related('company').order_by('company__name', 'type')
 
     from collections import defaultdict
     _fase_dates_r: dict = defaultdict(list)
@@ -142,6 +162,7 @@ def round_detail(request, pk):
         'can_edit': can_edit(request.user),
         'all_investors': all_investors,
         'all_colaboradores': all_colaboradores,
+        'all_rounds': all_rounds,
         'fases_ronda': FaseRonda.objects.order_by('pk'),
         'fase_dates': dict(_fase_dates_r),
     })
@@ -287,6 +308,12 @@ def intro_edit(request, pk):
         return HttpResponseForbidden()
     if request.method == 'POST':
         tab = request.POST.get('tab', 'matriz')
+        new_round_id = request.POST.get('round_id') or None
+        if new_round_id:
+            new_round = get_object_or_404(Round.objects.select_related('company'), pk=new_round_id)
+            if can_see_company(request.user, new_round.company_id):
+                intro.round_id = new_round_id
+                intro.company_id = new_round.company_id
         intro.status_id  = request.POST.get('status') or intro.status_id
         intro.ticket     = request.POST.get('ticket') or None
         intro.date       = request.POST.get('date') or None
@@ -294,9 +321,23 @@ def intro_edit(request, pk):
         intro.next_action = request.POST.get('next_action', '')
         intro.next_date  = request.POST.get('next_date') or None
         intro.notes      = request.POST.get('notes', '')
-        intro.save(update_fields=['status', 'ticket', 'date', 'intro_by', 'next_action', 'next_date', 'notes'])
+        intro.save(update_fields=['round_id', 'company_id', 'status', 'ticket', 'date', 'intro_by', 'next_action', 'next_date', 'notes'])
         messages.success(request, 'Presentación actualizada.')
         return redirect(reverse('crm:round_detail', kwargs={'pk': intro.round_id}) + f'?tab={tab}')
+    return HttpResponseForbidden()
+
+
+@login_required
+def intro_delete(request, pk):
+    intro = get_object_or_404(Introduction, pk=pk)
+    if not can_edit(request.user) or not can_see_company(request.user, intro.company_id):
+        return HttpResponseForbidden()
+    if request.method == 'POST':
+        round_pk = intro.round_id
+        tab = request.POST.get('tab', 'matriz')
+        intro.delete()
+        messages.success(request, 'Presentación eliminada.')
+        return redirect(reverse('crm:round_detail', kwargs={'pk': round_pk}) + f'?tab={tab}')
     return HttpResponseForbidden()
 
 

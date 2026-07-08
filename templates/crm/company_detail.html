@@ -92,6 +92,9 @@ document.querySelectorAll('.colab-kanban-body').forEach(col => {
   {% if company.sectors %}
     <div class="mt-2" style="font-size:.8rem;color:var(--dc-text-muted)">Sectores: {{ company.sectors }}</div>
   {% endif %}
+  {% if company.notes %}
+    <div class="mt-2" style="font-size:.875rem;color:var(--dc-text-muted);white-space:pre-line">{{ company.notes }}</div>
+  {% endif %}
 </div>
 
 {# ── KPIs globales ────────────────────────────────────────────────────────── #}

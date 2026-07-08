@@ -1,6 +1,10 @@
 {% load crm_filters %}
 <div class="col-md-6 col-xl-4">
-  <div class="dc-card" style="cursor:pointer;padding:8px 12px" onclick="location.href='{% url 'crm:company_detail' card.company.pk %}'">
+  <div class="dc-card co-draggable" draggable="true" data-co-pk="{{ card.company.pk }}"
+       style="cursor:grab;padding:8px 12px"
+       onclick="if(!this._wasDragged)location.href='{% url 'crm:company_detail' card.company.pk %}'"
+       ondragstart="coDragStart(event)"
+       ondragend="this._wasDragged=false">
     <div class="d-flex justify-content-between align-items-center gap-2">
       <span class="fw-semibold text-truncate d-flex align-items-center gap-2" style="font-size:.875rem">
         {% if card.company.logo %}
@@ -8,7 +12,7 @@
                style="width:22px;height:22px;object-fit:contain;border-radius:4px;
                       background:#fff;border:1px solid var(--dc-border);flex-shrink:0">
         {% endif %}
-        {{ card.company.name }}
+        {% if card.company.int_code %}<span style="color:var(--dc-text-muted);font-weight:500;font-size:.8rem">{{ card.company.int_code }}</span> {% endif %}{{ card.company.name }}
       </span>
       <span class="dc-badge dc-badge--amber flex-shrink-0" style="font-size:.68rem">{{ card.company.stage|default:"—" }}</span>
     </div>

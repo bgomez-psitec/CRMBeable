@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block title %}Colaboradores — CRM Gestora{% endblock %}
 {% block topbar_title %}Colaboradores{% endblock %}
-{% block topbar_sub %}Compradores, clientes, proveedores y partners{% endblock %}
+{% block topbar_sub %}Compradores, clientes, proveedores y partners · <b>{{ cards|length }}</b> colaborador{% if cards|length != 1 %}es{% endif %}{% endblock %}
 {% block topbar_actions %}
   <a href="{% url 'crm:colaborador_contacts' %}" class="btn-ghost">
     <i class="bi bi-person-lines-fill"></i> Contactos
@@ -14,46 +14,65 @@
 {% endblock %}
 {% block content %}
 
-{# ── Filtros tipo (pills) ──────────────────────────────────────────────── #}
-<div class="d-flex gap-2 mb-3 flex-wrap align-items-center justify-content-between">
-  <div class="d-flex gap-2 flex-wrap">
-    <a href="{% url 'crm:colaboradores' %}?view={{ view }}{% if q %}&q={{ q }}{% endif %}"
-       class="dc-badge {% if not tipo %}dc-badge--blue{% else %}dc-badge--grey{% endif %}"
-       style="font-size:.8rem;padding:5px 12px;text-decoration:none;cursor:pointer">Todos</a>
-    {% for slug, field, label in tipo_opts %}
-    <a href="?view={{ view }}&tipo={{ slug }}{% if q %}&q={{ q }}{% endif %}"
-       class="dc-badge {% if tipo == slug %}dc-badge--blue{% else %}dc-badge--grey{% endif %}"
-       style="font-size:.8rem;padding:5px 12px;text-decoration:none;cursor:pointer">{{ label }}</a>
-    {% endfor %}
-  </div>
+<div class="d-flex gap-2 mb-3 justify-content-end">
   <div class="d-flex gap-1">
-    <a href="?view=pipeline{% if tipo %}&tipo={{ tipo }}{% endif %}{% if q %}&q={{ q }}{% endif %}"
+    <a href="?view=pipeline{% if q %}&q={{ q }}{% endif %}"
        class="btn-ghost" style="{% if view == 'pipeline' %}background:var(--dc-accent);color:#fff;border-color:var(--dc-accent){% endif %}">
       <i class="bi bi-kanban"></i> Pipeline
     </a>
-    <a href="?view=list{% if tipo %}&tipo={{ tipo }}{% endif %}{% if q %}&q={{ q }}{% endif %}"
+    <a href="?view=list{% if q %}&q={{ q }}{% endif %}"
        class="btn-ghost" style="{% if view == 'list' %}background:var(--dc-accent);color:#fff;border-color:var(--dc-accent){% endif %}">
       <i class="bi bi-list-ul"></i> Listado
     </a>
   </div>
 </div>
 
-<form method="get" class="d-flex gap-2 mb-4 flex-wrap">
+<form method="get" class="d-flex gap-2 mb-4 flex-wrap align-items-center">
   <input type="hidden" name="view" value="{{ view }}">
-  {% if tipo %}<input type="hidden" name="tipo" value="{{ tipo }}">{% endif %}
-  <input type="text" name="q" value="{{ q }}" class="form-control" style="max-width:280px" placeholder="Buscar…">
+  <input type="text" name="q" value="{{ q }}" class="form-control" style="width:200px;flex-shrink:0" placeholder="Buscar…">
+
+  {# Filtro Relación #}
+  <select name="relacion" class="form-select dc-filter-sel" style="width:160px;flex-shrink:0;background:rgba(20,184,166,.08);border-color:rgba(20,184,166,.35);color:var(--dc-text)" onchange="this.form.submit()">
+    <option value="">Relación</option>
+    {% for etapa in etapas_relacion %}
+      <option value="{{ etapa.nombre }}" {% if relacion_filter == etapa.nombre %}selected{% endif %}>{{ etapa.nombre }}</option>
+    {% endfor %}
+  </select>
+
+  {# Filtro Sectores #}
+  <select name="sector" class="form-select dc-filter-sel" style="width:160px;flex-shrink:0;background:rgba(20,184,166,.08);border-color:rgba(20,184,166,.35);color:var(--dc-text)" onchange="this.form.submit()">
+    <option value="">Sectores</option>
+    {% for s in sector_opts %}
+      <option value="{{ s }}" {% if sector_filter == s %}selected{% endif %}>{{ s }}</option>
+    {% endfor %}
+  </select>
+
+  {# Agrupación — solo en vista lista #}
   {% if view == 'list' %}
-  <select name="group" class="form-select" style="max-width:180px" onchange="this.form.submit()">
-    <option value="">Sin agrupación</option>
-    <option value="country" {% if group == 'country' %}selected{% endif %}>Por país</option>
+  <span style="width:1px;height:28px;background:var(--dc-border);flex-shrink:0;align-self:center;margin:0 2px"></span>
+  <select name="group1" class="form-select" style="width:165px;flex-shrink:0;background:rgba(99,102,241,.08);border-color:rgba(99,102,241,.35);color:var(--dc-text)" onchange="this.form.submit()">
+    <option value="">Sin agrupar</option>
+    {% for val, lbl in group_labels %}
+      <option value="{{ val }}" {% if group1 == val %}selected{% endif %}>Agrupar: {{ lbl }}</option>
+    {% endfor %}
+  </select>
+  {% if group1 %}
+  <select name="group2" class="form-select" style="width:155px;flex-shrink:0;background:rgba(99,102,241,.08);border-color:rgba(99,102,241,.35);color:var(--dc-text)" onchange="this.form.submit()">
+    <option value="">— 2ª agrupación —</option>
+    {% for val, lbl in group_labels %}{% if val != group1 %}
+      <option value="{{ val }}" {% if group2 == val %}selected{% endif %}>{{ lbl }}</option>
+    {% endif %}{% endfor %}
   </select>
   {% endif %}
-  <button type="submit" class="btn-ghost" style="align-self:center">Buscar</button>
-  {% if q or tipo %}
+  {% endif %}
+
+  <button type="submit" class="btn-ghost" style="height:38px;flex-shrink:0">Buscar</button>
+  {% if q or relacion_filter or sector_filter or group1 %}
     <a href="{% url 'crm:colaboradores' %}?view={{ view }}" class="btn-ghost" style="color:var(--dc-danger);border-color:rgba(239,68,68,.3)">
       <i class="bi bi-x"></i> Limpiar
     </a>
   {% endif %}
+  <span style="font-size:.8rem;color:var(--dc-text-muted);white-space:nowrap;margin-left:4px">{{ cards|length }} colaborador{% if cards|length != 1 %}es{% endif %}</span>
 </form>
 
 {% if view == 'pipeline' %}
@@ -92,12 +111,44 @@
 </form>
 
 {% elif groups %}
-  {% for key, group_cards in groups.items %}
-  <p class="mb-2 mt-3" style="font-size:.68rem;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--dc-text-muted)">{{ key }}</p>
-  <div class="row g-3 mb-2">
-    {% for card in group_cards %}{% include "crm/_colaborador_card.html" %}{% endfor %}
+  {# Nivel 1 #}
+  {% for k1, v1 in groups.items %}
+  <div class="dc-card mb-2">
+    <button class="dc-card__header w-100 text-start" style="background:none;border:none;cursor:pointer"
+            type="button" data-bs-toggle="collapse" data-bs-target="#cg1-{{ forloop.counter }}"
+            aria-expanded="false">
+      <h2 class="dc-card__title d-flex align-items-center gap-2 mb-0">
+        {{ k1 }}
+        <span class="dc-badge dc-badge--grey ms-1">{{ v1|length }}</span>
+      </h2>
+      <i class="bi bi-chevron-right grp-chevron"></i>
+    </button>
+    <div class="collapse" id="cg1-{{ forloop.counter }}">
+      {% if group2 %}
+        {# Nivel 2 #}
+        {% for k2, v2 in v1.items %}
+        <div class="grp-l2-wrap">
+          <button class="grp-l2-header" type="button"
+                  data-bs-toggle="collapse" data-bs-target="#cg2-{{ forloop.parentloop.counter }}-{{ forloop.counter }}"
+                  aria-expanded="false">
+            <span class="d-flex align-items-center gap-2">
+              {{ k2 }}
+              <span class="dc-badge dc-badge--grey">{{ v2|length }}</span>
+            </span>
+            <i class="bi bi-chevron-right grp-chevron"></i>
+          </button>
+          <div class="collapse p-3" id="cg2-{{ forloop.parentloop.counter }}-{{ forloop.counter }}">
+            <div class="row g-3">{% for card in v2 %}{% include "crm/_colaborador_card.html" %}{% endfor %}</div>
+          </div>
+        </div>
+        {% endfor %}
+      {% else %}
+        <div class="dc-card__body"><div class="row g-3">{% for card in v1 %}{% include "crm/_colaborador_card.html" %}{% endfor %}</div></div>
+      {% endif %}
+    </div>
   </div>
   {% endfor %}
+
 {% else %}
 <div class="row g-3">
   {% for card in cards %}{% include "crm/_colaborador_card.html" %}{% endfor %}
@@ -129,18 +180,6 @@
             <input type="text" name="sectors" class="form-control">
           </div>
           <div class="col-12">
-            <label class="form-label">Tipo de contacto (puede ser varios)</label>
-            <div class="d-flex gap-3 flex-wrap mt-1">
-              {% for slug, field, label in tipo_opts %}
-              <div class="form-check">
-                <input class="form-check-input" type="checkbox" name="{{ field }}" value="1"
-                       id="new_{{ field }}" {% if tipo == slug %}checked{% endif %}>
-                <label class="form-check-label" for="new_{{ field }}">{{ label }}</label>
-              </div>
-              {% endfor %}
-            </div>
-          </div>
-          <div class="col-12">
             <label class="form-label">Notas</label>
             <textarea name="notes" class="form-control" rows="2"></textarea>
           </div>
@@ -157,6 +196,13 @@
 {% endblock %}
 
 {% block extra_js %}
+<script>
+document.querySelectorAll('.dc-filter-sel').forEach(function(sel) {
+  function update() { sel.style.fontWeight = sel.value ? '400' : '700'; }
+  update();
+  sel.addEventListener('change', update);
+});
+</script>
 <script>
 document.addEventListener('DOMContentLoaded', () => {
   const form = document.getElementById('colab-relation-form');

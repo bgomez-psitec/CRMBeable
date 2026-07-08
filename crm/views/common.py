@@ -19,10 +19,11 @@ from crm.forms import ColaboracionForm, CompanyForm, ContactoMAForm, Introductio
 from crm.models import (
     Area, Colaboracion, ColaboradorContacto, Colaborador, ColaboradorLog, Company,
     ContactoMA, Documento, EstadoColaboracion, EstadoInversion, EstadoMA, EstadoPresentacion,
-    EtapaInversion, EtapaRelacion, EtapaRelacionColaborador, Facturacion,
+    EtapaInversion, EtapaRelacion, Facturacion, GradoActividad,
     FaseMA, FaseRonda, Fund, InboxMessage, Interaction, InteraccionColaboracion, InteraccionMA,
     Introduction, Investor, InvestorContact, InvestorLog, Nivel, ProcesoMA, ProcesoMAFaseLog,
-    Provincia, RangoAUM, RangoTicket, Round, RoundFaseLog, Sector, TiempoMercado, TipoInversor,
+    Provincia, RangoAUM, RangoTicket, Round, RoundFaseLog, Sector, TiempoMercado,
+    TipoInversor, TipoInversionInversor, EstadoPublicoInversor, TipoRelacionColaboracion,
 )
 from crm.permissions import (
     allowed_company_ids, can_edit, can_see_company, visible_companies, visible_introductions, visible_investors,
@@ -122,10 +123,13 @@ CON_GROUP_KEYS = {
 }
 CON_GROUP_LABELS = [('investor', 'Inversor'), ('role', 'Cargo')]
 
-TIPO_CONTACTO_OPTS = [
-    ('comprador',           'es_comprador',           'Comprador'),
-    ('colaborador',         'es_colaborador',         'Colaborador'),
-    ('cliente',             'es_cliente',             'Cliente'),
-    ('proveedor',           'es_proveedor',           'Proveedor'),
-    ('inversor_esporadico', 'es_inversor_esporadico', 'Inversor esporádico'),
+COLAB_GROUP_KEYS = {
+    'country':  lambda c: c['colaborador'].country or '—',
+    'sectors':  lambda c: (c['colaborador'].sectors or '').split(',')[0].strip() or '—',
+    'relation': lambda c: c['colaborador'].relation.nombre if c['colaborador'].relation else '— Sin relación —',
+}
+COLAB_GROUP_LABELS = [
+    ('country',  'País'),
+    ('sectors',  'Sectores'),
+    ('relation', 'Relación'),
 ]

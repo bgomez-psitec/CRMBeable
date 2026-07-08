@@ -21,7 +21,13 @@
   <li class="nav-item" role="presentation">
     <button class="nav-link" id="tab-ma" data-bs-toggle="tab" data-bs-target="#pane-ma"
             type="button" role="tab" style="font-size:.875rem">
-      <i class="bi bi-briefcase me-1"></i>M&amp;A y Colaboración
+      <i class="bi bi-briefcase me-1"></i>Proceso M&amp;A
+    </button>
+  </li>
+  <li class="nav-item" role="presentation">
+    <button class="nav-link" id="tab-colab" data-bs-toggle="tab" data-bs-target="#pane-colab"
+            type="button" role="tab" style="font-size:.875rem">
+      <i class="bi bi-handshake me-1"></i>Colaboración
     </button>
   </li>
   <li class="nav-item" role="presentation">
@@ -31,9 +37,21 @@
     </button>
   </li>
   <li class="nav-item" role="presentation">
+    <button class="nav-link" id="tab-colaboradores" data-bs-toggle="tab" data-bs-target="#pane-colaboradores"
+            type="button" role="tab" style="font-size:.875rem">
+      <i class="bi bi-people me-1"></i>Colaboradores
+    </button>
+  </li>
+  <li class="nav-item" role="presentation">
     <button class="nav-link" id="tab-inversores" data-bs-toggle="tab" data-bs-target="#pane-inversores"
             type="button" role="tab" style="font-size:.875rem">
       <i class="bi bi-people me-1"></i>Inversores
+    </button>
+  </li>
+  <li class="nav-item" role="presentation">
+    <button class="nav-link" id="tab-generico" data-bs-toggle="tab" data-bs-target="#pane-generico"
+            type="button" role="tab" style="font-size:.875rem">
+      <i class="bi bi-sliders me-1"></i>Genérico
     </button>
   </li>
   {% endif %}
@@ -65,35 +83,43 @@
   {# ── Ronda Inversión ─────────────────────────────────────────────────────── #}
   <div class="tab-pane fade" id="pane-ronda" role="tabpanel">
     <div class="row g-3">
-      <div class="col-md-4">{% with title="Estados Inversión" tipo="estado" items=estados %}{% include "crm/_catalogo_card.html" %}{% endwith %}</div>
-      <div class="col-md-4">{% with title="Fases Ronda Inversión" tipo="fase" items=fases %}{% include "crm/_catalogo_card.html" %}{% endwith %}</div>
-      <div class="col-md-4">{% with title="Etapas Relación Inversores" tipo="relacion" items=relaciones %}{% include "crm/_catalogo_card.html" %}{% endwith %}</div>
+      <div class="col-md-4">{% with title="Estados Inversión" tipo="estado" items=estados note="Se refiere a los estados de las Introducciones de contactos realizadas en las Rondas de Inversión." %}{% include "crm/_catalogo_card.html" %}{% endwith %}</div>
+      <div class="col-md-4">{% with title="Fases Ronda Inversión" tipo="fase" items=fases note="Se refiere a las diferentes fases en que se encuentra una Ronda de Inversión. Cualquier estado diferente a Cerrada se considera que la ronda de inversión está Activa." %}{% include "crm/_catalogo_card.html" %}{% endwith %}</div>
     </div>
   </div>
 
-  {# ── M&A y Colaboración ──────────────────────────────────────────────────── #}
+  {# ── M&A ─────────────────────────────────────────────────────────────────── #}
   <div class="tab-pane fade" id="pane-ma" role="tabpanel">
     <div class="row g-3">
-      <div class="col-md-4">{% with title="Estados M&A" tipo="estado_ma" items=estados_ma %}{% include "crm/_catalogo_card.html" %}{% endwith %}</div>
-      <div class="col-md-4">{% with title="Fases Proceso M&A" tipo="fase_ma" items=fases_ma %}{% include "crm/_catalogo_card.html" %}{% endwith %}</div>
-      <div class="col-md-4">{% with title="Estados Colaboración" tipo="estado_colab" items=estados_colab %}{% include "crm/_catalogo_card.html" %}{% endwith %}</div>
+      <div class="col-md-4">{% with title="Estados M&A" tipo="estado_ma" items=estados_ma note="Se refiere a los estados de las Introducciones de contactos realizadas en los Procesos de M&A." %}{% include "crm/_catalogo_card.html" %}{% endwith %}</div>
+      <div class="col-md-4">{% with title="Fases Proceso M&A" tipo="fase_ma" items=fases_ma note="Se refiere a las diferentes fases en que se encuentra un Proceso de M&A. Cualquier estado diferente a Cerrada se considera que el proceso de M&A está Activo." %}{% include "crm/_catalogo_card.html" %}{% endwith %}</div>
     </div>
-    <div class="row g-3 mt-0">
-      <div class="col-md-4">{% with title="Etapas Relación Colaboradores" tipo="relacion_colab" items=relaciones_colab %}{% include "crm/_catalogo_card.html" %}{% endwith %}</div>
+  </div>
+
+  {# ── Colaboración ─────────────────────────────────────────────────────────── #}
+  <div class="tab-pane fade" id="pane-colab" role="tabpanel">
+    <div class="row g-3">
+      <div class="col-md-4">{% with title="Estados Colaboración" tipo="estado_colab" items=estados_colab note="Se refiere a los estados de las Introducciones de contactos realizadas para obtener Colaboraciones." %}{% include "crm/_catalogo_card.html" %}{% endwith %}</div>
+      <div class="col-md-4">{% with title="Tipos Relación Colaboración" tipo="tipo_relacion_colab" items=tipos_relacion_colab note="Se refiere a qué Tipo de Relación se define para esta colaboración concreta que se abre con la introducción correspondiente del contacto." %}{% include "crm/_catalogo_card.html" %}{% endwith %}</div>
     </div>
+  </div>
+
+  {# ── Colaboradores ───────────────────────────────────────────────────────── #}
+  <div class="tab-pane fade" id="pane-colaboradores" role="tabpanel">
+    <p style="font-size:.85rem;color:var(--dc-text-muted)">Los catálogos compartidos con Inversores (Etapa de Relación y Grado de Actividad) se gestionan en la pestaña <strong>Genérico</strong>.</p>
   </div>
 
   {# ── Participadas ────────────────────────────────────────────────────────── #}
   <div class="tab-pane fade" id="pane-participadas" role="tabpanel">
     <div class="row g-3 mb-3">
-      <div class="col-md-4">{% with title="Fondos" tipo="fund" items=cat_funds %}{% include "crm/_catalogo_crud_card.html" %}{% endwith %}</div>
-      <div class="col-md-4">{% with title="Estados Inversión" tipo="estado_inversion" items=cat_estado_inversion %}{% include "crm/_catalogo_crud_card.html" %}{% endwith %}</div>
-      <div class="col-md-4">{% with title="Sectores" tipo="sector" items=cat_sector %}{% include "crm/_catalogo_crud_card.html" %}{% endwith %}</div>
+      <div class="col-md-4">{% with title="Fondos" tipo="fund" items=cat_funds note="Fondos propios de la gestora. Se usa para indicar en qué fondo está participada cada empresa del portfolio." %}{% include "crm/_catalogo_crud_card.html" %}{% endwith %}</div>
+      <div class="col-md-4">{% with title="Estados Inversión" tipo="estado_inversion" items=cat_estado_inversion note="Se refiere a la etapa de madurez/financiación en que se encuentra la empresa participada (Pre-seed, Seed, Serie A, etc.)." %}{% include "crm/_catalogo_crud_card.html" %}{% endwith %}</div>
+      <div class="col-md-4">{% with title="Sectores" tipo="sector" items=cat_sector note="Sectores de actividad disponibles para clasificar donde opera las empresas participadas y donde invierten los inversores." %}{% include "crm/_catalogo_crud_card.html" %}{% endwith %}</div>
     </div>
     <div class="row g-3 mb-3">
-      <div class="col-md-4">{% with title="Niveles (TRL/MRL)" tipo="nivel" items=cat_nivel %}{% include "crm/_catalogo_crud_card.html" %}{% endwith %}</div>
-      <div class="col-md-4">{% with title="Tiempo al Mercado" tipo="tiempo_mercado" items=cat_tiempo_mercado %}{% include "crm/_catalogo_crud_card.html" %}{% endwith %}</div>
-      <div class="col-md-4">{% with title="Facturación" tipo="facturacion" items=cat_facturacion %}{% include "crm/_catalogo_crud_card.html" %}{% endwith %}</div>
+      <div class="col-md-4">{% with title="Niveles (TRL/MRL)" tipo="nivel" items=cat_nivel note="Nivel de madurez tecnológica (TRL) y de mercado (MRL) de la empresa participada. Escala estándar europea de 1 a 9." %}{% include "crm/_catalogo_crud_card.html" %}{% endwith %}</div>
+      <div class="col-md-4">{% with title="Tiempo al Mercado" tipo="tiempo_mercado" items=cat_tiempo_mercado note="Estimación del tiempo que le queda a la empresa para tener un producto comercializable o alcanzar el mercado objetivo." %}{% include "crm/_catalogo_crud_card.html" %}{% endwith %}</div>
+      <div class="col-md-4">{% with title="Facturación" tipo="facturacion" items=cat_facturacion note="Rangos de facturación anual para clasificar el tamaño y estadio de las empresas participadas." %}{% include "crm/_catalogo_crud_card.html" %}{% endwith %}</div>
     </div>
     {# Provincias #}
     <div class="dc-card">
@@ -174,13 +200,25 @@
   {# ── Inversores ──────────────────────────────────────────────────────────── #}
   <div class="tab-pane fade" id="pane-inversores" role="tabpanel">
     <div class="row g-3 mb-3">
-      <div class="col-md-4">{% with title="Tipos de Inversor" tipo="tipo_inversor" items=cat_tipo_inversor %}{% include "crm/_catalogo_crud_card.html" %}{% endwith %}</div>
-      <div class="col-md-4">{% with title="Etapas de Inversión" tipo="etapa_inversion" items=cat_etapa_inversion %}{% include "crm/_catalogo_crud_card.html" %}{% endwith %}</div>
-      <div class="col-md-4">{% with title="Rangos de Ticket" tipo="rango_ticket" items=cat_rango_ticket %}{% include "crm/_catalogo_crud_card.html" %}{% endwith %}</div>
+<div class="col-md-4">{% with title="Tipos de Inversor" tipo="tipo_inversor" items=cat_tipo_inversor note="Categoría del inversor según su naturaleza (p.ej. Family Office, VC, Business Angel, Corporativo)." %}{% include "crm/_catalogo_crud_card.html" %}{% endwith %}</div>
+      <div class="col-md-4">{% with title="Etapas de Inversión" tipo="etapa_inversion" items=cat_etapa_inversion note="Etapas de financiación en las que el inversor suele participar (p.ej. Pre-seed, Seed, Serie A). Ayuda a filtrar inversores por su perfil de inversión." %}{% include "crm/_catalogo_crud_card.html" %}{% endwith %}</div>
+      <div class="col-md-4">{% with title="Rangos de Ticket" tipo="rango_ticket" items=cat_rango_ticket note="Rango de importe habitual de inversión por operación del inversor. Facilita la búsqueda de inversores según el tamaño de ronda." %}{% include "crm/_catalogo_crud_card.html" %}{% endwith %}</div>
+    </div>
+    <div class="row g-3 mb-3">
+      <div class="col-md-4">{% with title="Rangos AUM" tipo="rango_aum" items=cat_rango_aum note="Activos bajo gestión (Assets Under Management) del inversor. Indica el tamaño del fondo o patrimonio gestionado." %}{% include "crm/_catalogo_crud_card.html" %}{% endwith %}</div>
+      <div class="col-md-4">{% with title="Áreas Geográficas" tipo="area" items=cat_area note="Zonas geográficas de interés del inversor. Permite filtrar inversores según su foco territorial." %}{% include "crm/_catalogo_crud_card.html" %}{% endwith %}</div>
     </div>
     <div class="row g-3">
-      <div class="col-md-4">{% with title="Rangos AUM" tipo="rango_aum" items=cat_rango_aum %}{% include "crm/_catalogo_crud_card.html" %}{% endwith %}</div>
-      <div class="col-md-4">{% with title="Áreas Geográficas" tipo="area" items=cat_area %}{% include "crm/_catalogo_crud_card.html" %}{% endwith %}</div>
+      <div class="col-md-4">{% with title="Tipos de Inversión" tipo="tipo_inversion_inv" items=cat_tipo_inversion_inv note="Modalidad de inversión que realiza el inversor: directamente en compañías, como partícipe (LP) en fondos, o ambas." %}{% include "crm/_catalogo_crud_card.html" %}{% endwith %}</div>
+    </div>
+  </div>
+
+  {# ── Genérico ────────────────────────────────────────────────────────────── #}
+  <div class="tab-pane fade" id="pane-generico" role="tabpanel">
+    <div class="row g-3">
+      <div class="col-md-4">{% with title="Etapa de Relación" tipo="relacion" items=relaciones note="Define en qué fase se encuentra la relación con el contacto. Se aplica tanto a Inversores como a Colaboradores y permite hacer seguimiento del nivel de vínculo alcanzado." %}{% include "crm/_catalogo_card.html" %}{% endwith %}</div>
+      <div class="col-md-4">{% with title="Grado de Actividad" tipo="grado_actividad" items=cat_grado_actividad note="Indica el nivel de actividad actual del contacto (Inversor o Colaborador) con la gestora. Ayuda a priorizar el seguimiento y la dedicación de recursos." %}{% include "crm/_catalogo_crud_card.html" %}{% endwith %}</div>
+      <div class="col-md-4">{% with title="Estado Público" tipo="estado_publico_inv" items=cat_estado_publico_inv note="Indica si el contacto (Inversor o Colaborador) tiene perfil público o es privado/discreto. Aplica tanto a inversores como a colaboradores." %}{% include "crm/_catalogo_crud_card.html" %}{% endwith %}</div>
     </div>
   </div>
 

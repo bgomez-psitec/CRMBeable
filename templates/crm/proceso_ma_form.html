@@ -4,14 +4,28 @@
 {% block topbar_title %}{{ title }}{% endblock %}
 {% block content %}
 <div class="dc-card dc-card__body" style="max-width:640px">
-  <form method="post" class="dc-form">
+  <form method="post" class="dc-form" id="proceso-edit-form">
     {% csrf_token %}
     {% bootstrap_form form %}
-    <div class="d-flex gap-2 mt-3">
-      <button type="submit" class="btn-accent">Guardar</button>
-      <a href="{% if proceso %}{% url 'crm:proceso_ma_detail' proceso.pk %}{% else %}{% url 'crm:company_detail' company.pk %}{% endif %}" class="btn-ghost">Cancelar</a>
+    <div class="d-flex gap-2 mt-3 justify-content-between align-items-center">
+      <div class="d-flex gap-2">
+        <button type="submit" class="btn-accent">Guardar</button>
+        <a href="{% if proceso %}{% url 'crm:proceso_ma_detail' proceso.pk %}{% else %}{% url 'crm:company_detail' company.pk %}{% endif %}" class="btn-ghost">Cancelar</a>
+      </div>
+      {% if is_admin and proceso %}
+      <button type="button" class="btn-ghost" style="color:var(--dc-danger);border-color:rgba(239,68,68,.3)"
+        onclick="document.getElementById('proceso-delete-form').submit()">
+        <i class="bi bi-trash"></i> Eliminar proceso
+      </button>
+      {% endif %}
     </div>
   </form>
+  {% if is_admin and proceso %}
+  <form id="proceso-delete-form" method="post" action="{% url 'crm:proceso_ma_delete' proceso.pk %}"
+    onsubmit="return confirm('¿Eliminar este proceso M&A y todos sus contactos? Esta acción no se puede deshacer.')">
+    {% csrf_token %}
+  </form>
+  {% endif %}
 </div>
 
 {% if fase_logs %}

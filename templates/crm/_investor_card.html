@@ -1,5 +1,9 @@
-<div class="col-md-6 col-xl-4">
-  <div class="dc-card" style="cursor:pointer;padding:8px 12px" onclick="location.href='{% url 'crm:investor_detail' card.investor.pk %}'">
+<div class="col-md-6 col-lg-4 col-xl-3">
+  <div class="dc-card inv-draggable" draggable="true" data-inv-pk="{{ card.investor.pk }}"
+       style="cursor:grab;padding:8px 12px"
+       onclick="if(!this._wasDragged)location.href='{% url 'crm:investor_detail' card.investor.pk %}'"
+       ondragstart="invDragStart(event)"
+       ondragend="this._wasDragged=false">
     <div class="d-flex justify-content-between align-items-center gap-2">
       <span class="fw-semibold text-truncate" style="font-size:.875rem">{{ card.investor.name }}</span>
       <span class="dc-badge dc-badge--green flex-shrink-0" style="font-size:.68rem">{{ card.investor.relation.nombre|default:"—" }}</span>

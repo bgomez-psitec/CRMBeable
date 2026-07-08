@@ -97,11 +97,16 @@
           <td class="fw-semibold">{{ c.oferta_precio|euros|default:"—" }} €</td>
           <td style="font-size:.8rem;color:var(--dc-text-muted)">{{ c.intro_by|default:"—" }}</td>
           <td style="font-size:.855rem">{{ c.next_action|default:"—" }}{% if c.next_date %} · <span style="color:var(--dc-accent);font-weight:600">{{ c.next_date|date:"d M Y" }}</span>{% endif %}</td>
-          <td>
+          <td style="white-space:nowrap">
             {% if can_edit %}
             <button class="btn-ghost" style="padding:2px 8px;font-size:.78rem"
-              onclick="openMAEdit({{ c.id }},'{{ c.contact.name|escapejs }}','{{ c.status_id|default:'' }}','{{ c.oferta_precio|default:'' }}','{{ c.date|date:"Y-m-d"|default:'' }}','{{ c.intro_by|escapejs }}','{{ c.next_action|escapejs }}','{{ c.next_date|date:"Y-m-d"|default:'' }}','matriz')">
+              onclick="openMAEdit({{ c.id }},'{{ c.contact.name|escapejs }}','{{ c.status_id|default:'' }}','{{ c.oferta_precio|default:'' }}','{{ c.date|date:"Y-m-d"|default:'' }}','{{ c.intro_by|escapejs }}','{{ c.next_action|escapejs }}','{{ c.next_date|date:"Y-m-d"|default:'' }}','matriz','{{ c.proceso_id }}')">
               <i class="bi bi-pencil"></i>
+            </button>
+            <button class="btn-ghost" style="padding:2px 8px;font-size:.78rem;color:#ef4444"
+              onclick="showDelConfirm('{% url 'crm:contacto_ma_delete' c.id %}','{{ c.contact.name|escapejs }}','matriz')"
+              title="Eliminar">
+              <i class="bi bi-trash"></i>
             </button>
             {% endif %}
           </td>
@@ -138,6 +143,7 @@
                data-ma-intro-by="{{ c.intro_by|escapejs }}"
                data-ma-next-action="{{ c.next_action|escapejs }}"
                data-ma-next-date="{{ c.next_date|date:"Y-m-d"|default:'' }}"
+               data-ma-proceso="{{ c.proceso_id }}"
                data-contact-url="{% if c.investor %}{% url 'crm:investor_detail' c.investor.pk %}?from_proceso={{ proceso.pk }}{% elif c.comprador %}{% url 'crm:colaborador_detail' c.comprador.pk %}{% endif %}">
             <a class="kanban-contact-link fw-semibold"
                style="display:block;font-size:.855rem;color:var(--dc-text);text-decoration:none;padding:2px 4px;border-radius:4px;margin:-2px -4px 2px;transition:background .15s,color .15s"
@@ -146,7 +152,12 @@
                href="{% if c.investor %}{% url 'crm:investor_detail' c.investor.pk %}?from_proceso={{ proceso.pk }}{% elif c.comprador %}{% url 'crm:colaborador_detail' c.comprador.pk %}{% endif %}">
               {{ c.contact.name }}
             </a>
-            <div style="font-size:.8rem;color:var(--dc-text-muted)">{{ c.oferta_precio|euros|default:"Sin oferta" }} €</div>
+            <div class="d-flex justify-content-between align-items-center mt-1">
+              <div style="font-size:.8rem;color:var(--dc-text-muted)">{{ c.oferta_precio|euros|default:"Sin oferta" }} €</div>
+              {% if can_edit %}<button type="button" title="Eliminar" style="background:none;border:none;cursor:pointer;padding:0 2px;color:#ef4444;opacity:.6;font-size:.78rem"
+                onclick="event.stopPropagation();showDelConfirm('{% url 'crm:contacto_ma_delete' c.id %}','{{ c.contact.name|escapejs }}','kanban')">
+                <i class="bi bi-trash"></i></button>{% endif %}
+            </div>
             <div style="font-size:.75rem;color:var(--dc-text-muted)">{{ c.next_date|date:"d M"|default:"—" }}</div>
           </div>
         {% empty %}
@@ -174,6 +185,7 @@
                data-ma-intro-by="{{ c.intro_by|escapejs }}"
                data-ma-next-action="{{ c.next_action|escapejs }}"
                data-ma-next-date="{{ c.next_date|date:"Y-m-d"|default:'' }}"
+               data-ma-proceso="{{ c.proceso_id }}"
                data-contact-url="{% if c.investor %}{% url 'crm:investor_detail' c.investor.pk %}?from_proceso={{ proceso.pk }}{% elif c.comprador %}{% url 'crm:colaborador_detail' c.comprador.pk %}{% endif %}">
             <a class="kanban-contact-link fw-semibold"
                style="display:block;font-size:.855rem;color:var(--dc-text);text-decoration:none;padding:2px 4px;border-radius:4px;margin:-2px -4px 2px;transition:background .15s,color .15s"
@@ -182,7 +194,12 @@
                href="{% if c.investor %}{% url 'crm:investor_detail' c.investor.pk %}?from_proceso={{ proceso.pk }}{% elif c.comprador %}{% url 'crm:colaborador_detail' c.comprador.pk %}{% endif %}">
               {{ c.contact.name }}
             </a>
-            <div style="font-size:.8rem;color:var(--dc-text-muted)">{{ c.oferta_precio|euros|default:"—" }} €</div>
+            <div class="d-flex justify-content-between align-items-center mt-1">
+              <div style="font-size:.8rem;color:var(--dc-text-muted)">{{ c.oferta_precio|euros|default:"—" }} €</div>
+              {% if can_edit %}<button type="button" title="Eliminar" style="background:none;border:none;cursor:pointer;padding:0 2px;color:#ef4444;opacity:.6;font-size:.78rem"
+                data-del-url="{% url 'crm:contacto_ma_delete' c.id %}" data-del-name="{{ c.contact.name|escapejs }}">
+                <i class="bi bi-trash"></i></button>{% endif %}
+            </div>
           </div>
         {% empty %}
           <div class="kanban-empty">Sin compradores</div>
@@ -211,11 +228,16 @@
               {% csrf_token %}
               <input type="hidden" name="tab" id="editMATab" value="pipeline">
               <div class="mb-3">
+                <label class="form-label">Proceso M&A</label>
+                <select name="proceso_id" id="editMAProceso" class="form-select">
+                  {% for p in all_procesos_ma %}<option value="{{ p.pk }}">{{ p.nombre }} — {{ p.company.name }}</option>{% endfor %}
+                </select>
+              </div>
+              <div class="mb-3">
                 <label class="form-label">Estado</label>
                 <select name="status" id="editMAStatus" class="form-select">
                   <option value="">— Sin estado —</option>
-                  {% for e in pipe_stages %}<option value="{{ e.estado.id }}">{{ e.estado.nombre }}</option>{% endfor %}
-                  {% for e in end_stages %}<option value="{{ e.estado.id }}">{{ e.estado.nombre }}</option>{% endfor %}
+                  {% for e in estados_ma %}<option value="{{ e.id }}">{{ e.nombre }}</option>{% endfor %}
                 </select>
               </div>
               <div class="mb-3">
@@ -401,11 +423,12 @@ function fmtOferta(val) {
 }
 
 // ── Abrir modal de edición ─────────────────────────────────────────────────
-function openMAEdit(id, name, statusId, oferta, date, introBy, nextAction, nextDate, tab) {
+function openMAEdit(id, name, statusId, oferta, date, introBy, nextAction, nextDate, tab, procesoId) {
   _currentMAId = id;
   document.getElementById('editMAForm').action = `/ma/contacto/${id}/editar/`;
   document.getElementById('editMATab').value = tab || 'pipeline';
   document.getElementById('editMAName').textContent = name;
+  if (procesoId) document.getElementById('editMAProceso').value = procesoId;
   document.getElementById('editMAStatus').value = statusId || '';
   document.getElementById('editMAOferta').value = fmtOferta(oferta);
   document.getElementById('editMADate').value = date || '';
@@ -520,9 +543,14 @@ document.querySelectorAll('.kanban-card').forEach(card => {
   card.style.cursor = 'pointer';
   card.addEventListener('click', e => {
     if (e.target.closest('.kanban-contact-link')) return;
+    if (e.target.closest('[data-del-url]')) {
+      const btn = e.target.closest('[data-del-url]');
+      showDelConfirm(btn.dataset.delUrl, btn.dataset.delName, 'pipeline');
+      return;
+    }
     const d = card.dataset;
     openMAEdit(d.maId, d.maName, d.maStatus, d.maOferta, d.maDate,
-               d.maIntroBy, d.maNextAction, d.maNextDate, d.maNda, d.maDd, 'pipeline');
+               d.maIntroBy, d.maNextAction, d.maNextDate, 'pipeline', d.maProceso);
   });
 });
 

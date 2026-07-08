@@ -49,7 +49,10 @@
     </div>
     <div class="flex-grow-1">
       {% if x.company %}<span class="dc-badge dc-badge--grey mb-1">{{ x.company.name }} · {{ x.proceso.nombre }}</span>{% endif %}
-      <div style="font-size:.855rem">{{ x.summary|format_log }}</div>
+      <div class="log-body">
+        <div class="log-text log-clamped">{{ x.summary|format_log }}</div>
+        <button class="log-toggle" onclick="lgToggle(this)">Ver más ▾</button>
+      </div>
     </div>
   </div>
   {% empty %}

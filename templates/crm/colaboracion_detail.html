@@ -17,29 +17,40 @@
   <a class="btn-ghost" href="{% url 'crm:company_detail' col.company.pk %}"><i class="bi bi-arrow-left"></i> Participada</a>
   {% if can_edit %}
   <button class="btn-ghost" onclick="openColEdit()"><i class="bi bi-pencil"></i> Editar</button>
+  <button class="btn-ghost" style="color:#ef4444"
+          onclick="showDelConfirm('{% url 'crm:colaboracion_delete' col.pk %}','{{ col.colaborador.name|default:col.company.name|escapejs }}',null)">
+    <i class="bi bi-trash"></i> Eliminar
+  </button>
   {% endif %}
 {% endblock %}
 {% block content %}
 
 {% if estados_col %}
-<div class="dc-card mb-4" style="padding:16px 20px">
-  <div style="display:flex;align-items:stretch;width:100%;overflow:hidden;border-radius:6px;border:1px solid var(--dc-border)">
-    {% for e in estados_col %}
-    <div style="flex:1;display:flex;align-items:center;justify-content:center;padding:10px 6px;position:relative;
-      {% if col.status_id == e.pk %}background:var(--dc-accent);color:#fff;font-weight:700
-      {% else %}background:var(--dc-surface);color:var(--dc-text-muted){% endif %};
-      font-size:.78rem;text-align:center;cursor:default;min-width:0">
-      <span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ e.nombre }}</span>
-      {% if not forloop.last %}
-      <div style="position:absolute;right:-10px;top:0;bottom:0;width:20px;z-index:2;
-        {% if col.status_id == e.pk %}background:var(--dc-accent){% else %}background:var(--dc-surface){% endif %};
-        clip-path:polygon(0 0,100% 50%,0 100%)"></div>
-      <div style="position:absolute;right:-11px;top:0;bottom:0;width:21px;z-index:1;background:var(--dc-border);
-        clip-path:polygon(0 0,100% 50%,0 100%)"></div>
-      {% endif %}
-    </div>
-    {% endfor %}
-  </div>
+<style>
+.dc-stepper{display:flex;margin-bottom:1.25rem}
+.dc-stepper-cell{
+  flex:1;min-width:0;position:relative;text-align:center;
+  padding:9px 22px;font-size:.72rem;font-weight:500;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  cursor:default;user-select:none;color:#fff;background:#94a3b8;
+  margin-right:-14px;z-index:1;
+  clip-path:polygon(0 0,calc(100% - 14px) 0,100% 50%,calc(100% - 14px) 100%,0 100%,14px 50%);
+}
+.dc-stepper-cell:first-child{
+  clip-path:polygon(0 0,calc(100% - 14px) 0,100% 50%,calc(100% - 14px) 100%,0 100%);
+}
+.dc-stepper-cell:last-child{
+  margin-right:0;
+  clip-path:polygon(0 0,100% 0,100% 100%,0 100%,14px 50%);
+}
+.dc-stepper-cell:first-child:last-child{clip-path:none;margin-right:0}
+.dc-stepper-cell.active{background:#10b981;font-weight:700}
+</style>
+<div class="dc-stepper">
+  {% for e in estados_col %}
+  <div class="dc-stepper-cell {% if col.status_id == e.pk %}active{% endif %}"
+       style="z-index:{{ forloop.revcounter }}">{{ e.nombre }}</div>
+  {% endfor %}
 </div>
 {% endif %}
 
@@ -124,7 +135,10 @@
       {% endif %}
     </div>
     {# Línea 2: texto completo, siempre visible #}
-    <div style="margin-top:4px;padding-left:24px;color:var(--dc-text);font-size:.835rem;line-height:1.5;white-space:pre-wrap;word-break:break-word">{% if entry.kind == 'legacy' %}{{ x.note|format_log }}{% else %}{{ x.summary|format_log }}{% endif %}</div>
+    <div class="log-body" style="padding-left:24px">
+      <div class="log-text log-clamped">{% if entry.kind == 'legacy' %}{{ x.note|format_log }}{% else %}{{ x.summary|format_log }}{% endif %}</div>
+      <button class="log-toggle" onclick="lgToggle(this)">Ver más ▾</button>
+    </div>
   </div>
   {% endwith %}
   {% empty %}
@@ -151,13 +165,37 @@
             <form id="editColForm" method="post" action="{% url 'crm:colaboracion_edit_inline' col.pk %}">
               {% csrf_token %}
               <div class="mb-3">
+                <label class="form-label">Participada</label>
+                <select name="company_id" class="form-select">
+                  {% for co in all_companies %}<option value="{{ co.pk }}"{% if co.pk == col.company_id %} selected{% endif %}>{{ co.name }}</option>{% endfor %}
+                </select>
+              </div>
+              <div class="mb-3">
+                <label class="form-label">Contacto</label>
+                <select id="inlineContactoCombo" class="form-select">
+                  <option value="">— Selecciona un contacto —</option>
+                  <optgroup label="Colaboradores">
+                    {% for cb in all_colaboradores %}
+                    <option value="colab-{{ cb.pk }}"{% if col.colaborador_id == cb.pk %} selected{% endif %}>{{ cb.name }}</option>
+                    {% endfor %}
+                  </optgroup>
+                  <optgroup label="Inversores">
+                    {% for iv in all_investors %}
+                    <option value="inv-{{ iv.pk }}"{% if col.investor_id == iv.pk %} selected{% endif %}>{{ iv.name }}</option>
+                    {% endfor %}
+                  </optgroup>
+                </select>
+                <div id="inlineContactoBadge" class="mt-1" style="font-size:.75rem"></div>
+                <input type="hidden" name="colaborador_id" id="inlineColabId">
+                <input type="hidden" name="investor_id" id="inlineInvId">
+              </div>
+              <div class="mb-3">
                 <label class="form-label">Tipo de relación</label>
                 <select name="tipo_relacion" class="form-select">
                   <option value="">— Sin tipo —</option>
-                  <option value="Colaborador"{% if col.tipo_relacion == 'Colaborador' %} selected{% endif %}>Colaborador</option>
-                  <option value="Cliente"{% if col.tipo_relacion == 'Cliente' %} selected{% endif %}>Cliente</option>
-                  <option value="Proveedor"{% if col.tipo_relacion == 'Proveedor' %} selected{% endif %}>Proveedor</option>
-                  <option value="Otro"{% if col.tipo_relacion == 'Otro' %} selected{% endif %}>Otro</option>
+                  {% for t in tipos_relacion_colab %}
+                  <option value="{{ t.pk }}"{% if col.tipo_relacion_id == t.pk %} selected{% endif %}>{{ t.nombre }}</option>
+                  {% endfor %}
                 </select>
               </div>
               <div class="mb-3">
@@ -303,6 +341,31 @@
 {% endblock %}
 
 {% block extra_js %}
+<script>
+// Selector combinado colaborador/inversor en modal de edición inline
+(function () {
+  const combo  = document.getElementById('inlineContactoCombo');
+  const hidC   = document.getElementById('inlineColabId');
+  const hidI   = document.getElementById('inlineInvId');
+  const badge  = document.getElementById('inlineContactoBadge');
+  if (!combo) return;
+  function sync() {
+    const v = combo.value;
+    if (v.startsWith('colab-')) {
+      hidC.value = v.replace('colab-', ''); hidI.value = '';
+      badge.innerHTML = '<span class="dc-badge dc-badge--blue" style="font-size:.7rem">Colaborador</span>';
+    } else if (v.startsWith('inv-')) {
+      hidI.value = v.replace('inv-', ''); hidC.value = '';
+      badge.innerHTML = '<span class="dc-badge dc-badge--green" style="font-size:.7rem">Inversor</span>';
+    } else {
+      hidC.value = ''; hidI.value = '';
+      badge.innerHTML = '';
+    }
+  }
+  combo.addEventListener('change', sync);
+  sync();
+})();
+</script>
 <script>
 {% if can_edit %}
 const _COL_PK = {{ col.pk }};

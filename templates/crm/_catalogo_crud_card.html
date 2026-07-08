@@ -1,5 +1,6 @@
 <div class="dc-card dc-card__body h-100">
-  <div class="fw-semibold mb-3">{{ title }}</div>
+  <div class="fw-semibold {% if note %}mb-1{% else %}mb-3{% endif %}">{{ title }}</div>
+  {% if note %}<p style="font-size:.8rem;color:var(--dc-text-muted);margin-bottom:10px">{{ note }}</p>{% endif %}
   <table class="table table-sm mb-0" style="font-size:.84rem">
     <thead><tr><th style="width:60px">Orden</th><th>Nombre</th><th style="width:80px">Estado</th><th style="width:56px"></th></tr></thead>
     <tbody>

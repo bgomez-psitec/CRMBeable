@@ -1,16 +1,98 @@
 {% extends "base.html" %}
-{% load django_bootstrap5 %}
+{% load django_bootstrap5 crm_filters %}
 {% block title %}{{ title }} — CRM Gestora{% endblock %}
 {% block topbar_title %}{{ title }}{% endblock %}
 {% block content %}
 <div class="dc-card dc-card__body" style="max-width:600px">
   <form method="post" class="dc-form">
     {% csrf_token %}
-    {% bootstrap_form form %}
-    <div class="d-flex gap-2 mt-3">
-      <button type="submit" class="btn-accent">Guardar</button>
-      <a href="{% url 'crm:company_detail' company.pk %}" class="btn-ghost">Cancelar</a>
+
+    {# ── Selector combinado Colaborador / Inversor ──────────────────────── #}
+    <div class="mb-3">
+      <label class="form-label fw-semibold">Contacto <span style="color:var(--dc-danger)">*</span></label>
+      <select id="contacto-combo" class="form-select" required>
+        <option value="">— Selecciona un contacto —</option>
+        <optgroup label="Colaboradores">
+          {% for c in all_colaboradores %}
+          <option value="colab-{{ c.pk }}"
+            {% if colaboracion and colaboracion.colaborador_id == c.pk %}selected{% endif %}>
+            {{ c.name }}
+          </option>
+          {% endfor %}
+        </optgroup>
+        <optgroup label="Inversores">
+          {% for i in all_investors %}
+          <option value="inv-{{ i.pk }}"
+            {% if colaboracion and colaboracion.investor_id == i.pk %}selected{% endif %}>
+            {{ i.name }}
+          </option>
+          {% endfor %}
+        </optgroup>
+      </select>
+      <div id="contacto-badge" class="mt-1" style="font-size:.75rem;color:var(--dc-text-muted)"></div>
+      {# Campos ocultos reales que se envían al servidor #}
+      <input type="hidden" name="colaborador" id="id_colaborador"
+             value="{{ form.colaborador.value|default:'' }}">
+      <input type="hidden" name="investor" id="id_investor"
+             value="{{ form.investor.value|default:'' }}">
+    </div>
+
+    {% bootstrap_field form.tipo_relacion %}
+    {% bootstrap_field form.status %}
+    {% bootstrap_field form.date %}
+    {% bootstrap_field form.intro_by %}
+    {% bootstrap_field form.next_action %}
+    {% bootstrap_field form.next_date %}
+    {% bootstrap_field form.descripcion %}
+    {% bootstrap_field form.notes %}
+
+    <div class="d-flex gap-2 mt-3 justify-content-between align-items-center">
+      <div class="d-flex gap-2">
+        <button type="submit" class="btn-accent">Guardar</button>
+        <a href="{% if colaboracion %}{% url 'crm:colaboracion_detail' colaboracion.pk %}{% else %}{% url 'crm:company_detail' company.pk %}{% endif %}" class="btn-ghost">Cancelar</a>
+      </div>
+      {% if is_admin and colaboracion %}
+      <button type="button" class="btn-ghost" style="color:var(--dc-danger);border-color:rgba(239,68,68,.3)"
+        onclick="document.getElementById('colaboracion-delete-form').submit()">
+        <i class="bi bi-trash"></i> Eliminar colaboración
+      </button>
+      {% endif %}
     </div>
   </form>
+  {% if is_admin and colaboracion %}
+  <form id="colaboracion-delete-form" method="post" action="{% url 'crm:colaboracion_delete' colaboracion.pk %}"
+    onsubmit="return confirm('¿Eliminar esta colaboración? Esta acción no se puede deshacer.')">
+    {% csrf_token %}
+  </form>
+  {% endif %}
 </div>
+
+<script>
+(function () {
+  const combo   = document.getElementById('contacto-combo');
+  const hidColab = document.getElementById('id_colaborador');
+  const hidInv   = document.getElementById('id_investor');
+  const badge    = document.getElementById('contacto-badge');
+
+  function sync() {
+    const val = combo.value;
+    if (val.startsWith('colab-')) {
+      hidColab.value = val.replace('colab-', '');
+      hidInv.value   = '';
+      badge.innerHTML = '<span class="dc-badge dc-badge--blue" style="font-size:.7rem">Colaborador</span>';
+    } else if (val.startsWith('inv-')) {
+      hidInv.value   = val.replace('inv-', '');
+      hidColab.value = '';
+      badge.innerHTML = '<span class="dc-badge dc-badge--green" style="font-size:.7rem">Inversor</span>';
+    } else {
+      hidColab.value = '';
+      hidInv.value   = '';
+      badge.innerHTML = '';
+    }
+  }
+
+  combo.addEventListener('change', sync);
+  sync(); // inicializar con valor existente al editar
+})();
+</script>
 {% endblock %}

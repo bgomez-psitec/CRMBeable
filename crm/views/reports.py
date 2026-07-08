@@ -396,6 +396,7 @@ def comunicaciones(request):
         if selected_pk:
             selected_entity = get_object_or_404(ProcesoMA, pk=selected_pk, company__in=companies)
             for c in selected_entity.contactos.select_related('comprador', 'investor', 'status').prefetch_related('interactions'):
+                is_investor = bool(c.investor and not c.comprador)
                 contact = c.comprador or c.investor
                 if not contact:
                     continue
@@ -403,7 +404,8 @@ def comunicaciones(request):
                 for it in c.interactions.order_by('-date'):
                     timeline.append({'date': it.date, 'type': it.type, 'summary': it.note})
                 timeline.sort(key=lambda x: x['date'] or _date.min, reverse=True)
-                comms.append({'contact': contact, 'status': c.status, 'timeline': timeline, 'contact_type': ''})
+                comms.append({'contact': contact, 'status': c.status, 'timeline': timeline,
+                              'contact_type': '', 'is_investor': is_investor})
         elif entities:
             return redirect(f"{request.path}?modulo={modulo}&entity={entities[0].pk}")
 

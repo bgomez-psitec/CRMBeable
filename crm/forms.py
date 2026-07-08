@@ -100,7 +100,7 @@ class CompanyForm(forms.ModelForm):
         model = Company
         fields = ['name', 'int_code', 'fund', 'country', 'provincia', 'stage',
                   'trl', 'mrl', 'ttm', 'revenue', 'valuation', 'valuation_date',
-                  'phone', 'website', 'linkedin', 'logo']
+                  'phone', 'website', 'linkedin', 'logo', 'notes']
         labels = {
             'name': 'Nombre',
             'int_code': 'Codigo_interno',
@@ -176,9 +176,10 @@ class ContactoMAForm(forms.ModelForm):
 class ColaboracionForm(forms.ModelForm):
     class Meta:
         model = Colaboracion
-        fields = ['colaborador', 'tipo_relacion', 'status', 'descripcion',
+        fields = ['colaborador', 'investor', 'tipo_relacion', 'status', 'descripcion',
                   'date', 'intro_by', 'next_action', 'next_date', 'notes']
         labels = {
+            'tipo_relacion': 'Tipo_de_relacion',
             'status': 'Estado',
             'date': 'Fecha',
             'intro_by': 'Presentado_por',
@@ -190,6 +191,12 @@ class ColaboracionForm(forms.ModelForm):
             'date': _date_widget(),
             'next_date': _date_widget(),
         }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        from crm.models import TipoRelacionColaboracion
+        self.fields['tipo_relacion'].queryset = TipoRelacionColaboracion.objects.filter(habilitada=True)
+        self.fields['tipo_relacion'].required = False
 
 
 class IntroductionForm(forms.ModelForm):

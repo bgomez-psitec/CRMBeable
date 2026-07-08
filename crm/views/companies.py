@@ -43,7 +43,7 @@ def companies(request):
     if request.GET.get('open_only'):
         qs = qs.exclude(rounds__status__nombre='Cerrada').distinct()
 
-    group = request.GET.get('group', '')
+    group = request.GET.get('group', 'fund')
     cards = []
     for c in qs:
         ar = active_rounds(c)
@@ -56,6 +56,8 @@ def companies(request):
         n_ma = c.procesos_ma.count()
         cards.append({'company': c, 'target': target, 'invertido': inv, 'pct': min(pct, 100),
                       'n_rondas': n_rondas, 'n_inv': n_inv, 'n_colab': n_colab, 'n_ma': n_ma})
+
+    cards.sort(key=lambda c: (not c['company'].int_code, c['company'].int_code, c['company'].name))
 
     groups = None
     if group in ('stage', 'country', 'fund'):
@@ -165,6 +167,49 @@ def company_detail(request, pk):
 
 
 @login_required
+def company_set_field(request, pk):
+    """AJAX/POST: cambia un campo agrupable de una participada (drag & drop)."""
+    if request.method != 'POST':
+        return JsonResponse({'ok': False}, status=405)
+    if not can_edit(request.user):
+        return JsonResponse({'ok': False}, status=403)
+    company = get_object_or_404(Company, pk=pk)
+    field = request.POST.get('field', '')
+    value = request.POST.get('value', '')
+    FK_FIELDS = {
+        'fund':  (Fund,            'fund'),
+        'stage': (EstadoInversion, 'stage'),
+    }
+    CHAR_FIELDS = {'country'}
+    if field in FK_FIELDS:
+        model_cls, attr = FK_FIELDS[field]
+        if value and value != '—':
+            obj, _ = model_cls.objects.get_or_create(nombre=value)
+            setattr(company, attr, obj)
+        else:
+            setattr(company, attr, None)
+        company.save(update_fields=[attr + '_id'])
+    elif field in CHAR_FIELDS:
+        company.__dict__[field] = '' if value == '—' else value
+        company.save(update_fields=[field])
+    else:
+        return JsonResponse({'ok': False, 'error': 'campo no permitido'}, status=400)
+    return JsonResponse({'ok': True})
+
+
+@login_required
+@login_required
+def company_delete(request, pk):
+    if request.user.role != 'admin':
+        return HttpResponseForbidden()
+    company = get_object_or_404(Company, pk=pk)
+    if request.method == 'POST':
+        company.delete()
+        messages.success(request, 'Participada eliminada.')
+        return redirect('crm:companies')
+    return HttpResponseForbidden()
+
+
 def company_edit(request, pk):
     if not can_edit(request.user) or not can_see_company(request.user, pk):
         return HttpResponseForbidden()

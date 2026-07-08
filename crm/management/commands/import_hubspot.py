@@ -33,6 +33,7 @@ COMPANY_TYPE_MAP = {
     'Start-Up':    'company',
     'Co-Inversor': 'investor',
 }
+
 COLABORADOR_RELATION_MAP = {
     'LP/Inversor': 'LP/Inversor',
     'PARTNER':     'Colaborador',
@@ -42,6 +43,17 @@ COLABORADOR_RELATION_MAP = {
     'OPI':         'OPI',
     'PROSPECT':    'Prospect',
     'OTHER':       'Otro',
+}
+
+LIFECYCLE_TO_RELACION_INV = {
+    'lead':        'Lead',
+    'opportunity': 'Conocido',
+    'customer':    'Relación activa',
+}
+
+LIFECYCLE_TO_RELACION_COL = {
+    'lead':        'Lead',
+    'opportunity': 'Conocido',
 }
 
 DEAL_LINE_MAP = {
@@ -93,6 +105,19 @@ HS_STAGE_TO_FASE_MA = {
     'Lead Posible':                        'Lead Posible. No contactado',
     'Reunión Presentación Deck (Interna)': 'Reunión Presentación Deck (Interna)',
     'Reunión Presentación Deck (CIA)':     'Reunión Presentación Deck (CIA)',
+    'Inversión no realizada':              'Descartado',
+}
+
+# Venta Participadas → EstadoMA (en ContactoMA)
+HS_STAGE_TO_ESTADO_MA = {
+    'Lead Posible':                        'Lead Posible. No contactado',
+    'Primer Contacto (Envío Deck)':        'Primer Contacto (Envío Deck)',
+    'Reunión Presentación Deck (Interna)': 'Reunión Presentación Deck (Interna)',
+    'Reunión Presentación Deck (CIA)':     'Reunión Presentación Deck (Interna)',
+    'Reuniones de cierre condiciones':     'Reuniones de cierre condiciones',
+    'Proceso de firma de Term Sheet':      'Proceso de firma de Term Sheet',
+    'Due Diligence':                       'Due Diligence',
+    'Inversión realizada':                 'Vendido',
     'Inversión no realizada':              'Descartado',
 }
 
@@ -154,7 +179,7 @@ class Command(BaseCommand):
         from crm.models import (
             Company, Investor, Colaborador, InvestorContact, ColaboradorContacto,
             Round, ProcesoMA, Colaboracion, InvestorLog, ColaboradorLog,
-            EtapaRelacionColaborador, EstadoPresentacion, EstadoMA, EstadoColaboracion,
+            EtapaRelacion, EstadoPresentacion, EstadoMA, EstadoColaboracion,
         )
         from accounts.models import User
         self.models = {
@@ -162,15 +187,16 @@ class Command(BaseCommand):
             'InvestorContact': InvestorContact, 'ColaboradorContacto': ColaboradorContacto,
             'Round': Round, 'ProcesoMA': ProcesoMA, 'Colaboracion': Colaboracion,
             'InvestorLog': InvestorLog, 'ColaboradorLog': ColaboradorLog,
-            'EtapaRelacionColaborador': EtapaRelacionColaborador,
+            'EtapaRelacion': EtapaRelacion,
         }
 
-        self.hs_company_map  = {}
-        self.hs_investor_map = {}
-        self.hs_colab_map    = {}
-        self._dry_companies  = set()
-        self._dry_investors  = set()
-        self._dry_colabs     = set()
+        self.hs_company_map      = {}
+        self.hs_investor_map     = {}
+        self.hs_colab_map        = {}
+        self.hs_deal_partner_map = {}   # deal_hs_id -> ('investor'|'colaborador', obj)
+        self._dry_companies      = set()
+        self._dry_investors      = set()
+        self._dry_colabs         = set()
 
         # Cargar stages de pipelines una sola vez
         self._pipeline_stages = self._load_pipeline_stages()
@@ -282,7 +308,9 @@ class Command(BaseCommand):
         self.stdout.write('\n[1/4] Importando Empresas...')
         props = ['name', 'type', 'country', 'city', 'phone', 'website',
                  'linkedin_company_page', 'category_of_investor', 'enfoque_de_inversion',
-                 'description', 'hs_object_id']
+                 'investment_industrial_sector', 'description', 'hs_object_id',
+                 'public_status', 'is_public', 'investment_type', 'type_of_investor',
+                 'lifecyclestage']
         after = None
         total = 0
 
@@ -316,29 +344,46 @@ class Command(BaseCommand):
             self._upsert_investor(hs_id, name, p)
         else:
             relacion_label = COLABORADOR_RELATION_MAP.get(tipo, tipo)
-            self._upsert_colaborador(hs_id, name, p, relacion_label)
+            self._upsert_colaborador(hs_id, name, p, relacion_label, hs_type=tipo)
+
+    @staticmethod
+    def _extract_int_code(name):
+        """Extrae código tipo 'P1.0.001' del nombre y devuelve (clean_name, code)."""
+        import re
+        m = re.search(r'\bP\d+(?:\.\d+)+\b', name)
+        if not m:
+            return name.strip(), ''
+        code = m.group(0)
+        clean = re.sub(r'\(?\s*' + re.escape(code) + r'\s*\)?', ' ', name)
+        clean = re.sub(r'[\s\-–—·|]+', ' ', clean).strip()
+        return clean, code
 
     def _upsert_company(self, hs_id, name, p):
         from crm.models import Company
+        clean_name, int_code = self._extract_int_code(name)
         if not self.dry_run:
             obj, created = Company.objects.get_or_create(
-                name=name,
+                name=clean_name,
                 defaults={
+                    'int_code': int_code,
                     'country':  p.get('country') or '',
                     'website':  self._normalize_url(p.get('website') or ''),
                     'phone':    p.get('phone') or '',
                     'linkedin': self._normalize_url(p.get('linkedin_company_page') or ''),
                 }
             )
+            if not created and int_code and not obj.int_code:
+                obj.int_code = int_code
+                obj.save(update_fields=['int_code'])
             self.hs_company_map[hs_id] = obj
             if created:
                 self.stats['companies'] += 1
-                self.stdout.write(f'  [Participada] {name} (NUEVA)')
+                self.stdout.write(f'  [Participada] {clean_name} ({int_code}) (NUEVA)' if int_code else f'  [Participada] {clean_name} (NUEVA)')
         else:
-            if name not in self._dry_companies:
-                self._dry_companies.add(name)
+            if clean_name not in self._dry_companies:
+                self._dry_companies.add(clean_name)
                 self.stats['companies'] += 1
-                self.stdout.write(f'  [Participada] {name}')
+                self.stdout.write(f'  [Participada] {clean_name} ({int_code})' if int_code else f'  [Participada] {clean_name}')
 
     def _upsert_investor(self, hs_id, name, p):
         from crm.models import Investor, TipoInversor
@@ -352,21 +397,69 @@ class Command(BaseCommand):
                     defaults={'orden': TipoInversor.objects.count()}
                 )
 
-            # Resolver sectores
+            # Resolver sectores (enfoque_de_inversion + investment_industrial_sector como fallback)
             sectors = self._map_sectors(p.get('enfoque_de_inversion') or '')
+
+            # Campos nuevos
+            pub_status_raw = (p.get('public_status') or p.get('is_public') or '').strip()
+            pub_status = pub_status_raw if pub_status_raw not in ('Unknown', '') else ''
+            inv_stage_raw = (p.get('investment_type') or '').strip()
+            inv_stage = inv_stage_raw.replace(';', ', ') if inv_stage_raw not in ('Unknown', '') else ''
+            tipo_inv_raw = (p.get('type_of_investor') or '').strip()
+            tipo_inversion = tipo_inv_raw if tipo_inv_raw not in ('Unknown', '') else ''
+
+            # Relación desde lifecyclestage
+            from crm.models import EtapaRelacion as _EtapaRelacion
+            relacion_inv = None
+            lc = (p.get('lifecyclestage') or '').strip().lower()
+            relacion_nombre = LIFECYCLE_TO_RELACION_INV.get(lc)
+            if relacion_nombre:
+                relacion_inv, _ = _EtapaRelacion.objects.get_or_create(
+                    nombre=relacion_nombre,
+                    defaults={'orden': _EtapaRelacion.objects.count()}
+                )
 
             obj, created = Investor.objects.get_or_create(
                 name=name,
                 defaults={
-                    'country':  p.get('country') or '',
-                    'website':  self._normalize_url(p.get('website') or ''),
-                    'phone':    p.get('phone') or '',
-                    'linkedin': self._normalize_url(p.get('linkedin_company_page') or ''),
-                    'notes':    p.get('description') or '',
-                    'type':     inv_type,
-                    'sectors':  ', '.join(sectors),
+                    'country':        p.get('country') or '',
+                    'website':        self._normalize_url(p.get('website') or ''),
+                    'phone':          p.get('phone') or '',
+                    'linkedin':       self._normalize_url(p.get('linkedin_company_page') or ''),
+                    'notes':          p.get('description') or '',
+                    'type':           inv_type,
+                    'sectors':        ', '.join(sectors),
+                    'pub_status':     pub_status,
+                    'inv_stage':      inv_stage,
+                    'tipo_inversion': tipo_inversion,
+                    'relation':       relacion_inv,
                 }
             )
+            if not created:
+                # Rellenar campos vacíos en registros existentes
+                update_fields = []
+                if not obj.type and inv_type:
+                    obj.type = inv_type; update_fields.append('type')
+                if not obj.sectors and sectors:
+                    obj.sectors = ', '.join(sectors); update_fields.append('sectors')
+                if not obj.pub_status and pub_status:
+                    obj.pub_status = pub_status; update_fields.append('pub_status')
+                if not obj.inv_stage and inv_stage:
+                    obj.inv_stage = inv_stage; update_fields.append('inv_stage')
+                if not obj.tipo_inversion and tipo_inversion:
+                    obj.tipo_inversion = tipo_inversion; update_fields.append('tipo_inversion')
+                if not obj.relation_id and relacion_inv:
+                    obj.relation = relacion_inv; update_fields.append('relation')
+                if not obj.country and p.get('country'):
+                    obj.country = p.get('country'); update_fields.append('country')
+                if not obj.website and p.get('website'):
+                    obj.website = self._normalize_url(p.get('website')); update_fields.append('website')
+                if not obj.phone and p.get('phone'):
+                    obj.phone = p.get('phone'); update_fields.append('phone')
+                if not obj.linkedin and p.get('linkedin_company_page'):
+                    obj.linkedin = self._normalize_url(p.get('linkedin_company_page')); update_fields.append('linkedin')
+                if update_fields:
+                    obj.save(update_fields=update_fields)
             self.hs_investor_map[hs_id] = obj
             if created:
                 self.stats['investors'] += 1
@@ -374,18 +467,38 @@ class Command(BaseCommand):
         else:
             if name not in self._dry_investors:
                 self._dry_investors.add(name)
-                self.stats['investors'] += 1
-                self.stdout.write(f'  [Inversor]    {name}')
+                from crm.models import Investor as _Inv, Colaborador as _Col
+                if _Inv.objects.filter(name__iexact=name).exists():
+                    pass  # ya existe, no contar
+                elif _Col.objects.filter(name__iexact=name).exists():
+                    pass  # ya existe como colaborador, no contar
+                else:
+                    self.stats['investors'] += 1
+                    self.stdout.write(f'  [Inversor NEW] {name}')
 
-    def _upsert_colaborador(self, hs_id, name, p, relacion_label):
-        from crm.models import Colaborador, EtapaRelacionColaborador
+    def _upsert_colaborador(self, hs_id, name, p, relacion_label, hs_type=''):
+        from crm.models import Colaborador, EtapaRelacion
         if not self.dry_run:
-            relacion, _ = EtapaRelacionColaborador.objects.get_or_create(
+            relacion, _ = EtapaRelacion.objects.get_or_create(
                 nombre=relacion_label,
-                defaults={'orden': EtapaRelacionColaborador.objects.count()}
+                defaults={'orden': EtapaRelacion.objects.count()}
             )
+            # Relación desde lifecyclestage (para colaboradores sin type definido)
+            if not relacion_label or relacion_label == 'Otro':
+                from crm.models import EtapaRelacionColaborador as _ERC
+                lc = (p.get('lifecyclestage') or '').strip().lower()
+                lc_nombre = LIFECYCLE_TO_RELACION_COL.get(lc)
+                if lc_nombre:
+                    relacion, _ = _ERC.objects.get_or_create(
+                        nombre=lc_nombre,
+                        defaults={'orden': _ERC.objects.count()}
+                    )
+            # Sectores: enfoque_de_inversion primero, investment_industrial_sector como fallback
             sectors = self._map_sectors(p.get('enfoque_de_inversion') or '')
-
+            if not sectors:
+                ind_sector = (p.get('investment_industrial_sector') or '').strip()
+                if ind_sector:
+                    sectors = [s.strip() for s in ind_sector.split(';') if s.strip()]
             obj, created = Colaborador.objects.get_or_create(
                 name=name,
                 defaults={
@@ -398,6 +511,23 @@ class Command(BaseCommand):
                     'relation': relacion,
                 }
             )
+            if not created:
+                # Rellenar campos vacíos en registros existentes
+                update_fields = []
+                if not obj.relation_id and relacion_label:
+                    obj.relation = relacion; update_fields.append('relation')
+                if not obj.sectors and sectors:
+                    obj.sectors = ', '.join(sectors); update_fields.append('sectors')
+                if not obj.country and p.get('country'):
+                    obj.country = p.get('country'); update_fields.append('country')
+                if not obj.website and p.get('website'):
+                    obj.website = self._normalize_url(p.get('website')); update_fields.append('website')
+                if not obj.phone and p.get('phone'):
+                    obj.phone = p.get('phone'); update_fields.append('phone')
+                if not obj.linkedin and p.get('linkedin_company_page'):
+                    obj.linkedin = self._normalize_url(p.get('linkedin_company_page')); update_fields.append('linkedin')
+                if update_fields:
+                    obj.save(update_fields=update_fields)
             self.hs_colab_map[hs_id] = obj
             if created:
                 self.stats['colaboradores'] += 1
@@ -405,8 +535,14 @@ class Command(BaseCommand):
         else:
             if name not in self._dry_colabs:
                 self._dry_colabs.add(name)
-                self.stats['colaboradores'] += 1
-                self.stdout.write(f'  [Colaborador] {name} / {relacion_label}')
+                from crm.models import Colaborador as _Col, Investor as _Inv
+                if _Col.objects.filter(name__iexact=name).exists():
+                    pass  # ya existe
+                elif _Inv.objects.filter(name__iexact=name).exists():
+                    pass  # ya existe como inversor
+                else:
+                    self.stats['colaboradores'] += 1
+                    self.stdout.write(f'  [Colaborador NEW] {name} / {relacion_label}')
 
     # ── FASE 2: Contactos ───────────────────────────────────────────────────
 
@@ -537,6 +673,10 @@ class Command(BaseCommand):
 
         partner = self._find_partner_for_deal(hs_obj, dealname)
 
+        # Guardar en mapa para que las notas de este deal se puedan atribuir
+        if partner and hs_id:
+            self.hs_deal_partner_map[hs_id] = partner
+
         if dest == 'round':
             self._upsert_round(hs_id, nombre, company, partner, p)
         elif dest == 'proceso_ma':
@@ -594,7 +734,7 @@ class Command(BaseCommand):
         n = unicodedata.normalize('NFKD', n)
         return ''.join(c for c in n if not unicodedata.combining(c))
 
-    def _fuzzy_partner_match(self, candidate, inv_names, col_names, cutoff=0.65):
+    def _fuzzy_partner_match(self, candidate, inv_names, col_names, cutoff=0.75):
         if not candidate or len(candidate) < 3:
             return None, None
 
@@ -629,17 +769,33 @@ class Command(BaseCommand):
             norm = ''.join(c for c in norm if not unicodedata.combining(c))
             return norm in self._GENERIC_TOKENS
 
-        parts       = re.split(r'\s*[-–/|:]\s*', dealname)
-        non_generic = [p.strip() for p in parts if len(p.strip()) >= 4 and not is_generic(p.strip())]
+        def strip_trailing_generic(text):
+            words = text.split()
+            while words and is_generic(words[-1]):
+                words.pop()
+            return ' '.join(words).strip()
+
+        # Separar solo por ' - ' con espacios para preservar hífenes en nombres
+        # (Green-Tech Ventures - Calpech → ['Green-Tech Ventures', 'Calpech'])
+        parts = re.split(r'\s+[-–]\s+', dealname)
+        # Para / | : no hay ambigüedad, se pueden separar sin espacios
+        expanded = []
+        for p in parts:
+            expanded.extend(re.split(r'\s*[/|:]\s*', p))
+
+        # Limpiar palabras genéricas al final de cada parte
+        cleaned = [strip_trailing_generic(p.strip()) for p in expanded]
+        non_generic = [p for p in cleaned if len(p) >= 3 and not is_generic(p)]
 
         candidates = list(non_generic)
         for i in range(len(non_generic) - 1):
             combo = (non_generic[i] + ' ' + non_generic[i + 1]).strip()
             if combo not in candidates:
                 candidates.append(combo)
-        if len(parts) == 1 and not is_generic(dealname.strip()):
-            if dealname.strip() not in candidates:
-                candidates.append(dealname.strip())
+        if len(parts) == 1:
+            stripped = strip_trailing_generic(dealname.strip())
+            if stripped and not is_generic(stripped) and stripped not in candidates:
+                candidates.append(stripped)
 
         seen   = set()
         result = []
@@ -692,11 +848,48 @@ class Command(BaseCommand):
                 })
                 return ('colaborador', obj)
 
+        # No se encontró por fuzzy: buscar en BD por coincidencia exacta (cross-type)
+        best_candidate = candidates[0] if candidates else dealname.split('-')[0].strip()
+        if not self.dry_run:
+            from crm.models import Investor as _Inv, Colaborador as _Col
+            for cand in candidates:
+                inv = _Inv.objects.filter(name__iexact=cand).first()
+                if inv:
+                    self.review.append({
+                        'tipo': 'Deal — partner por fuzzy', 'nombre': dealname,
+                        'detalle': f'"{cand}" → Inversor "{inv.name}" (exacto, cross-type)'
+                    })
+                    return ('investor', inv)
+                col = _Col.objects.filter(name__iexact=cand).first()
+                if col:
+                    self.review.append({
+                        'tipo': 'Deal — partner por fuzzy', 'nombre': dealname,
+                        'detalle': f'"{cand}" → Colaborador "{col.name}" (exacto, cross-type)'
+                    })
+                    return ('colaborador', col)
         self.review.append({
-            'tipo': 'Deal — partner no encontrado', 'nombre': dealname,
-            'detalle': f'Candidatos probados: {candidates[:3]}'
+            'tipo': 'Deal — partner creado nuevo', 'nombre': dealname,
+            'detalle': f'Nuevo inversor: "{best_candidate}"'
         })
-        return None
+        return ('new_investor', best_candidate)
+
+    def _resolve_new_partner(self, partner):
+        """Convierte ('new_investor', name) en ('investor'|'colaborador', obj) evitando duplicados."""
+        if not partner or partner[0] != 'new_investor' or not partner[1]:
+            return partner
+        name = partner[1]
+        from crm.models import Investor as _Inv, Colaborador as _Col
+        col = _Col.objects.filter(name__iexact=name).first()
+        if col:
+            return ('colaborador', col)
+        inv = _Inv.objects.filter(name__iexact=name).first()
+        if inv:
+            return ('investor', inv)
+        inv_obj, inv_created = _Inv.objects.get_or_create(name=name)
+        if inv_created:
+            self.stats['investors'] = self.stats.get('investors', 0) + 1
+            self.stdout.write(f'  [Inversor NEW] {name}')
+        return ('investor', inv_obj)
 
     def _resolve_stage_label(self, p):
         """Devuelve la etiqueta legible del dealstage a partir del ID en HubSpot."""
@@ -726,6 +919,8 @@ class Command(BaseCommand):
                 intro_status = EstadoPresentacion.objects.filter(
                     nombre__iexact=crm_ep_name).first()
 
+            partner = self._resolve_new_partner(partner)
+
             if partner and partner[0] == 'investor' and partner[1]:
                 Introduction.objects.get_or_create(
                     round=ronda, investor=partner[1],
@@ -734,6 +929,7 @@ class Command(BaseCommand):
                         'status':  intro_status,
                         'ticket':  amount,
                         'date':    createdate,
+                        'notes':   '⚠ Inversor creado desde HubSpot — revisar asignación',
                     }
                 )
             elif partner and partner[0] == 'colaborador' and partner[1]:
@@ -746,7 +942,15 @@ class Command(BaseCommand):
                     }
                 )
         else:
-            self.stats['rounds'] += 1
+            # dry-run: comprobar si ya existe en BD
+            if company:
+                from crm.models import Round as _Round
+                exists = _Round.objects.filter(company=company, type=nombre).exists()
+                if not exists:
+                    self.stats['rounds'] += 1
+                    self.stdout.write(f'    !! NUEVA ronda: {nombre} ({company.name})')
+            else:
+                self.stats['rounds'] += 1
 
     def _upsert_proceso_ma(self, hs_id, nombre, company, partner, p):
         from crm.models import ProcesoMA, ContactoMA, FaseMA
@@ -756,11 +960,14 @@ class Command(BaseCommand):
         createdate  = self._parse_date(p.get('createdate'))
         closedate   = self._parse_date(p.get('closedate'))
         amount      = self._parse_amount(p.get('amount'))
-        stage_label = self._resolve_stage_label(p)
-        crm_fase    = HS_STAGE_TO_FASE_MA.get(stage_label)
-        cerrado     = stage_label in ('Inversión no realizada',)
+        stage_label      = self._resolve_stage_label(p)
+        stage_label_norm = stage_label.strip()
+        crm_fase         = HS_STAGE_TO_FASE_MA.get(stage_label_norm)
+        crm_estado_ma    = HS_STAGE_TO_ESTADO_MA.get(stage_label_norm)
+        cerrado          = stage_label_norm in ('Inversión no realizada',)
 
         if not self.dry_run:
+            from crm.models import EstadoMA as _EstadoMA
             proc_fase = None
             if crm_fase:
                 proc_fase, _ = FaseMA.objects.get_or_create(
@@ -782,16 +989,40 @@ class Command(BaseCommand):
             if created:
                 self.stats['procesos_ma'] += 1
 
+            contacto_status = None
+            if crm_estado_ma:
+                contacto_status = _EstadoMA.objects.filter(nombre__iexact=crm_estado_ma).first()
+
+            ma_note = ''
+            partner = self._resolve_new_partner(partner)
+
             if partner:
                 inv   = partner[1] if partner[0] == 'investor'    else None
                 colab = partner[1] if partner[0] == 'colaborador' else None
                 if inv or colab:
-                    ContactoMA.objects.get_or_create(
-                        proceso=proceso, investor=inv, comprador=colab,
-                        defaults={'date': createdate}
-                    )
+                    try:
+                        contacto, c_created = ContactoMA.objects.get_or_create(
+                            proceso=proceso, investor=inv, comprador=colab,
+                            defaults={'date': createdate, 'notes': ma_note, 'status': contacto_status}
+                        )
+                    except ContactoMA.MultipleObjectsReturned:
+                        contacto = ContactoMA.objects.filter(
+                            proceso=proceso, investor=inv, comprador=colab).first()
+                        c_created = False
+                    # Actualizar estado aunque el registro ya existiera sin él
+                    if not c_created and contacto_status and not contacto.status_id:
+                        contacto.status = contacto_status
+                        contacto.save(update_fields=['status'])
         else:
-            self.stats['procesos_ma'] += 1
+            # dry-run: comprobar si ya existe en BD
+            if company:
+                from crm.models import ProcesoMA as _PMA
+                exists = _PMA.objects.filter(company=company, nombre=nombre).exists()
+                if not exists:
+                    self.stats['procesos_ma'] += 1
+                    self.stdout.write(f'    !! NUEVO proceso M&A: {nombre} ({company.name})')
+            else:
+                self.stats['procesos_ma'] += 1
 
     def _upsert_colaboracion(self, hs_id, nombre, company, partner, p):
         from crm.models import Colaboracion, EstadoColaboracion
@@ -807,6 +1038,8 @@ class Command(BaseCommand):
             if crm_st_name:
                 col_status = EstadoColaboracion.objects.filter(
                     nombre__iexact=crm_st_name).first()
+
+            partner = self._resolve_new_partner(partner)
 
             colab_partner = partner[1] if partner and partner[0] == 'colaborador' else None
             inv_partner   = partner[1] if partner and partner[0] == 'investor'    else None
@@ -831,18 +1064,124 @@ class Command(BaseCommand):
                     'detalle': f'Participada: {company_name}'
                 })
         else:
-            self.stats['colaboraciones'] += 1
+            # dry-run: comprobar si ya existe en BD (por company + descripcion)
+            if company:
+                from crm.models import Colaboracion as _Col
+                exists = _Col.objects.filter(company=company, descripcion=nombre).exists()
+                if not exists:
+                    self.stats['colaboraciones'] += 1
+                    self.stdout.write(f'    !! NUEVA colaboración: {nombre} ({company.name})')
+            else:
+                self.stats['colaboraciones'] += 1
 
     # ── FASE 4: Actividades ─────────────────────────────────────────────────
 
+    def _ensure_company_maps(self):
+        """Si los mapas hs→entidad están vacíos (modo --only activities), los reconstruye desde HS."""
+        if self.hs_investor_map or self.hs_colab_map:
+            return
+        self.stdout.write('  Reconstruyendo mapas HS→entidad desde HubSpot...')
+        from crm.models import Investor, Colaborador
+        after = None
+        while True:
+            try:
+                res = self.client.crm.companies.basic_api.get_page(
+                    limit=100, after=after, properties=['name', 'type'])
+                for c in res.results:
+                    hs_id = c.properties.get('hs_object_id', '')
+                    name  = (c.properties.get('name') or '').strip()
+                    tipo  = (c.properties.get('type') or '').strip()
+                    dest  = COMPANY_TYPE_MAP.get(tipo, 'colaborador')
+                    if dest == 'investor':
+                        obj = Investor.objects.filter(name__iexact=name).first()
+                        if obj:
+                            self.hs_investor_map[hs_id] = obj
+                    elif dest != 'company':
+                        obj = Colaborador.objects.filter(name__iexact=name).first()
+                        if obj:
+                            self.hs_colab_map[hs_id] = obj
+                if not res.paging or not res.paging.next:
+                    break
+                after = res.paging.next.after
+            except Exception as e:
+                self.stdout.write(f'  [WARN] _ensure_company_maps: {str(e)[:120]}')
+                break
+        self.stdout.write(f'  → {len(self.hs_investor_map)} inversores, {len(self.hs_colab_map)} colaboradores mapeados')
+        # Reconstruir mapa deal → partner
+        self.stdout.write('  Reconstruyendo mapa deal→partner...')
+        props = ['dealname', 'hs_object_id']
+        after = None
+        while True:
+            try:
+                res = self.client.crm.deals.basic_api.get_page(
+                    limit=100, after=after, properties=props,
+                    associations=['companies', 'contacts'])
+                for d in res.results:
+                    deal_id  = d.properties.get('hs_object_id', '')
+                    dealname = (d.properties.get('dealname') or '').strip()
+                    partner  = self._find_partner_for_deal(d, dealname)
+                    if partner and deal_id:
+                        self.hs_deal_partner_map[deal_id] = partner
+                if not res.paging or not res.paging.next:
+                    break
+                after = res.paging.next.after
+            except Exception as e:
+                self.stdout.write(f'  [WARN] _ensure_deal_map: {str(e)[:120]}')
+                break
+        self.stdout.write(f'  → {len(self.hs_deal_partner_map)} deals mapeados a partner')
+
+    def _build_contact_company_map(self):
+        """Mapea hs_contact_id → (investor, colaborador) para resolver actividades sin empresa."""
+        self.stdout.write('  Construyendo mapa contacto→empresa...')
+        self._contact_inv_map   = {}  # contact_hs_id -> Investor
+        self._contact_colab_map = {}  # contact_hs_id -> Colaborador
+        after = None
+        while True:
+            try:
+                res = self.client.crm.contacts.basic_api.get_page(
+                    limit=100, after=after,
+                    properties=['hs_object_id'],
+                    associations=['companies'])
+                for c in res.results:
+                    c_id = c.properties.get('hs_object_id', '')
+                    if not c.associations:
+                        continue
+                    companies_assoc = (c.associations.get('companies')
+                                       if hasattr(c.associations, 'get')
+                                       else getattr(c.associations, 'companies', None))
+                    if not companies_assoc:
+                        continue
+                    assocs = (getattr(companies_assoc, 'results', None)
+                              or (companies_assoc.get('results')
+                                  if hasattr(companies_assoc, 'get') else []) or [])
+                    for a in assocs:
+                        co_id = str(getattr(a, 'id', None) or a.get('id', ''))
+                        if co_id in self.hs_investor_map:
+                            self._contact_inv_map[c_id] = self.hs_investor_map[co_id]
+                            break
+                        if co_id in self.hs_colab_map:
+                            self._contact_colab_map[c_id] = self.hs_colab_map[co_id]
+                            break
+                if not res.paging or not res.paging.next:
+                    break
+                after = res.paging.next.after
+            except Exception as e:
+                self.stdout.write(f'  [WARN] contactos: {str(e)[:120]}')
+                break
+        self.stdout.write(f'  → {len(self._contact_inv_map)} contactos→inversor, '
+                          f'{len(self._contact_colab_map)} contactos→colaborador')
+
     def _import_activities(self):
-        self.stdout.write('\n[4/4] Importando actividades (notas, emails, llamadas, reuniones)...')
-        total     = 0
-        seen_ids  = set()
+        self.stdout.write('\n[4/4] Importando actividades (notas, llamadas, emails, reuniones)...')
+        self._ensure_company_maps()
+        self._build_contact_company_map()
+        total    = 0
+        seen_ids = set()
 
         eng_configs = [
             ('notes',    ['hs_note_body', 'hs_timestamp', 'hs_createdate']),
             ('calls',    ['hs_call_body', 'hs_call_title', 'hs_timestamp', 'hs_createdate']),
+            ('emails',   ['hs_email_subject', 'hs_email_text', 'hs_timestamp', 'hs_createdate']),
             ('meetings', ['hs_meeting_body', 'hs_meeting_title', 'hs_timestamp', 'hs_createdate']),
         ]
 
@@ -854,7 +1193,7 @@ class Command(BaseCommand):
                         object_type=eng_type,
                         limit=100, after=after,
                         properties=['hs_object_id'] + props_list,
-                        associations=['companies', 'contacts'])
+                        associations=['companies', 'contacts', 'deals'])
                     for act in res.results:
                         act_id = act.properties.get('hs_object_id', '')
                         if act_id not in seen_ids:
@@ -868,40 +1207,98 @@ class Command(BaseCommand):
                     self.stdout.write(f'  [WARN] {eng_type}: {str(e)[:120]}')
                     break
 
-        self.stdout.write(f'  -> {total} actividades procesadas en HubSpot')
+        self.stdout.write(f'  → {total} actividades procesadas en HubSpot')
+
+    def _get_assoc_results(self, assoc_obj, key):
+        """Helper para extraer lista de resultados de una asociación."""
+        if not assoc_obj:
+            return []
+        section = (assoc_obj.get(key) if hasattr(assoc_obj, 'get')
+                   else getattr(assoc_obj, key, None))
+        if not section:
+            return []
+        return (getattr(section, 'results', None)
+                or (section.get('results') if hasattr(section, 'get') else []) or [])
+
+    def _strip_html(self, text):
+        if not text: return ''
+        text = re.sub(r'<br\s*/?>', '\n', text, flags=re.IGNORECASE)
+        text = re.sub(r'<p[^>]*>', '\n', text, flags=re.IGNORECASE)
+        text = re.sub(r'</p>', '', text, flags=re.IGNORECASE)
+        text = re.sub(r'<div[^>]*>', '\n', text, flags=re.IGNORECASE)
+        text = re.sub(r'</div>', '', text, flags=re.IGNORECASE)
+        text = re.sub(r'<[^>]+>', '', text)
+        text = text.replace('&nbsp;', ' ').replace('&amp;', '&')
+        text = text.replace('&lt;', '<').replace('&gt;', '>').replace('&quot;', '"')
+        text = re.sub(r'\n{3,}', '\n\n', text)
+        return text.strip()
 
     def _process_activity(self, hs_obj, eng_type):
         p        = hs_obj.properties
         log_type = {'notes': 'Nota', 'calls': 'Llamada',
                     'emails': 'Email', 'meetings': 'Reunión'}.get(eng_type, 'Nota')
-        body     = (p.get('hs_note_body') or p.get('hs_call_body') or
+        raw_body = (p.get('hs_note_body') or p.get('hs_call_body') or
                     p.get('hs_email_text') or p.get('hs_meeting_body') or '').strip()
+        body     = self._strip_html(raw_body)
+
+        if eng_type == 'emails':
+            direction = p.get('hs_email_direction', '')
+            prefix    = '(In)' if 'INCOMING' in direction else '(Out)'
+            from_e    = (p.get('hs_email_from_email') or '').strip()
+            to_e      = (p.get('hs_email_to_email') or '').strip()
+            subject   = (p.get('hs_email_subject') or '').strip()
+            parts     = [prefix]
+            if from_e:   parts.append(f'De: {from_e}')
+            if to_e:     parts.append(f'Para: {to_e}')
+            if subject:  parts.append(f'Asunto: {subject}')
+            if body:     parts.append(f'Resumen: {body[:800]}')
+            body = '\n'.join(parts)
+        else:
+            title = (p.get('hs_call_title') or p.get('hs_meeting_title') or '').strip()
+            if title and body:
+                body = f'{title}\n\n{body}'
+            elif title:
+                body = title
         ts       = p.get('hs_timestamp') or p.get('hs_createdate') or ''
         log_date = self._parse_date(ts) or date.today()
 
         investor = colaborador = None
-        if hs_obj.associations:
-            companies_assoc = (hs_obj.associations.get('companies')
-                               if hasattr(hs_obj.associations, 'get')
-                               else getattr(hs_obj.associations, 'companies', None))
-            results = []
-            if companies_assoc:
-                results = (getattr(companies_assoc, 'results', None)
-                           or (companies_assoc.get('results')
-                               if hasattr(companies_assoc, 'get') else []) or [])
-            for assoc in results:
-                hs_id = str(getattr(assoc, 'id', None) or assoc.get('id', ''))
-                if hs_id in self.hs_investor_map:
-                    investor = self.hs_investor_map[hs_id]
-                    break
-                if hs_id in self.hs_colab_map:
-                    colaborador = self.hs_colab_map[hs_id]
+
+        # 1. Intentar resolver por empresa asociada directamente
+        for assoc in self._get_assoc_results(hs_obj.associations, 'companies'):
+            hs_id = str(getattr(assoc, 'id', None) or assoc.get('id', ''))
+            if hs_id in self.hs_investor_map:
+                investor = self.hs_investor_map[hs_id]; break
+            if hs_id in self.hs_colab_map:
+                colaborador = self.hs_colab_map[hs_id]; break
+
+        # 2. Fallback: resolver por contacto asociado → empresa
+        if not investor and not colaborador:
+            for assoc in self._get_assoc_results(hs_obj.associations, 'contacts'):
+                c_id = str(getattr(assoc, 'id', None) or assoc.get('id', ''))
+                if c_id in self._contact_inv_map:
+                    investor = self._contact_inv_map[c_id]; break
+                if c_id in self._contact_colab_map:
+                    colaborador = self._contact_colab_map[c_id]; break
+
+        # 3. Fallback: resolver por deal asociado → partner del deal
+        if not investor and not colaborador:
+            for assoc in self._get_assoc_results(hs_obj.associations, 'deals'):
+                deal_id = str(getattr(assoc, 'id', None) or assoc.get('id', ''))
+                partner = self.hs_deal_partner_map.get(deal_id)
+                if partner:
+                    kind, obj = partner
+                    if kind == 'investor':
+                        investor = obj
+                    else:
+                        colaborador = obj
                     break
 
         if not investor and not colaborador:
             return
 
-        self.stdout.write(f'  [{log_type:8s}] {log_date} → {(investor or colaborador).name[:40]}')
+        entity_name = (investor or colaborador).name[:40]
+        self.stdout.write(f'  [{log_type:8s}] {log_date} → {entity_name}')
 
         if not self.dry_run:
             from crm.models import InvestorLog, ColaboradorLog
