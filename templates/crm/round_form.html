@@ -4,14 +4,28 @@
 {% block topbar_title %}{{ title }}{% endblock %}
 {% block content %}
 <div class="dc-card dc-card__body" style="max-width:640px">
-  <form method="post" class="dc-form">
+  <form method="post" class="dc-form" id="round-edit-form">
     {% csrf_token %}
     {% bootstrap_form form %}
-    <div class="d-flex gap-2 mt-3">
-      <button type="submit" class="btn-accent">Guardar</button>
-      <a href="{% if round %}{% url 'crm:round_detail' round.pk %}{% else %}{% url 'crm:company_detail' company.pk %}{% endif %}" class="btn-ghost">Cancelar</a>
+    <div class="d-flex gap-2 mt-3 justify-content-between align-items-center">
+      <div class="d-flex gap-2">
+        <button type="submit" class="btn-accent">Guardar</button>
+        <a href="{% if round %}{% url 'crm:round_detail' round.pk %}{% else %}{% url 'crm:company_detail' company.pk %}{% endif %}" class="btn-ghost">Cancelar</a>
+      </div>
+      {% if is_admin and round %}
+      <button type="button" class="btn-ghost" style="color:var(--dc-danger);border-color:rgba(239,68,68,.3)"
+        onclick="document.getElementById('round-delete-form').submit()">
+        <i class="bi bi-trash"></i> Eliminar ronda
+      </button>
+      {% endif %}
     </div>
   </form>
+  {% if is_admin and round %}
+  <form id="round-delete-form" method="post" action="{% url 'crm:round_delete' round.pk %}"
+    onsubmit="return confirm('¿Eliminar esta ronda de inversión y todas sus introducciones? Esta acción no se puede deshacer.')">
+    {% csrf_token %}
+  </form>
+  {% endif %}
 </div>
 
 {% if fase_logs %}

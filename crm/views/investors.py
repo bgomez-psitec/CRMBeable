@@ -10,23 +10,29 @@ def investors(request):
     tipo_filter    = request.GET.get('tipo', '')
     cat_filter     = request.GET.get('categoria', '')
     tipoinv_filter = request.GET.get('tipo_inv', '')
+    relacion_filter = request.GET.get('relacion', '').strip()
     view = request.GET.get('view', 'list')
 
     if q:
         qs = qs.filter(
             models.Q(name__icontains=q)
-            | models.Q(type__icontains=q)
+            | models.Q(type__nombre__icontains=q)
             | models.Q(country__icontains=q)
             | models.Q(sectors__icontains=q)
         )
     if tipo_filter:
-        qs = qs.filter(type=tipo_filter)
+        qs = qs.filter(type__nombre=tipo_filter)
     if cat_filter:
         qs = qs.filter(inv_stage__icontains=cat_filter)
     if tipoinv_filter:
         qs = qs.filter(tipo_inversion__icontains=tipoinv_filter)
+    if relacion_filter:
+        qs = qs.filter(relation__nombre=relacion_filter)
 
-    g1, g2, g3 = parse_groups(request.GET, INV_GROUP_KEYS.keys())
+    _inv_params = request.GET.copy()
+    if not _inv_params.get('group1'):
+        _inv_params.setdefault('group1', 'type')
+    g1, g2, g3 = parse_groups(_inv_params, INV_GROUP_KEYS.keys())
 
     cards = []
     for v in qs.select_related('relation'):
@@ -58,6 +64,8 @@ def investors(request):
         'tipo_filter': tipo_filter,
         'cat_filter': cat_filter,
         'tipoinv_filter': tipoinv_filter,
+        'relacion_filter': relacion_filter,
+        'tipo_inversion_opts': TipoInversionInversor.objects.filter(habilitada=True),
     })
 
 
@@ -149,6 +157,9 @@ def investor_detail(request, pk):
         'etapa_inversion_choices': get_etapa_inversion_opts(),
         'rango_ticket_choices': RangoTicket.objects.filter(habilitada=True),
         'rango_aum_choices': RangoAUM.objects.filter(habilitada=True),
+        'tipo_inversion_opts': TipoInversionInversor.objects.filter(habilitada=True),
+        'estado_publico_opts': EstadoPublicoInversor.objects.filter(habilitada=True),
+        'grado_actividad_opts': GradoActividad.objects.filter(habilitada=True),
         'sector_opts': get_sector_opts(), 'area_opts': get_area_opts(),
         # KPIs Rondas
         'intros_activas_count': len(intros_activas),
@@ -201,6 +212,51 @@ def investor_create(request):
 
 
 @login_required
+def investor_set_field(request, pk):
+    """AJAX/POST: change a single groupable field on an investor."""
+    if request.method != 'POST':
+        return JsonResponse({'ok': False}, status=405)
+    if not (request.user.role in ('admin', 'editor')):
+        return JsonResponse({'ok': False}, status=403)
+    investor = get_object_or_404(Investor, pk=pk)
+    field = request.POST.get('field', '')
+    value = request.POST.get('value', '')
+    FK_FIELDS = {
+        'type': (TipoInversor, 'type'),
+        'aum': (RangoAUM, 'aum'),
+        'ticket_range': (RangoTicket, 'ticket_range'),
+        'relation': (EtapaRelacion, 'relation'),
+    }
+    CHAR_FIELDS = {'country', 'inv_stage', 'pub_status'}
+    if field in FK_FIELDS:
+        model_cls, attr = FK_FIELDS[field]
+        if value and value != '—':
+            obj, _ = model_cls.objects.get_or_create(nombre=value)
+            setattr(investor, attr, obj)
+        else:
+            setattr(investor, attr, None)
+        investor.save(update_fields=[attr + '_id'])
+    elif field in CHAR_FIELDS:
+        investor.__dict__[field] = '' if value == '—' else value
+        investor.save(update_fields=[field])
+    else:
+        return JsonResponse({'ok': False, 'error': 'campo no permitido'}, status=400)
+    return JsonResponse({'ok': True})
+
+
+@login_required
+@login_required
+def investor_delete(request, pk):
+    if request.user.role != 'admin':
+        return HttpResponseForbidden()
+    investor = get_object_or_404(Investor, pk=pk)
+    if request.method == 'POST':
+        investor.delete()
+        messages.success(request, 'Inversor eliminado.')
+        return redirect('crm:investors')
+    return HttpResponseForbidden()
+
+
 def investor_edit(request, pk):
     if not can_edit(request.user):
         return HttpResponseForbidden()
@@ -217,6 +273,7 @@ def investor_edit(request, pk):
         investor.aum_id = request.POST.get('aum') or None
         investor.pub_status = request.POST.get('pub_status', '').strip()
         investor.relation_id = request.POST.get('relation') or None
+        investor.grado_actividad_id = request.POST.get('grado_actividad') or None
         investor.website = request.POST.get('website', '').strip()
         investor.phone = request.POST.get('phone', '').strip()
         investor.linkedin = request.POST.get('linkedin', '').strip()

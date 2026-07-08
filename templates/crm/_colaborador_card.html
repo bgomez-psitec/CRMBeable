@@ -1,13 +1,11 @@
-<div class="col-md-6 col-xl-4">
-  <div class="dc-card" style="cursor:pointer;padding:8px 12px" onclick="location.href='{% url 'crm:colaborador_detail' card.colaborador.pk %}'">
+<div class="col-md-6 col-lg-4 col-xl-3">
+  <div class="dc-card colab-draggable" draggable="true" data-colab-pk="{{ card.colaborador.pk }}"
+       style="cursor:grab;padding:8px 12px"
+       onclick="if(!this._wasDragged)location.href='{% url 'crm:colaborador_detail' card.colaborador.pk %}'"
+       ondragstart="colabDragStart(event)"
+       ondragend="this._wasDragged=false">
     <div class="d-flex justify-content-between align-items-center gap-2">
       <span class="fw-semibold text-truncate" style="font-size:.875rem">{{ card.colaborador.name }}</span>
-      <div class="d-flex gap-1 flex-shrink-0">
-        {% if card.colaborador.es_comprador %}<span class="dc-badge dc-badge--amber" style="font-size:.68rem">Comprador</span>{% endif %}
-        {% if card.colaborador.es_colaborador %}<span class="dc-badge dc-badge--blue" style="font-size:.68rem">Colaborador</span>{% endif %}
-        {% if card.colaborador.es_cliente %}<span class="dc-badge dc-badge--green" style="font-size:.68rem">Cliente</span>{% endif %}
-        {% if card.colaborador.es_proveedor %}<span class="dc-badge dc-badge--grey" style="font-size:.68rem">Proveedor</span>{% endif %}
-      </div>
     </div>
     <div class="d-flex gap-2 flex-wrap mt-1" style="font-size:.75rem;color:var(--dc-text-muted)">
       {% if card.colaborador.country %}<span>{{ card.colaborador.country }}</span>{% endif %}

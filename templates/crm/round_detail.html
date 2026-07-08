@@ -95,11 +95,16 @@
             <td style="color:var(--dc-text-muted)">{{ it.intro_by|default:"—" }}</td>
             <td>{{ it.next_action|default:"—" }}{% if it.next_date %} · <span class="text-accent fw-semibold">{{ it.next_date|date:"d M Y" }}</span>{% endif %}</td>
             {% if can_edit %}
-            <td style="padding:4px 6px;text-align:right">
+            <td style="padding:4px 6px;text-align:right;white-space:nowrap">
               <button type="button" class="btn-ghost" style="padding:3px 7px;font-size:.78rem"
-                      onclick="openIntroEdit('{{ it.id }}','{{ it.contact.name|escapejs }}','{{ it.status_id|default:'' }}','{{ it.ticket|default:'' }}','{{ it.date|date:"Y-m-d"|default:"" }}','{{ it.intro_by|default:""|escapejs }}','{{ it.next_action|default:""|escapejs }}','{{ it.next_date|date:"Y-m-d"|default:"" }}','{{ it.notes|default:""|escapejs }}','matriz')"
+                      onclick="openIntroEdit('{{ it.id }}','{{ it.contact.name|escapejs }}','{{ it.status_id|default:'' }}','{{ it.ticket|default:'' }}','{{ it.date|date:"Y-m-d"|default:"" }}','{{ it.intro_by|default:""|escapejs }}','{{ it.next_action|default:""|escapejs }}','{{ it.next_date|date:"Y-m-d"|default:"" }}','{{ it.notes|default:""|escapejs }}','matriz','{{ it.round_id }}')"
                       title="Editar presentación">
                 <i class="bi bi-pencil"></i>
+              </button>
+              <button type="button" class="btn-ghost" style="padding:3px 7px;font-size:.78rem;color:#ef4444"
+                      onclick="showDelConfirm('{% url 'crm:intro_delete' it.id %}','{{ it.contact.name|escapejs }}','matriz')"
+                      title="Eliminar presentación">
+                <i class="bi bi-trash"></i>
               </button>
             </td>
             {% endif %}
@@ -134,16 +139,17 @@
                  data-intro-next-date="{{ it.next_date|date:'Y-m-d'|default:'' }}"
                  data-intro-notes="{{ it.notes|default:'' }}"
                  data-intro-name="{{ it.contact.name }}"
+                 data-intro-round="{{ it.round_id }}"
                  data-contact-url="{% if it.investor %}{% url 'crm:investor_detail' it.investor.pk %}{% elif it.colaborador %}{% url 'crm:colaborador_detail' it.colaborador.pk %}{% endif %}">
               <div class="d-flex justify-content-between align-items-start mb-1">
                 <a class="kanban-contact-link fw-semibold" style="font-size:.855rem;color:var(--dc-text);text-decoration:none;border-radius:4px;padding:1px 3px;margin:-1px -3px;transition:background .15s,color .15s" onmouseover="this.style.background='var(--dc-accent)';this.style.color='#fff'" onmouseout="this.style.background='';this.style.color='var(--dc-text)'"
                    href="{% if it.investor %}{% url 'crm:investor_detail' it.investor.pk %}?from_round={{ round.pk }}{% elif it.colaborador %}{% url 'crm:colaborador_detail' it.colaborador.pk %}?from_round={{ round.pk }}{% endif %}">
                   {{ it.contact.name }}
                 </a>
-                {% if can_edit %}<button type="button" class="kanban-edit-btn" title="Editar" style="background:none;border:none;cursor:pointer;padding:0 2px;color:var(--dc-text-muted);opacity:.5;font-size:.78rem;flex-shrink:0"><i class="bi bi-pencil"></i></button>{% endif %}
+                {% if can_edit %}<div class="d-flex gap-1 flex-shrink-0"><button type="button" class="kanban-edit-btn" title="Editar" style="background:none;border:none;cursor:pointer;padding:0 2px;color:var(--dc-text-muted);opacity:.5;font-size:.78rem"><i class="bi bi-pencil"></i></button><button type="button" class="kanban-del-btn" title="Eliminar" style="background:none;border:none;cursor:pointer;padding:0 2px;color:#ef4444;opacity:.5;font-size:.78rem" data-del-url="{% url 'crm:intro_delete' it.id %}" data-del-name="{{ it.contact.name|escapejs }}"><i class="bi bi-trash"></i></button></div>{% endif %}
               </div>
-              <div style="font-size:.8rem;color:var(--dc-text-muted)">{{ it.ticket|euros }} €</div>
-              <div style="font-size:.75rem;color:var(--dc-text-muted)">{{ it.next_date|date:"d M"|default:"—" }}</div>
+              {% if it.ticket %}<div style="font-size:.8rem;color:var(--dc-text-muted)">{{ it.ticket|euros }} €</div>{% endif %}
+              {% if it.next_date %}<div style="font-size:.75rem;color:var(--dc-text-muted)">{{ it.next_date|date:"d M" }}</div>{% endif %}
             </div>
           {% empty %}
             <div class="kanban-empty">Sin inversores</div>
@@ -169,15 +175,16 @@
                  data-intro-next-date="{{ it.next_date|date:'Y-m-d'|default:'' }}"
                  data-intro-notes="{{ it.notes|default:'' }}"
                  data-intro-name="{{ it.contact.name }}"
+                 data-intro-round="{{ it.round_id }}"
                  data-contact-url="{% if it.investor %}{% url 'crm:investor_detail' it.investor.pk %}{% elif it.colaborador %}{% url 'crm:colaborador_detail' it.colaborador.pk %}{% endif %}">
               <div class="d-flex justify-content-between align-items-start mb-1">
                 <a class="kanban-contact-link fw-semibold" style="font-size:.855rem;color:var(--dc-text);text-decoration:none;border-radius:4px;padding:1px 3px;margin:-1px -3px;transition:background .15s,color .15s" onmouseover="this.style.background='var(--dc-accent)';this.style.color='#fff'" onmouseout="this.style.background='';this.style.color='var(--dc-text)'"
                    href="{% if it.investor %}{% url 'crm:investor_detail' it.investor.pk %}?from_round={{ round.pk }}{% elif it.colaborador %}{% url 'crm:colaborador_detail' it.colaborador.pk %}?from_round={{ round.pk }}{% endif %}">
                   {{ it.contact.name }}
                 </a>
-                {% if can_edit %}<button type="button" class="kanban-edit-btn" title="Editar" style="background:none;border:none;cursor:pointer;padding:0 2px;color:var(--dc-text-muted);opacity:.5;font-size:.78rem;flex-shrink:0"><i class="bi bi-pencil"></i></button>{% endif %}
+                {% if can_edit %}<div class="d-flex gap-1 flex-shrink-0"><button type="button" class="kanban-edit-btn" title="Editar" style="background:none;border:none;cursor:pointer;padding:0 2px;color:var(--dc-text-muted);opacity:.5;font-size:.78rem"><i class="bi bi-pencil"></i></button><button type="button" class="kanban-del-btn" title="Eliminar" style="background:none;border:none;cursor:pointer;padding:0 2px;color:#ef4444;opacity:.5;font-size:.78rem" data-del-url="{% url 'crm:intro_delete' it.id %}" data-del-name="{{ it.contact.name|escapejs }}"><i class="bi bi-trash"></i></button></div>{% endif %}
               </div>
-              <div style="font-size:.8rem;color:var(--dc-text-muted)">{{ it.ticket|euros }} €</div>
+              {% if it.ticket %}<div style="font-size:.8rem;color:var(--dc-text-muted)">{{ it.ticket|euros }} €</div>{% endif %}
             </div>
           {% empty %}
             <div class="kanban-empty">Sin inversores</div>
@@ -209,6 +216,12 @@
               {% csrf_token %}
               <input type="hidden" name="tab" id="editIntroTab" value="matriz">
               <div class="row g-2">
+                <div class="col-12">
+                  <label class="form-label">Ronda</label>
+                  <select name="round_id" class="form-select form-select-sm" id="editIntroRound">
+                    {% for rnd in all_rounds %}<option value="{{ rnd.pk }}" data-company="{{ rnd.company.name }}">{{ rnd.company.name }} — {{ rnd.type }}</option>{% endfor %}
+                  </select>
+                </div>
                 <div class="col-12">
                   <label class="form-label">Estado</label>
                   <select name="status" class="form-select form-select-sm" id="editIntroStatus">
@@ -456,11 +469,12 @@ function saveIntroLog() {
     .finally(() => { btn.disabled = false; });
 }
 
-function openIntroEdit(id, name, status, ticket, date, introBy, nextAction, nextDate, notes, tab) {
+function openIntroEdit(id, name, status, ticket, date, introBy, nextAction, nextDate, notes, tab, roundId) {
   _currentIntroId = id;
   document.getElementById('editIntroForm').action = `/presentaciones/${id}/editar/`;
   document.getElementById('editIntroTab').value = tab || 'matriz';
   document.getElementById('editIntroName').textContent = name;
+  if (roundId) document.getElementById('editIntroRound').value = roundId;
   document.getElementById('editIntroStatus').value = status || '';
   document.getElementById('editIntroTicket').value = fmtTicket(ticket);
   document.getElementById('editIntroDate').value = date || '';
@@ -501,9 +515,15 @@ document.querySelectorAll('.kanban-card').forEach(card => {
   card.style.cursor = 'pointer';
   card.addEventListener('click', e => {
     if (e.target.closest('.kanban-contact-link')) return;
+    if (e.target.closest('.kanban-del-btn')) {
+      const btn = e.target.closest('.kanban-del-btn');
+      showDelConfirm(btn.dataset.delUrl, btn.dataset.delName, 'pipeline');
+      return;
+    }
+    if (e.target.closest('.kanban-edit-btn')) return;
     const d = card.dataset;
     openIntroEdit(d.introId, d.introName, d.introStatus, d.introTicket, d.introDate,
-                  d.introIntroBy, d.introNextAction, d.introNextDate, d.introNotes, 'pipeline');
+                  d.introIntroBy, d.introNextAction, d.introNextDate, d.introNotes, 'pipeline', d.introRound);
   });
 });
 document.querySelectorAll('.kanban-body').forEach(col => {

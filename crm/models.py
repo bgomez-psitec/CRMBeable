@@ -25,10 +25,7 @@ class FaseRonda(Catalogo):
 
 
 class EtapaRelacion(Catalogo):
-    pass
-
-
-class EtapaRelacionColaborador(Catalogo):
+    """Etapa de relación compartida entre Inversores y Colaboradores."""
     pass
 
 
@@ -62,6 +59,24 @@ class TipoInversor(CatalogoCRUD):
     class Meta(CatalogoCRUD.Meta):
         verbose_name = 'Tipo de inversor'
         verbose_name_plural = 'Tipos de inversor'
+
+
+class GradoActividad(CatalogoCRUD):
+    class Meta(CatalogoCRUD.Meta):
+        verbose_name = 'Grado de actividad'
+        verbose_name_plural = 'Grados de actividad'
+
+
+class TipoInversionInversor(CatalogoCRUD):
+    class Meta(CatalogoCRUD.Meta):
+        verbose_name = 'Tipo de inversión'
+        verbose_name_plural = 'Tipos de inversión'
+
+
+class EstadoPublicoInversor(CatalogoCRUD):
+    class Meta(CatalogoCRUD.Meta):
+        verbose_name = 'Estado público'
+        verbose_name_plural = 'Estados públicos'
 
 
 class EtapaInversion(CatalogoCRUD):
@@ -144,6 +159,7 @@ class Company(models.Model):
     phone = models.CharField(max_length=50, blank=True)
     linkedin = models.URLField(blank=True)
     logo = models.ImageField('Logo', upload_to='logos/', null=True, blank=True)
+    notes = models.TextField('Notas', blank=True)
 
     class Meta:
         verbose_name = 'Participada'
@@ -195,6 +211,7 @@ class Investor(models.Model):
     aum = models.ForeignKey(RangoAUM, on_delete=models.SET_NULL, null=True, blank=True, related_name='investors', verbose_name='AUM')
     pub_status = models.CharField('Estado público', max_length=100, blank=True)
     relation = models.ForeignKey(EtapaRelacion, on_delete=models.SET_NULL, null=True, blank=True, related_name='investors')
+    grado_actividad = models.ForeignKey('GradoActividad', on_delete=models.SET_NULL, null=True, blank=True, related_name='investors')
     website = models.URLField(blank=True)
     phone = models.CharField(max_length=50, blank=True)
     linkedin = models.URLField(blank=True)
@@ -402,18 +419,18 @@ class EstadoColaboracion(Catalogo):
     pass
 
 
+class TipoRelacionColaboracion(Catalogo):
+    pass
+
+
 class Colaborador(models.Model):
     name = models.CharField('Nombre', max_length=200)
     country = models.CharField('País', max_length=100, blank=True)
     sectors = models.CharField('Sectores', max_length=500, blank=True)
-    relation = models.ForeignKey(EtapaRelacionColaborador, on_delete=models.SET_NULL, null=True, blank=True,
+    relation = models.ForeignKey(EtapaRelacion, on_delete=models.SET_NULL, null=True, blank=True,
                                  related_name='colaboradores')
-    # Tipo de contacto (múltiple selección)
-    es_comprador          = models.BooleanField('Comprador',           default=False)
-    es_colaborador        = models.BooleanField('Colaborador',         default=False)
-    es_cliente            = models.BooleanField('Cliente',             default=False)
-    es_proveedor          = models.BooleanField('Proveedor',           default=False)
-    es_inversor_esporadico = models.BooleanField('Inversor esporádico', default=False)
+    grado_actividad = models.ForeignKey('GradoActividad', on_delete=models.SET_NULL, null=True, blank=True, related_name='colaboradores')
+    pub_status = models.CharField('Estado público', max_length=100, blank=True)
     website = models.URLField(blank=True)
     phone = models.CharField(max_length=50, blank=True)
     linkedin = models.URLField(blank=True)
@@ -426,7 +443,6 @@ class Colaborador(models.Model):
 
     def __str__(self):
         return self.name
-
 
 class ColaboradorContacto(models.Model):
     colaborador = models.ForeignKey(Colaborador, on_delete=models.CASCADE, related_name='contacts')
@@ -444,14 +460,9 @@ class Colaboracion(models.Model):
     colaborador = models.ForeignKey(Colaborador, on_delete=models.SET_NULL, null=True, blank=True, related_name='colaboraciones')
     investor = models.ForeignKey('Investor', on_delete=models.SET_NULL, null=True, blank=True, related_name='colaboraciones')
     status = models.ForeignKey(EstadoColaboracion, on_delete=models.SET_NULL, null=True, blank=True, related_name='colaboraciones')
-    TIPO_RELACION_CHOICES = [
-        ('Colaborador', 'Colaborador'),
-        ('Cliente',     'Cliente'),
-        ('Proveedor',   'Proveedor'),
-        ('Otro',        'Otro'),
-    ]
-    tipo_relacion = models.CharField('Tipo de relación', max_length=50,
-                                     choices=TIPO_RELACION_CHOICES, blank=True)
+    tipo_relacion = models.ForeignKey('TipoRelacionColaboracion', on_delete=models.SET_NULL,
+                                      null=True, blank=True, verbose_name='Tipo de relación',
+                                      related_name='colaboraciones')
     descripcion = models.TextField('Descripción', blank=True)
     date = models.DateField('Fecha inicio', null=True, blank=True)
     intro_by = models.CharField('Presentado por', max_length=150, blank=True)

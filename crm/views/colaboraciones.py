@@ -24,7 +24,7 @@ def colaboraciones_pipeline(request):
                 company=company_obj,
                 colaborador_id=colaborador_id or None,
                 investor_id=investor_id or None,
-                tipo_relacion=request.POST.get('tipo_relacion', ''),
+                tipo_relacion_id=request.POST.get('tipo_relacion') or None,
                 status_id=request.POST.get('status') or None,
                 descripcion=request.POST.get('descripcion', ''),
                 date=request.POST.get('date') or None,
@@ -98,7 +98,7 @@ def colaboraciones_global(request):
             colabobj = get_object_or_404(ColabModel, pk=colaborador_id)
             Colaboracion.objects.create(
                 company=company_obj, colaborador=colabobj,
-                tipo_relacion=request.POST.get('tipo_relacion', ''),
+                tipo_relacion_id=request.POST.get('tipo_relacion') or None,
                 status_id=request.POST.get('status') or None,
                 descripcion=request.POST.get('descripcion', ''),
                 date=request.POST.get('date') or None,
@@ -122,7 +122,7 @@ def colaboraciones_global(request):
     COL_GRP_KEYS = {
         'company':     lambda c: c.company.name,
         'colaborador': lambda c: c.colaborador.name,
-        'tipo':        lambda c: c.tipo_relacion or '—',
+        'tipo':        lambda c: c.tipo_relacion.nombre if c.tipo_relacion else '—',
         'estado':      lambda c: c.status.nombre if c.status else '—',
     }
     COL_GRP_LABELS = [
@@ -170,6 +170,8 @@ def colaboracion_create(request, company_pk):
     return render(request, 'crm/colaboracion_form.html', {
         'active_nav': 'companies', 'form': form, 'company': company,
         'title': f'Nueva colaboración — {company.name}',
+        'all_colaboradores': Colaborador.objects.order_by('name'),
+        'all_investors': visible_investors(request.user).order_by('name'),
     })
 
 
@@ -186,11 +188,30 @@ def colaboracion_edit(request, pk):
             return redirect('crm:colaboracion_detail', pk=col.pk)
     else:
         form = ColaboracionForm(instance=col)
+    from accounts.models import Role
+    contact_name = col.colaborador.name if col.colaborador else (col.investor.name if col.investor else col.company.name)
     return render(request, 'crm/colaboracion_form.html', {
         'active_nav': 'companies', 'form': form, 'company': col.company,
-        'title': f'Editar colaboración — {col.colaborador.name if col.colaborador else col.company.name}',
+        'title': f'Editar colaboración — {contact_name}',
         'colaboracion': col,
+        'is_admin': request.user.role == Role.ADMIN,
+        'all_colaboradores': Colaborador.objects.order_by('name'),
+        'all_investors': visible_investors(request.user).order_by('name'),
     })
+
+
+@login_required
+def colaboracion_delete(request, pk):
+    from accounts.models import Role
+    col = get_object_or_404(Colaboracion.objects.select_related('company'), pk=pk)
+    if request.user.role != Role.ADMIN or not can_see_company(request.user, col.company_id):
+        return HttpResponseForbidden()
+    if request.method == 'POST':
+        company_pk = col.company_id
+        col.delete()
+        messages.success(request, 'Colaboración eliminada.')
+        return redirect('crm:company_detail', pk=company_pk)
+    return HttpResponseForbidden()
 
 
 @login_required
@@ -263,6 +284,10 @@ def colaboracion_detail(request, pk):
         'chrono_rich': chrono_rich,
         'can_edit': can_edit(request.user),
         'estados_col': list(EstadoColaboracion.objects.order_by('orden')),
+        'all_companies': visible_companies(request.user).order_by('name'),
+        'all_colaboradores': Colaborador.objects.order_by('name'),
+        'all_investors': visible_investors(request.user).order_by('name'),
+        'tipos_relacion_colab': TipoRelacionColaboracion.objects.filter(habilitada=True),
     })
 
 
@@ -321,14 +346,27 @@ def colaboracion_edit_inline(request, pk):
 
         status_raw      = request.POST.get('status', '').strip()
         col.status_id   = int(status_raw) if status_raw.isdigit() else None
-        col.tipo_relacion = request.POST.get('tipo_relacion', '').strip()
+        tipo_raw = request.POST.get('tipo_relacion', '').strip()
+        col.tipo_relacion_id = int(tipo_raw) if tipo_raw.isdigit() else None
         col.date        = request.POST.get('date', '').strip() or None
         col.intro_by    = request.POST.get('intro_by', '').strip()
         col.next_action = request.POST.get('next_action', '').strip()
         col.next_date   = request.POST.get('next_date', '').strip() or None
         col.descripcion = request.POST.get('descripcion', '').strip()
-        col.save(update_fields=['status_id', 'tipo_relacion', 'date', 'intro_by',
-                                'next_action', 'next_date', 'descripcion'])
+        new_company_id = request.POST.get('company_id') or None
+        if new_company_id and can_see_company(request.user, new_company_id):
+            col.company_id = new_company_id
+        new_colaborador_id = request.POST.get('colaborador_id') or None
+        new_investor_id    = request.POST.get('investor_id') or None
+        if new_colaborador_id:
+            col.colaborador_id = new_colaborador_id
+            col.investor_id = None
+        elif new_investor_id:
+            col.investor_id = new_investor_id
+            col.colaborador_id = None
+        col.save(update_fields=['status_id', 'tipo_relacion_id', 'date', 'intro_by',
+                                'next_action', 'next_date', 'descripcion', 'company_id',
+                                'colaborador_id', 'investor_id'])
 
         # Registrar cambio de estado en cronología si el estado cambió
         if col.status_id != status_anterior_id:

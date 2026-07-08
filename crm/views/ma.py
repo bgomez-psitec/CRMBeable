@@ -32,6 +32,21 @@ def proceso_ma_create(request, company_pk):
 
 
 @login_required
+@login_required
+def proceso_ma_delete(request, pk):
+    from accounts.models import Role
+    proceso = get_object_or_404(ProcesoMA.objects.select_related('company'), pk=pk)
+    if request.user.role != Role.ADMIN or not can_see_company(request.user, proceso.company_id):
+        return HttpResponseForbidden()
+    if request.method == 'POST':
+        company_pk = proceso.company_id
+        proceso.delete()
+        messages.success(request, 'Proceso M&A eliminado.')
+        return redirect('crm:company_detail', pk=company_pk)
+    return HttpResponseForbidden()
+
+
+@login_required
 def proceso_ma_edit(request, pk):
     from datetime import date as _date
     proceso = get_object_or_404(ProcesoMA.objects.select_related('company'), pk=pk)
@@ -52,11 +67,13 @@ def proceso_ma_edit(request, pk):
             return redirect('crm:proceso_ma_detail', pk=proceso.pk)
     else:
         form = ProcesoMAForm(instance=proceso)
+    from accounts.models import Role
     return render(request, 'crm/proceso_ma_form.html', {
         'active_nav': 'companies', 'form': form, 'company': proceso.company,
         'title': f'Editar proceso M&A — {proceso.company.name}', 'proceso': proceso,
         'fase_logs': list(proceso.fase_logs.select_related('fase').order_by('date', 'pk')),
         'fases_ma': list(FaseMA.objects.order_by('orden')),
+        'is_admin': request.user.role == Role.ADMIN,
     })
 
 
@@ -128,6 +145,9 @@ def proceso_ma_detail(request, pk):
 
     all_colaboradores_ma = Colaborador.objects.order_by('name')
     all_investors_ma = visible_investors(request.user).order_by('name')
+    all_procesos_ma = ProcesoMA.objects.filter(
+        company_id__in=allowed_company_ids(request.user)
+    ).select_related('company').order_by('company__name')
 
     fases_ma = list(FaseMA.objects.order_by('orden'))
     # Fechas por fase (todas las visitas)
@@ -144,6 +164,7 @@ def proceso_ma_detail(request, pk):
         'end_stages': [stage_data(s) for s in end_stages],
         'all_colaboradores': all_colaboradores_ma,
         'all_investors': all_investors_ma,
+        'all_procesos_ma': all_procesos_ma,
         'can_edit': can_edit(request.user),
         'estados_ma': estados_ma,
         'fases_ma': fases_ma,
@@ -238,6 +259,11 @@ def contacto_ma_edit(request, pk):
         return HttpResponseForbidden()
     if request.method == 'POST':
         tab = request.POST.get('tab', 'matriz')
+        new_proceso_id = request.POST.get('proceso_id') or None
+        if new_proceso_id:
+            new_proceso = get_object_or_404(ProcesoMA.objects.select_related('company'), pk=new_proceso_id)
+            if can_see_company(request.user, new_proceso.company_id):
+                contacto.proceso_id = new_proceso_id
         contacto.status_id    = request.POST.get('status') or contacto.status_id
         raw_oferta = request.POST.get('oferta_precio') or ''
         contacto.oferta_precio = raw_oferta.replace('.', '').replace(',', '.') or None
@@ -245,10 +271,25 @@ def contacto_ma_edit(request, pk):
         contacto.intro_by     = request.POST.get('intro_by', '')
         contacto.next_action  = request.POST.get('next_action', '')
         contacto.next_date    = request.POST.get('next_date') or None
-        contacto.save(update_fields=['status', 'oferta_precio',
+        contacto.save(update_fields=['proceso_id', 'status', 'oferta_precio',
                                      'date', 'intro_by', 'next_action', 'next_date'])
         messages.success(request, 'Contacto actualizado.')
         return redirect(reverse('crm:proceso_ma_detail', kwargs={'pk': contacto.proceso_id}) + f'?tab={tab}')
+    return HttpResponseForbidden()
+
+
+@login_required
+def contacto_ma_delete(request, pk):
+    from crm.models import ContactoMA
+    contacto = get_object_or_404(ContactoMA.objects.select_related('proceso__company'), pk=pk)
+    if not can_edit(request.user) or not can_see_company(request.user, contacto.proceso.company_id):
+        return HttpResponseForbidden()
+    if request.method == 'POST':
+        proceso_pk = contacto.proceso_id
+        tab = request.POST.get('tab', 'matriz')
+        contacto.delete()
+        messages.success(request, 'Contacto eliminado.')
+        return redirect(reverse('crm:proceso_ma_detail', kwargs={'pk': proceso_pk}) + f'?tab={tab}')
     return HttpResponseForbidden()
 
 
@@ -405,6 +446,7 @@ def procesos_ma_global(request):
     cerrado = request.GET.get('cerrado', '')
     estado_id = request.GET.get('estado', '')
     company_filter = request.GET.get('company', '')
+    fase_filter = request.GET.get('fase', '')
     view = request.GET.get('view', 'kanban')
 
     if request.method == 'POST' and can_edit(request.user):
@@ -437,12 +479,14 @@ def procesos_ma_global(request):
         qs = qs.filter(cerrado=True)
     elif cerrado == '0':
         qs = qs.filter(cerrado=False)
+    if fase_filter:
+        qs = qs.filter(fase_id=fase_filter)
     procesos = list(qs.order_by('company__name', 'nombre'))
 
     # ContactoMA — usados tanto en kanban como en lista
     contactos_qs = ContactoMA.objects.filter(
         proceso__company__in=companies
-    ).select_related('proceso__company', 'comprador', 'investor', 'status').order_by('proceso__company__name', 'proceso__nombre')
+    ).select_related('proceso__company', 'proceso__fase', 'comprador', 'investor', 'status').order_by('proceso__company__name', 'proceso__nombre')
     if q:
         contactos_qs = contactos_qs.filter(
             models.Q(proceso__company__name__icontains=q) | models.Q(proceso__nombre__icontains=q)
@@ -452,6 +496,8 @@ def procesos_ma_global(request):
         contactos_qs = contactos_qs.filter(status_id=estado_id)
     if company_filter:
         contactos_qs = contactos_qs.filter(proceso__company_id=company_filter)
+    if fase_filter:
+        contactos_qs = contactos_qs.filter(proceso__fase_id=fase_filter)
     contactos_all = list(contactos_qs)
     estados_ma = list(EstadoMA.objects.all())
 
@@ -472,6 +518,7 @@ def procesos_ma_global(request):
     all_procesos = ProcesoMA.objects.filter(company__in=companies).select_related('company').order_by('company__name', 'nombre')
     ma_companies = companies.filter(procesos_ma__isnull=False).distinct().order_by('name')
     estados_ma_all = EstadoMA.objects.all()
+    fases_ma = FaseMA.objects.order_by('orden')
 
     # Grouping for list view (ContactoMA)
     g1, g2, g3 = parse_groups(request.GET, MA_CONTACTO_GROUP_KEYS)
@@ -481,7 +528,8 @@ def procesos_ma_global(request):
     return render(request, 'crm/procesos_ma_global.html', {
         'active_nav': 'ma_pipeline', 'procesos': procesos,
         'contactos_list': contactos_all,
-        'q': q, 'cerrado': cerrado, 'estado_id': estado_id, 'company_filter': company_filter, 'view': view,
+        'q': q, 'cerrado': cerrado, 'estado_id': estado_id, 'company_filter': company_filter,
+        'fase_filter': fase_filter, 'fases_ma': fases_ma, 'view': view,
         'pipe_stages_k': pipe_stages_k, 'end_stages_k': end_stages_k,
         'all_procesos': all_procesos, 'ma_companies': ma_companies,
         'all_colaboradores': Colaborador.objects.order_by('name'),

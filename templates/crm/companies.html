@@ -26,7 +26,13 @@
 {% elif groups %}
   {% for key, group_cards in groups.items %}
     <div class="dc-card mb-3">
-      <div class="dc-card__header">
+      <div class="dc-card__header co-drop-zone"
+           data-drop-field="{{ group }}"
+           data-drop-value="{{ key }}"
+           ondragover="coDragOver(event,this)"
+           ondragleave="coDragLeave(this)"
+           ondrop="coDrop(event,this)"
+           style="transition:background .15s">
         <h2 class="dc-card__title">{{ key }} <span class="dc-badge dc-badge--grey ms-1">{{ group_cards|length }}</span></h2>
       </div>
       <div class="dc-card__body">
@@ -40,5 +46,101 @@
   <div class="row g-3">
     {% for card in cards %}{% include "crm/_company_card.html" %}{% endfor %}
   </div>
+{% endif %}
+
+{% if can_edit %}
+{# ── Diálogo de confirmación DnD ─────────────────────────────────────────── #}
+<div id="co-dnd-overlay" style="
+  display:none;position:fixed;inset:0;z-index:9999;
+  background:rgba(0,0,0,.45);align-items:center;justify-content:center">
+  <div class="dc-card" style="width:400px;max-width:94vw;padding:24px">
+    <div class="d-flex align-items-center gap-2 mb-3">
+      <i class="bi bi-arrows-move" style="color:var(--dc-accent);font-size:1.1rem"></i>
+      <h5 style="margin:0;font-size:.95rem;font-weight:700">Mover participada</h5>
+    </div>
+    <p id="co-dnd-msg" style="font-size:.875rem;margin-bottom:18px"></p>
+    <div class="d-flex gap-2 justify-content-end">
+      <button class="btn-ghost" onclick="coDndCancel()">Cancelar</button>
+      <button class="btn-accent" onclick="coDndConfirm()">Confirmar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  let _dragPk    = null;
+  let _dragName  = '';
+  let _pending   = {};   // { field: value }
+
+  window.coDragStart = function (e) {
+    const card = e.currentTarget;
+    card._wasDragged = true;
+    _dragPk   = card.dataset.coPk;
+    _dragName = card.querySelector('.fw-semibold')?.innerText?.trim() || 'Participada';
+    e.dataTransfer.setData('text/plain', _dragPk);
+    e.dataTransfer.effectAllowed = 'move';
+  };
+
+  window.coDragOver = function (e, zone) {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    zone.style.background = 'rgba(var(--dc-accent-rgb),.10)';
+    zone.style.outline    = '2px dashed var(--dc-accent)';
+    zone.style.borderRadius = '6px';
+  };
+
+  window.coDragLeave = function (zone) {
+    zone.style.background = '';
+    zone.style.outline    = '';
+  };
+
+  window.coDrop = function (e, zone) {
+    e.preventDefault();
+    coDragLeave(zone);
+    if (!_dragPk) return;
+
+    _pending = {};
+    const f  = zone.dataset.dropField;
+    const v  = zone.dataset.dropValue;
+    if (f) _pending[f] = v;
+
+    if (!Object.keys(_pending).length) return;
+
+    const LABELS = { fund: 'Fondo', stage: 'Fase', country: 'País' };
+    const lines = Object.entries(_pending)
+      .map(([k, v]) => `<b>${LABELS[k] || k}</b> → <b>${v}</b>`)
+      .join('<br>');
+
+    document.getElementById('co-dnd-msg').innerHTML =
+      `¿Mover <b>${_dragName}</b> a:<br>${lines}?`;
+    document.getElementById('co-dnd-overlay').style.display = 'flex';
+  };
+
+  window.coDndCancel = function () {
+    document.getElementById('co-dnd-overlay').style.display = 'none';
+    _pending = {};
+    _dragPk  = null;
+  };
+
+  window.coDndConfirm = function () {
+    document.getElementById('co-dnd-overlay').style.display = 'none';
+    const csrf = document.querySelector('[name=csrfmiddlewaretoken]')?.value
+              || '{{ csrf_token }}';
+    const pk = _dragPk;
+    _pending = { ..._pending };
+    _dragPk  = null;
+
+    const requests = Object.entries(_pending).map(([field, value]) => {
+      const fd = new FormData();
+      fd.append('csrfmiddlewaretoken', csrf);
+      fd.append('field', field);
+      fd.append('value', value === '—' ? '' : value);
+      return fetch(`/participadas/${pk}/set-field/`, { method: 'POST', body: fd });
+    });
+
+    Promise.all(requests).then(() => location.reload());
+  };
+})();
+</script>
 {% endif %}
 {% endblock %}

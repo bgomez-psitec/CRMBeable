@@ -108,6 +108,12 @@ document.getElementById('ctx-ma-nueva').addEventListener('click', () => {
             <option value="{{ e.id }}" {% if estado_id == e.id|stringformat:"s" %}selected{% endif %}>{{ e.nombre }}</option>
           {% endfor %}
         </select>
+        <select name="fase" class="form-select" style="width:165px;flex-shrink:0" onchange="this.form.submit()">
+          <option value="">Todas las fases</option>
+          {% for f in fases_ma %}
+            <option value="{{ f.id }}" {% if fase_filter == f.id|stringformat:"s" %}selected{% endif %}>{{ f.nombre }}</option>
+          {% endfor %}
+        </select>
         <select name="group1" class="form-select" style="width:155px;flex-shrink:0" onchange="this.form.submit()">
           <option value="">Sin agrupar</option>
           {% for val, lbl in group_labels %}
@@ -131,14 +137,26 @@ document.getElementById('ctx-ma-nueva').addEventListener('click', () => {
         </select>
         {% endif %}
       {% else %}
+        <select name="company" class="form-select" style="width:170px;flex-shrink:0" onchange="this.form.submit()">
+          <option value="">Todas las participadas</option>
+          {% for c in ma_companies %}
+            <option value="{{ c.pk }}" {% if company_filter == c.pk|stringformat:"s" %}selected{% endif %}>{{ c.name }}</option>
+          {% endfor %}
+        </select>
         <select name="cerrado" class="form-select" style="width:155px;flex-shrink:0" onchange="this.form.submit()">
           <option value=""  {% if cerrado == '' %}selected{% endif %}>Todos</option>
           <option value="0" {% if cerrado == '0' %}selected{% endif %}>Solo activos</option>
           <option value="1" {% if cerrado == '1' %}selected{% endif %}>Solo cerrados</option>
         </select>
+        <select name="fase" class="form-select" style="width:165px;flex-shrink:0" onchange="this.form.submit()">
+          <option value="">Todas las fases</option>
+          {% for f in fases_ma %}
+            <option value="{{ f.id }}" {% if fase_filter == f.id|stringformat:"s" %}selected{% endif %}>{{ f.nombre }}</option>
+          {% endfor %}
+        </select>
       {% endif %}
       <button type="submit" class="btn-ghost" style="height:38px;flex-shrink:0">Buscar</button>
-      {% if q or cerrado or estado_id or group1 %}
+      {% if q or cerrado or estado_id or fase_filter or company_filter or group1 %}
         <a href="{% url 'crm:procesos_ma_global' %}?view={{ view }}" class="btn-ghost" style="color:var(--dc-danger);border-color:rgba(239,68,68,.3)">
           <i class="bi bi-x"></i> Limpiar
         </a>

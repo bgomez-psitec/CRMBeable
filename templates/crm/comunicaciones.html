@@ -63,7 +63,7 @@
               {{ item.contact.name }}
             </a>
           {% elif modulo == 'ma' %}
-            <a href="{% url 'crm:comprador_detail' item.contact.pk %}"
+            <a href="{% if item.is_investor %}{% url 'crm:investor_detail' item.contact.pk %}{% else %}{% url 'crm:colaborador_detail' item.contact.pk %}{% endif %}"
                class="fw-semibold" style="font-size:.9rem;color:var(--dc-text);text-decoration:none">
               {{ item.contact.name }}
             </a>

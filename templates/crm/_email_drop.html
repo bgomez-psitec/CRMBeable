@@ -1,5 +1,5 @@
-{# Partial: drag & drop de email .msg — extrae metadatos sin IA.           #}
-{# Cada página define window.EMAIL_CFG antes de incluir este partial.       #}
+{# Partial: drag & drop de email .msg/.eml — extrae metadatos sin IA.        #}
+{# Cada página define window.EMAIL_CFG antes de incluir este partial.         #}
 
 {# ── Overlay de arrastre ────────────────────────────────────────────────── #}
 <div id="emailDropOverlay" style="
@@ -15,15 +15,61 @@
   </div>
 </div>
 
-{# ── Modal de revisión ──────────────────────────────────────────────────── #}
-<div id="emailReviewModal" style="
+{# ── Modal de elección ──────────────────────────────────────────────────── #}
+<div id="emailChoiceModal" style="
   display:none;position:fixed;inset:0;z-index:10001;
+  background:rgba(0,0,0,.52);align-items:center;justify-content:center">
+  <div class="dc-card" style="width:520px;max-width:95vw;padding:28px">
+
+    <div class="d-flex align-items-center gap-2 mb-3">
+      <i class="bi bi-envelope-check" style="color:var(--dc-accent);font-size:1.2rem"></i>
+      <h5 style="margin:0;font-size:1rem;font-weight:700">Email detectado</h5>
+      <button id="emailChoiceClose"
+              style="margin-left:auto;background:none;border:none;font-size:1.2rem;cursor:pointer;color:var(--dc-text-muted)">
+        <i class="bi bi-x-lg"></i>
+      </button>
+    </div>
+
+    {# Cabecera extraída — solo lectura #}
+    <div id="ecHeader" style="
+      padding:10px 14px;border-radius:7px;margin-bottom:18px;
+      background:rgba(var(--dc-accent-rgb),.06);border:1px solid var(--dc-border);
+      font-size:.85rem;line-height:1.8"></div>
+
+    <div style="font-size:.82rem;font-weight:600;color:var(--dc-text-muted);margin-bottom:10px;text-transform:uppercase;letter-spacing:.04em">
+      ¿Qué deseas hacer con este email?
+    </div>
+
+    <div class="d-flex gap-3">
+      <button id="emailChoiceText" style="
+          flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;
+          padding:14px 10px;border-radius:8px;border:1.5px solid var(--dc-border);
+          background:var(--dc-surface);cursor:pointer;transition:all .15s;text-align:center">
+        <i class="bi bi-body-text" style="font-size:1.4rem;color:var(--dc-accent)"></i>
+        <span style="font-size:.82rem;font-weight:600;color:var(--dc-text)">Pegar texto completo</span>
+        <span style="font-size:.73rem;color:var(--dc-text-muted)">Copia el email en el campo resumen</span>
+      </button>
+      <button id="emailChoiceFile" style="
+          flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;
+          padding:14px 10px;border-radius:8px;border:1.5px solid var(--dc-border);
+          background:var(--dc-surface);cursor:pointer;transition:all .15s;text-align:center">
+        <i class="bi bi-paperclip" style="font-size:1.4rem;color:#f59e0b"></i>
+        <span style="font-size:.82rem;font-weight:600;color:var(--dc-text)">Guardar como adjunto</span>
+        <span style="font-size:.73rem;color:var(--dc-text-muted)">Guarda el .msg en la carpeta de datos</span>
+      </button>
+    </div>
+  </div>
+</div>
+
+{# ── Modal de revisión (opción texto) ───────────────────────────────────── #}
+<div id="emailReviewModal" style="
+  display:none;position:fixed;inset:0;z-index:10002;
   background:rgba(0,0,0,.5);align-items:center;justify-content:center">
   <div class="dc-card" style="width:580px;max-width:96vw;max-height:90vh;overflow-y:auto;padding:28px">
 
     <div class="d-flex align-items-center gap-2 mb-4">
-      <i class="bi bi-envelope-check" style="color:var(--dc-accent);font-size:1.2rem"></i>
-      <h5 style="margin:0;font-size:1rem;font-weight:700">Revisión del email extraído</h5>
+      <i class="bi bi-body-text" style="color:var(--dc-accent);font-size:1.2rem"></i>
+      <h5 style="margin:0;font-size:1rem;font-weight:700">Texto del email extraído</h5>
       <button id="emailReviewClose"
               style="margin-left:auto;background:none;border:none;font-size:1.2rem;cursor:pointer;color:var(--dc-text-muted)">
         <i class="bi bi-x-lg"></i>
@@ -63,7 +109,7 @@
 
 {# ── Spinner de carga ───────────────────────────────────────────────────── #}
 <div id="emailParsingSpinner" style="
-  display:none;position:fixed;inset:0;z-index:10002;
+  display:none;position:fixed;inset:0;z-index:10003;
   background:rgba(0,0,0,.45);align-items:center;justify-content:center">
   <div class="dc-card" style="padding:28px 40px;text-align:center">
     <div class="spinner-border text-primary mb-3" role="status"></div>
@@ -77,12 +123,14 @@
   const cfg = window.EMAIL_CFG;
   if (!cfg) return;
 
-  const overlay = document.getElementById('emailDropOverlay');
-  const review  = document.getElementById('emailReviewModal');
-  const spinner = document.getElementById('emailParsingSpinner');
-  let dragCount   = 0;
-  let _pendingMsgFile = null;
-  let _processing = false;   // Guard: evita procesar el mismo .msg dos veces
+  const overlay  = document.getElementById('emailDropOverlay');
+  const choiceMd = document.getElementById('emailChoiceModal');
+  const reviewMd = document.getElementById('emailReviewModal');
+  const spinner  = document.getElementById('emailParsingSpinner');
+  let dragCount      = 0;
+  let _pendingFile   = null;   // File object del drop
+  let _parsedData    = null;   // Datos parseados del servidor
+  let _processing    = false;  // Guard: evita procesar el mismo archivo dos veces
 
   // ── Detectar .msg en drag ──────────────────────────────────────────────
   function hasMsgFile(dt) {
@@ -90,7 +138,7 @@
     for (const item of (dt.items || [])) {
       if (item.kind === 'file') {
         const f = item.getAsFile();
-        if (f && f.name.toLowerCase().endsWith('.msg')) return true;
+        if (f && /\.(msg|eml)$/i.test(f.name)) return true;
       }
     }
     return false;
@@ -110,15 +158,15 @@
     e.preventDefault();
     dragCount = 0;
     overlay.style.display = 'none';
-    const file = [...(e.dataTransfer.files || [])].find(f => f.name.toLowerCase().endsWith('.msg'));
+    const file = [...(e.dataTransfer.files || [])].find(f => /\.(msg|eml)$/i.test(f.name));
     if (file) processMsg(file);
   });
 
   // ── Enviar .msg al servidor para extracción ────────────────────────────
   function processMsg(file) {
-    if (_processing) return;   // Ignorar segunda llamada (bubbling desde dropZone)
+    if (_processing) return;
     _processing = true;
-    _pendingMsgFile = file;
+    _pendingFile = file;
     spinner.style.display = 'flex';
     const fd = new FormData();
     fd.append('file', file);
@@ -129,7 +177,8 @@
         spinner.style.display = 'none';
         _processing = false;
         if (data.error) { alert('Error: ' + data.error); return; }
-        showReview(data);
+        _parsedData = data;
+        showChoice(data);
       })
       .catch(err => {
         spinner.style.display = 'none';
@@ -138,40 +187,78 @@
       });
   }
 
-  // ── Construir HTML con negritas ────────────────────────────────────────
-  function buildHtml(data) {
+  // ── Construir cabecera HTML con (In)/(Out) en color ───────────────────
+  function buildHeaderHtml(data) {
     const isOut    = (data.direction || '').includes('Out');
     const dirTag   = isOut ? '(Out)' : '(In)';
     const dirColor = isOut ? '#3b82f6' : '#22c55e';
-    const esc      = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    const esc      = s => String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+
+    let html = `<b style="color:${dirColor};font-size:.95rem">${dirTag}</b>`;
+    if (data.sender)   html += ` &nbsp;<b>De:</b> ${esc(data.sender)}`;
+    if (data.to_field) html += `<br><b>Para:</b> ${esc(data.to_field)}`;
+    if (data.subject)  html += `<br><b>Asunto:</b> ${esc(data.subject)}`;
+    if (data.date)     html += `<br><b>Fecha:</b> ${esc(data.date)}`;
+    return html;
+  }
+
+  // ── Construir texto completo para textarea ─────────────────────────────
+  function buildFullHtml(data) {
+    const isOut    = (data.direction || '').includes('Out');
+    const dirTag   = isOut ? '(Out)' : '(In)';
+    const dirColor = isOut ? '#3b82f6' : '#22c55e';
+    const esc      = s => String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 
     let html = `<b style="color:${dirColor}">${dirTag}</b>`;
     if (data.sender)   html += ` <b>De:</b> ${esc(data.sender)}`;
     if (data.to_field) html += `<br><b>Para:</b> ${esc(data.to_field)}`;
     if (data.subject)  html += `<br><b>Asunto:</b> ${esc(data.subject)}`;
+    if (data.body)     html += `<br><b>Resumen:</b> ${esc(data.body)}`;
     return html;
   }
 
-  // ── Mostrar modal de revisión ──────────────────────────────────────────
-  function showReview(data) {
-    document.getElementById('erDate').value      = data.date || '';
-    document.getElementById('erSummary').innerHTML = buildHtml(data);
-    review.style.display = 'flex';
+  // ── Modal de elección ─────────────────────────────────────────────────
+  function showChoice(data) {
+    document.getElementById('ecHeader').innerHTML = buildHeaderHtml(data);
+    choiceMd.style.display = 'flex';
   }
 
-  // ── Cerrar ─────────────────────────────────────────────────────────────
-  ['emailReviewClose', 'emailReviewCancel'].forEach(id =>
-    document.getElementById(id).addEventListener('click', () => {
-      review.style.display = 'none';
-    })
-  );
+  function closeChoice() { choiceMd.style.display = 'none'; }
 
-  // ── Confirmar → rellenar modal de log ─────────────────────────────────
-  document.getElementById('emailReviewConfirm').addEventListener('click', () => {
-    const dateVal    = document.getElementById('erDate').value;
-    const summaryVal = document.getElementById('erSummary').innerText.trim();
+  document.getElementById('emailChoiceClose').addEventListener('click', closeChoice);
 
-    review.style.display = 'none';
+  // Opción 1: pegar texto completo en cronología
+  document.getElementById('emailChoiceText').addEventListener('click', () => {
+    closeChoice();
+    document.getElementById('erDate').value        = _parsedData.date || '';
+    document.getElementById('erSummary').innerHTML = buildFullHtml(_parsedData);
+    reviewMd.style.display = 'flex';
+  });
+
+  // Opción 2: guardar como adjunto
+  document.getElementById('emailChoiceFile').addEventListener('click', () => {
+    closeChoice();
+    // Construir resumen de cabecera en plano (sin cuerpo) para el campo texto
+    const headerPlain = _buildHeaderPlain(_parsedData);
+    const dateVal = _parsedData.date || new Date().toISOString().slice(0, 10);
+    _fillLogModal(dateVal, headerPlain, true /* setDocDropFile */);
+  });
+
+  // Construye texto plano de cabecera para opción "guardar adjunto"
+  function _buildHeaderPlain(data) {
+    const isOut  = (data.direction || '').includes('Out');
+    let txt = isOut ? '(Out)' : '(In)';
+    if (data.sender)   txt += ` De: ${data.sender}`;
+    if (data.to_field) txt += `\nPara: ${data.to_field}`;
+    if (data.subject)  txt += `\nAsunto: ${data.subject}`;
+    return txt;
+  }
+
+  // Rellena el modal de log y opcionalmente pone el archivo en _docDropFile
+  function _fillLogModal(dateVal, summaryVal, saveAsFile) {
+    if (saveAsFile && _pendingFile) {
+      window._docDropFile = _pendingFile;
+    }
 
     const modalEl = document.getElementById(cfg.modalId);
     if (!modalEl || !window.bootstrap) return;
@@ -181,14 +268,8 @@
       const summaryEl = document.querySelector(cfg.summarySel);
       if (dateEl)    dateEl.value    = dateVal;
       if (summaryEl) summaryEl.value = summaryVal;
-      // Actualiza tipo + estilos de píldoras
       if (typeof invLogSetType    === 'function') invLogSetType('Email');
       else if (typeof colabLogSetType === 'function') colabLogSetType('Email');
-      // Pasar el .msg al interceptor de _doc_drop.html para que lo guarde en la carpeta
-      if (_pendingMsgFile) {
-        window._docDropFile = _pendingMsgFile;
-        _pendingMsgFile = null;
-      }
     }
 
     const alreadyShown = modalEl.classList.contains('show');
@@ -201,6 +282,21 @@
       });
       bootstrap.Modal.getOrCreateInstance(modalEl).show();
     }
+  }
+
+  // ── Modal de revisión: cerrar ──────────────────────────────────────────
+  ['emailReviewClose', 'emailReviewCancel'].forEach(id =>
+    document.getElementById(id).addEventListener('click', () => {
+      reviewMd.style.display = 'none';
+    })
+  );
+
+  // ── Modal de revisión: confirmar → rellenar modal de log ──────────────
+  document.getElementById('emailReviewConfirm').addEventListener('click', () => {
+    const dateVal    = document.getElementById('erDate').value;
+    const summaryVal = document.getElementById('erSummary').innerText.trim();
+    reviewMd.style.display = 'none';
+    _fillLogModal(dateVal, summaryVal, false /* no adjunto */);
   });
 
   // Exponer para que _doc_drop.html pueda delegar .msg

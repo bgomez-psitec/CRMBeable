@@ -48,7 +48,7 @@ def settings_view(request):
             model = {
                 'estado': EstadoPresentacion, 'fase': FaseRonda, 'relacion': EtapaRelacion,
                 'estado_ma': EstadoMA, 'fase_ma': FaseMA, 'estado_colab': EstadoColaboracion,
-                'relacion_colab': EtapaRelacionColaborador,
+                'tipo_relacion_colab': TipoRelacionColaboracion,
             }.get(request.POST.get('tipo'))
             if model:
                 action = request.POST.get('action', '')
@@ -83,7 +83,9 @@ def settings_view(request):
                 'etapa_inversion': EtapaInversion, 'rango_ticket': RangoTicket,
                 'rango_aum': RangoAUM, 'nivel': Nivel, 'tiempo_mercado': TiempoMercado,
                 'facturacion': Facturacion, 'estado_inversion': EstadoInversion,
-                'sector': Sector,
+                'sector': Sector, 'tipo_inversion_inv': TipoInversionInversor,
+                'estado_publico_inv': EstadoPublicoInversor,
+                'grado_actividad': GradoActividad,
             }.get(request.POST.get('tipo'))
             if crud_model:
                 action = request.POST.get('action', '')
@@ -155,7 +157,8 @@ def settings_view(request):
         'estados_ma': EstadoMA.objects.all(),
         'fases_ma': FaseMA.objects.all(),
         'estados_colab': EstadoColaboracion.objects.all(),
-        'relaciones_colab': EtapaRelacionColaborador.objects.all(),
+        'tipos_relacion_colab': TipoRelacionColaboracion.objects.all(),
+        'cat_grado_actividad': GradoActividad.objects.all(),
         'provincias': Provincia.objects.all(),
         'cat_funds': Fund.objects.all(),
         'cat_estado_inversion': EstadoInversion.objects.all(),
@@ -168,5 +171,7 @@ def settings_view(request):
         'cat_rango_ticket': RangoTicket.objects.all(),
         'cat_rango_aum': RangoAUM.objects.all(),
         'cat_area': Area.objects.all(),
+        'cat_tipo_inversion_inv': TipoInversionInversor.objects.all(),
+        'cat_estado_publico_inv': EstadoPublicoInversor.objects.all(),
         'is_admin': request.user.role == Role.ADMIN,
     })

@@ -14,13 +14,13 @@ Construida como port fiel y productivo del prototipo funcional `CRM_Gestora_ES_V
   - Pipeline kanban con estados propios (Identificado → Contactado → Reunión → Oferta recibida → Negociación | Vendido / Descartado) y precio de oferta por contacto.
   - Catálogo de estados M&A configurable desde Ajustes.
 - **Colaboraciones**: módulo integrado en cada participada para hacer seguimiento de posibles clientes, proveedores y partners de desarrollo de negocio.
-  - Seguimiento por tipo de relación (cliente potencial, proveedor potencial, partner tecnológico, partner comercial).
+  - Seguimiento por tipo de relación (cliente potencial, proveedor potencial, partner tecnológico, partner comercial) configurado en la propia Colaboración (no en el Colaborador, ya que el mismo colaborador puede ser proveedor de una participada y cliente de otra).
   - Cronología de interacciones por colaboración.
   - Vista global de colaboraciones con filtro por estado.
   - Cronología de contactos del Colaborador con **filtros por contexto** (Todos / Ronda de Inversión / Proceso M&A / Colaboraciones) y eliminación de cualquier entrada.
   - Catálogo de estados de colaboración configurable desde Ajustes.
-- **Inversores**: listado/grid con búsqueda y agrupación (tipo/país); ficha de detalle con cronología combinada de contactos (registros manuales + interacciones ligadas a presentaciones), contactos y presentaciones asociadas. La cronología incluye **filtros por contexto** (Todos / Ronda de Inversión / Proceso M&A / Colaboraciones) y permite eliminar cualquier entrada (incluyendo emails). Ficha incluye campos **Teléfono, Web y LinkedIn** editables.
-- **Colaboradores**: ficha con los mismos campos de contacto (Teléfono, Web y LinkedIn) y cronología con filtros por contexto.
+- **Inversores**: listado/grid con búsqueda, agrupación (tipo/país/etapa relación/estado público/…) y **filtro por Etapa de Relación**; ficha de detalle con cronología combinada de contactos, contactos y presentaciones asociadas. La cronología incluye **filtros por contexto** (Todos / Ronda de Inversión / Proceso M&A / Colaboraciones) y permite eliminar cualquier entrada (incluyendo emails). Ficha incluye campos **Teléfono, Web y LinkedIn**, **Grado de Actividad**, **Estado Público** y **Tipo de Inversión** editables.
+- **Colaboradores**: listado/grid con búsqueda, agrupación y **filtro por Etapa de Relación**; ficha con los mismos campos de contacto (Teléfono, Web y LinkedIn), **Grado de Actividad** y **Estado Público** y cronología con filtros por contexto.
 - **Presentaciones (introductions)**: vista global con búsqueda y filtro por estado.
 - **Bandeja de entrada**: gestión de emails recibidos con flujo guiado en 3 pasos:
   1. **Detección automática de contacto** — busca el remitente (`from_email`) en la base de datos de contactos de Inversores y Colaboradores. Si se encuentra, se autoselecciona y aparece un banner verde de confirmación. Si no existe, ofrece la opción de crearlo como nuevo contacto de un Inversor o Colaborador sin salir de la pantalla.
@@ -39,11 +39,14 @@ Construida como port fiel y productivo del prototipo funcional `CRM_Gestora_ES_V
   - Mapeo de `category_of_investor` → `TipoInversor`, `enfoque_de_inversion` (multi-valor) → `Sector`, `dealstage` → `EstadoPresentacion` / `FaseMA` / `EstadoColaboracion`.
   - Fechas (`createdate`, `closedate`), importes (`amount`) y datos de contacto (`phone`, `website`, `linkedin_company_page`) importados con normalización de URLs.
   - Matching fuzzy de partners por nombre de deal con filtro de tokens genéricos y umbral configurable.
-- **Ajustes** (solo admin): edición de perfil (nombre, apellidos, usuario, email, MFA) y gestión completa de catálogos configurables, organizados en cinco pestañas:
-  - **Ronda Inversión**: Estados de presentación, Fases de ronda, Etapas de relación con inversores.
-  - **M&A y Colaboración**: Estados M&A, Fases de proceso M&A, Estados de colaboración, Etapas de relación con colaboradores.
-    - **Participadas**: Fondos, Estados de inversión, Sectores, Niveles (TRL/MRL), Tiempo al mercado, Facturación, Provincias.
-  - **Inversores**: Tipos de inversor, Etapas de inversión, Rangos de ticket, Rangos AUM, Áreas geográficas.
+- **Ajustes** (solo admin): edición de perfil (nombre, apellidos, usuario, email, MFA) y gestión completa de catálogos configurables, organizados en seis pestañas:
+  - **Ronda Inversión**: Estados de presentación, Fases de ronda.
+  - **Proceso M&A**: Estados M&A, Fases de proceso M&A.
+  - **Colaboración**: Estados de colaboración, Tipos de relación en colaboración.
+  - **Participadas**: Fondos, Estados de inversión, Sectores, Niveles (TRL/MRL), Tiempo al mercado, Facturación, Provincias.
+  - **Inversores**: Tipos de inversor, Etapas de inversión, Rangos de ticket, Rangos AUM, Áreas geográficas, Tipos de inversión (LP / Inversión Directa…).
+  - **Colaboradores**: Tipos de colaborador y notas sobre catálogos compartidos con Inversores.
+  - **Genérico** (compartido por Inversores y Colaboradores): Etapa de Relación, Grado de Actividad, Estado Público.
   - Todos los catálogos permiten **crear, renombrar, reordenar, habilitar/inhabilitar y eliminar** entradas con confirmación. Los campos antes definidos como `TextChoices` son ahora modelos de BD editables desde la interfaz.
 - **Control de acceso por roles (RBAC) aplicado en servidor**, no solo en la interfaz:
   - **admin**: acceso total a todas las participadas, inversores, M&A, colaboraciones, informes y administración.
@@ -87,11 +90,12 @@ requirements.txt     Dependencias Python
 |---|---|
 | Fundraising | `Round`, `Introduction`, `Interaction`, `EstadoPresentacion`, `FaseRonda`, `RoundFaseLog` |
 | M&A | `ProcesoMA`, `ContactoMA`, `InteraccionMA`, `Comprador`, `EstadoMA`, `FaseMA`, `ProcesoMAFaseLog` |
-| Colaboraciones | `Colaboracion`, `InteraccionColaboracion`, `Colaborador`, `ColaboradorLog`, `EstadoColaboracion`, `EtapaRelacionColaborador` |
-| Inversores | `Investor`, `InvestorContact`, `InvestorLog`, `EtapaRelacion` |
+| Colaboraciones | `Colaboracion`, `InteraccionColaboracion`, `Colaborador`, `ColaboradorLog`, `EstadoColaboracion`, `TipoRelacionColaboracion` |
+| Inversores | `Investor`, `InvestorContact`, `InvestorLog` |
 | Bandeja | `InboxMessage` (FKs a `Investor`, `Colaborador`, `Round`, `ProcesoMA`) |
 | Documentos | Archivos en filesystem bajo `CONTACT_DOCS_ROOT`; `Documento` vinculado a participada/ronda/proceso |
-| Catálogos (BD) | `Fund`, `Area`, `TipoInversor`, `EtapaInversion`, `RangoTicket`, `RangoAUM`, `Nivel`, `TiempoMercado`, `Facturacion`, `EstadoInversion`, `Sector`, `Provincia` — todos con `nombre`, `orden`, `habilitada` |
+| Catálogos (BD) | `Fund`, `Area`, `TipoInversor`, `EtapaInversion`, `RangoTicket`, `RangoAUM`, `Nivel`, `TiempoMercado`, `Facturacion`, `EstadoInversion`, `Sector`, `Provincia`, `TipoInversionInversor` — todos con `nombre`, `orden`, `habilitada` |
+| Catálogos genéricos | `EtapaRelacion`, `GradoActividad`, `EstadoPublicoInversor` — compartidos por `Investor` y `Colaborador` |
 
 ## Modelo de roles
 
@@ -218,8 +222,11 @@ sudo ./scripts/deploy.sh
 - ✅ Bandeja de entrada rediseñada: detección automática de contacto, selección en cascada Participada → Proceso, creación de nuevo contacto inline, identificación `Bandeja de entrada` en cronología, eliminación de emails.
 - ✅ **Centro de documentos**: carpeta de archivos por participada, inversor y colaborador con drag & drop de `.msg` (emails de Outlook) sobre la cronología; enlace directo a documentos desde la ficha de cada inversor y colaborador.
 - ✅ **Catálogos como modelos de BD**: los 11 campos que eran `TextChoices` (Fondo, Sector, Tipo inversor, Etapa inversión, Rango ticket, Rango AUM, Nivel, Tiempo mercado, Facturación, Estado inversión, Área) son ahora tablas editables desde Ajustes, con orden, habilitación y renombrado en línea.
-- ✅ **Ajustes reorganizado en pestañas**: Perfil / Ronda Inversión / M&A y Colaboración / Participadas / Inversores, con UI uniforme (crear, renombrar, reordenar, habilitar/inhabilitar, eliminar con confirmación).
+- ✅ **Ajustes reorganizado en pestañas**: Perfil / Ronda Inversión / Proceso M&A / Colaboración / Participadas / Inversores / Colaboradores / Genérico, con UI uniforme (crear, renombrar, reordenar, habilitar/inhabilitar, eliminar con confirmación). Cada tarjeta incluye texto explicativo.
 - ✅ **Campos de contacto en Inversores, Colaboradores y Participadas**: Teléfono, Web y LinkedIn añadidos a los tres modelos, visibles en ficha y editables en formulario/modal.
+- ✅ **Catálogos genéricos compartidos** (Inversores + Colaboradores): `EtapaRelacion`, `GradoActividad` y `EstadoPublico` unificados en la pestaña Genérico de Ajustes. Eliminado el catálogo duplicado `EtapaRelacionColaborador`.
+- ✅ **Nuevos campos en Inversores y Colaboradores**: `grado_actividad` (FK a `GradoActividad`), `pub_status` (Estado Público) y `tipo_inversion` (multiselect desde `TipoInversionInversor`) en Inversores; `grado_actividad` y `pub_status` en Colaboradores.
+- ✅ **Filtro y agrupación por Etapa de Relación** disponibles en las vistas de lista de Inversores y Colaboradores.
 - ✅ **Importación desde HubSpot** (`import_hubspot`): pipeline completo de migración con dry-run, matching fuzzy de partners, mapeo de todos los campos relevantes (type, sectors, dealstage, dates, amounts, contact info) y CSV de revisión manual.
 - ⏳ **Auth0**: pendiente de integrar para sustituir el login demo actual (variables ya previstas en `.env.example`).
 - ⏳ **Microsoft Graph (Outlook)**: pendiente de integrar para sincronizar la bandeja de entrada con buzones reales (variables ya previstas en `.env.example`); actualmente la bandeja se gestiona de forma manual.

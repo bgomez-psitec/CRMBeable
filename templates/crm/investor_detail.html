@@ -36,6 +36,7 @@
         {% if investor.ticket_range %}<span>Ticket <b style="color:var(--dc-text)">{{ investor.ticket_range }}</b></span>{% endif %}
         {% if investor.aum %}<span>AUM <b style="color:var(--dc-text)">{{ investor.aum }}</b></span>{% endif %}
         {% if investor.pub_status %}<span>Estado <b style="color:var(--dc-text)">{{ investor.pub_status }}</b></span>{% endif %}
+        {% if investor.grado_actividad %}<span>Actividad <b style="color:var(--dc-text)">{{ investor.grado_actividad.nombre }}</b></span>{% endif %}
         {% if investor.country %}<span>País <b style="color:var(--dc-text)">{{ investor.country }}</b></span>{% endif %}
         {% if investor.phone %}<span><i class="bi bi-telephone"></i> <a href="tel:{{ investor.phone }}" style="color:inherit">{{ investor.phone }}</a></span>{% endif %}
         {% if investor.website %}<span><i class="bi bi-globe"></i> <a href="{{ investor.website }}" target="_blank" rel="noopener" style="color:var(--dc-accent)">Web</a></span>{% endif %}
@@ -44,23 +45,21 @@
       </div>
     </div>
 
-    {# Columna derecha: sectores + áreas #}
+  </div>
     {% if investor.sectors or investor.areas %}
-    <div style="flex-shrink:0;width:220px">
+    <div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-top:8px;padding-top:8px;border-top:1px solid var(--dc-border)">
       {% if investor.sectors %}
-      <div style="display:flex;flex-wrap:wrap;gap:3px;margin-bottom:3px">
+        <span style="font-size:.72rem;color:var(--dc-text-muted);margin-right:2px">Sectores</span>
         {% for s in investor.sectors|split_csv %}<span class="dc-badge dc-badge--grey" style="font-size:.68rem;padding:2px 6px">{{ s }}</span>{% endfor %}
-      </div>
       {% endif %}
+      {% if investor.sectors and investor.areas %}<span style="color:var(--dc-border);margin:0 4px">|</span>{% endif %}
       {% if investor.areas %}
-      <div style="display:flex;flex-wrap:wrap;gap:3px;align-items:center">
-        <i class="bi bi-geo-alt" style="font-size:.7rem;color:var(--dc-text-muted)"></i>
+        <i class="bi bi-geo-alt" style="font-size:.72rem;color:var(--dc-text-muted)"></i>
+        <span style="font-size:.72rem;color:var(--dc-text-muted);margin-right:2px">Área</span>
         {% for a in investor.areas|split_csv %}<span class="dc-badge dc-badge--blue" style="font-size:.68rem;padding:2px 6px">{{ a }}</span>{% endfor %}
-      </div>
       {% endif %}
     </div>
     {% endif %}
-  </div>
 
   {# Contactos de la firma #}
   {% if investor.contacts.all %}
@@ -348,7 +347,10 @@
       {% endif %}
     </div>
     {# Línea 2: texto del log #}
-    <div style="font-size:.835rem;color:var(--dc-text);padding-left:22px;margin-top:2px;line-height:1.45">{{ x.summary|format_log }}</div>
+    <div class="log-body" style="padding-left:22px">
+      <div class="log-text log-clamped">{{ x.summary|format_log }}</div>
+      <button class="log-toggle" onclick="lgToggle(this)">Ver más ▾</button>
+    </div>
   </div>
   {% empty %}
   <div style="text-align:center;padding:32px;color:var(--dc-text-muted)">Sin contactos registrados todavía.</div>
@@ -430,6 +432,15 @@ document.querySelectorAll('[data-log-action="edit"][data-modal="inv-log-edit-mod
               </select>
             </div>
             <div class="col-md-6">
+              <label class="form-label">Grado de Actividad</label>
+              <select name="grado_actividad" class="form-select">
+                <option value="">— Sin especificar —</option>
+                {% for g in grado_actividad_opts %}
+                  <option value="{{ g.pk }}" {% if investor.grado_actividad_id == g.pk %}selected{% endif %}>{{ g.nombre }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-md-6">
               <label class="form-label">País</label>
               <input type="text" name="country" class="form-control" value="{{ investor.country }}" list="country-list" autocomplete="off">
             </div>
@@ -437,9 +448,9 @@ document.querySelectorAll('[data-log-action="edit"][data-modal="inv-log-edit-mod
               <label class="form-label">Estado público</label>
               <select name="pub_status" class="form-select">
                 <option value="">— Sin especificar —</option>
-                <option value="Público" {% if investor.pub_status == "Público" %}selected{% endif %}>Público</option>
-                <option value="Privado" {% if investor.pub_status == "Privado" %}selected{% endif %}>Privado</option>
-                <option value="Desconocido" {% if investor.pub_status == "Desconocido" %}selected{% endif %}>Desconocido</option>
+                {% for t in estado_publico_opts %}
+                <option value="{{ t.nombre }}" {% if investor.pub_status == t.nombre %}selected{% endif %}>{{ t.nombre }}</option>
+                {% endfor %}
               </select>
             </div>
           </div>
@@ -469,13 +480,13 @@ document.querySelectorAll('[data-log-action="edit"][data-modal="inv-log-edit-mod
                 <div id="tipoInvDropdown" style="display:none;position:absolute;z-index:1055;top:calc(100% + 2px);left:0;right:0;
                      background:var(--dc-surface);border:1px solid var(--dc-border);border-radius:var(--dc-radius-sm);
                      box-shadow:0 4px 16px rgba(0,0,0,.12);padding:8px 0">
-                  {% for val in "LP,Inversión Directa"|split_csv %}
+                  {% for t in tipo_inversion_opts %}
                   <label style="display:flex;align-items:center;gap:8px;padding:6px 14px;cursor:pointer;font-size:.875rem;transition:background .1s"
                          onmouseover="this.style.background='var(--dc-hover)'" onmouseout="this.style.background=''">
-                    <input type="checkbox" name="tipo_inversion" value="{{ val }}" class="tipo-inv-cb"
-                           {% if val in investor.tipo_inversion %}checked{% endif %}
+                    <input type="checkbox" name="tipo_inversion" value="{{ t.nombre }}" class="tipo-inv-cb"
+                           {% if t.nombre in investor.tipo_inversion %}checked{% endif %}
                            style="width:15px;height:15px;flex-shrink:0;accent-color:var(--dc-accent)">
-                    {{ val }}
+                    {{ t.nombre }}
                   </label>
                   {% endfor %}
                 </div>
@@ -635,11 +646,38 @@ document.querySelectorAll('[data-log-action="edit"][data-modal="inv-log-edit-mod
         </div>
 
       </div>
-      <div class="modal-footer">
-        <button type="button" class="btn-ghost" data-bs-dismiss="modal">Cancelar</button>
-        <button type="submit" class="btn-accent">Guardar cambios</button>
+      <div class="modal-footer d-flex justify-content-between align-items-center">
+        <div>
+          {% if request.user.role == 'admin' %}
+          <button type="button" class="btn btn-sm btn-outline-danger"
+                  onclick="document.getElementById('inv-del-confirm').style.display='flex'">
+            <i class="bi bi-trash"></i> Eliminar inversor
+          </button>
+          {% endif %}
+        </div>
+        <div class="d-flex gap-2">
+          <button type="button" class="btn-ghost" data-bs-dismiss="modal">Cancelar</button>
+          <button type="submit" class="btn-accent">Guardar cambios</button>
+        </div>
       </div>
     </form>
+    {% if request.user.role == 'admin' %}
+    <div id="inv-del-confirm" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);
+         z-index:2000;align-items:center;justify-content:center">
+      <div style="background:var(--dc-surface);border-radius:var(--dc-radius);padding:28px 32px;max-width:380px;text-align:center">
+        <p class="fw-semibold mb-1">¿Eliminar este inversor?</p>
+        <p class="text-muted small mb-4">Se borrarán también sus contactos, logs y presentaciones asociadas. Esta acción no se puede deshacer.</p>
+        <form method="post" action="{% url 'crm:investor_delete' investor.pk %}">
+          {% csrf_token %}
+          <div class="d-flex gap-2 justify-content-center">
+            <button type="button" class="btn-ghost"
+                    onclick="document.getElementById('inv-del-confirm').style.display='none'">Cancelar</button>
+            <button type="submit" class="btn btn-danger">Sí, eliminar</button>
+          </div>
+        </form>
+      </div>
+    </div>
+    {% endif %}
   </div>
 </div>
 
