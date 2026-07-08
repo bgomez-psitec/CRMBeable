@@ -146,7 +146,7 @@ MEDIA_URL = '/media/'
 MEDIA_ROOT = env('MEDIA_ROOT', default=str(BASE_DIR / 'media'))
 
 # Carpeta raíz para documentos adjuntos a la cronología de inversores/colaboradores
-CONTACT_DOCS_ROOT = env('CONTACT_DOCS_ROOT', default=str(BASE_DIR / 'docs_contactos'))
+CONTACT_DOCS_ROOT = env('CONTACT_DOCS_ROOT', default=str(BASE_DIR / 'media' / 'docs_contactos'))
 
 
 # Default primary key field type
